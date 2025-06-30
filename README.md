@@ -35,8 +35,8 @@ A comprehensive mobile finance management application built with React Native an
 
 1. Clone the repository:
 ```bash
-git clone https://github.com/vishwa-glitch/fintech.git
-cd fintech
+git clone https://github.com/muigoku536/fintech1.git
+cd fintech1
 ```
 
 2. Navigate to the mobile app directory:
