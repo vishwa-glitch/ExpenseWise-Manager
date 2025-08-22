@@ -2,8 +2,8 @@ const { getDefaultConfig } = require('expo/metro-config');
 
 const config = getDefaultConfig(__dirname);
 
-// Add support for additional file extensions
-config.resolver.assetExts.push('db', 'mp3', 'ttf', 'obj', 'png', 'jpg');
+// Add support for additional file extensions (only what's needed)
+config.resolver.assetExts.push('png', 'jpg');
 
 // Add TypeScript support
 config.resolver.sourceExts.push('ts', 'tsx');
@@ -24,9 +24,6 @@ config.resolver.platforms = ['ios', 'android', 'native', 'web'];
 
 // Add resolver configuration to handle TypeScript files in dependencies
 config.resolver.resolverMainFields = ['react-native', 'browser', 'main'];
-
-// Configure Metro to transform TypeScript files in node_modules
-config.transformer.unstable_allowRequireContext = true;
 
 // Add watchman ignore patterns to avoid watching unnecessary files
 config.watchFolders = [];

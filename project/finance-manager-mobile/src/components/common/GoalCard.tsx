@@ -19,10 +19,11 @@ interface GoalCardProps {
     currency?: string;
   };
   onPress?: () => void;
+  onContribute?: () => void;
   compact?: boolean;
 }
 
-export const GoalCard: React.FC<GoalCardProps> = ({ goal, onPress, compact = false }) => {
+export const GoalCard: React.FC<GoalCardProps> = ({ goal, onPress, onContribute, compact = false }) => {
   const formatAmount = (amount: number) => {
     const currency = goal.currency || getDefaultCurrency();
     return formatCurrency(amount, currency, { maximumFractionDigits: 0 });
@@ -60,15 +61,36 @@ export const GoalCard: React.FC<GoalCardProps> = ({ goal, onPress, compact = fal
     return colors.accent;
   };
 
+  const getStatusColor = () => {
+    switch (goal.status) {
+      case 'completed': return colors.success;
+      case 'active': return colors.primary;
+      case 'paused': return colors.warning;
+      default: return colors.textSecondary;
+    }
+  };
+
+  const getDaysRemainingColor = () => {
+    if (!goal.days_remaining) return colors.textSecondary;
+    if (goal.days_remaining < 30) return colors.error;
+    if (goal.days_remaining < 90) return colors.warning;
+    return colors.textSecondary;
+  };
+
   return (
     <TouchableOpacity
       style={[styles.container, compact && styles.compact]}
       onPress={onPress}
       activeOpacity={0.8}
     >
+      {/* Status Indicator */}
+      <View style={[styles.statusIndicator, { backgroundColor: getStatusColor() }]} />
+      
       <View style={styles.header}>
         <View style={styles.titleSection}>
-          <Text style={styles.icon}>{getCategoryIcon(goal.category)}</Text>
+          <View style={styles.iconContainer}>
+            <Text style={styles.icon}>{getCategoryIcon(goal.category)}</Text>
+          </View>
           <View style={styles.titleContainer}>
             <Text style={styles.title} numberOfLines={1}>
               {goal.title}
@@ -80,14 +102,28 @@ export const GoalCard: React.FC<GoalCardProps> = ({ goal, onPress, compact = fal
             )}
           </View>
         </View>
-        {goal.priority && (
-          <View style={[styles.priorityBadge, { backgroundColor: getProgressColor() }]}>
-            <Text style={styles.priorityText}>P{goal.priority}</Text>
+        <View style={styles.headerRight}>
+          {goal.priority && (
+            <View style={[styles.priorityBadge, { backgroundColor: getProgressColor() }]}>
+              <Text style={styles.priorityText}>P{goal.priority}</Text>
+            </View>
+          )}
+          <View style={[styles.statusBadge, { backgroundColor: getStatusColor() + '20' }]}>
+            <Text style={[styles.statusText, { color: getStatusColor() }]}>
+              {goal.status.charAt(0).toUpperCase() + goal.status.slice(1)}
+            </Text>
           </View>
-        )}
+        </View>
       </View>
 
+      {/* Enhanced Progress Section */}
       <View style={styles.progressSection}>
+        <View style={styles.progressInfo}>
+          <Text style={styles.progressLabel}>Progress</Text>
+          <Text style={[styles.progressText, { color: getProgressColor() }]}>
+            {goal.progress_percentage.toFixed(1)}%
+          </Text>
+        </View>
         <View style={styles.progressBar}>
           <View
             style={[
@@ -99,39 +135,63 @@ export const GoalCard: React.FC<GoalCardProps> = ({ goal, onPress, compact = fal
             ]}
           />
         </View>
-        <Text style={styles.progressText}>
-          {goal.progress_percentage.toFixed(1)}%
-        </Text>
       </View>
 
+      {/* Enhanced Amount Section */}
       <View style={styles.amountSection}>
-        <Text style={styles.currentAmount}>
-          {formatAmount(goal.current_amount)}
-        </Text>
-        <Text style={styles.targetAmount}>
-          of {formatAmount(goal.target_amount)}
-        </Text>
+        <View style={styles.amountRow}>
+          <Text style={styles.amountLabel}>Current</Text>
+          <Text style={styles.currentAmount}>
+            {formatAmount(goal.current_amount)}
+          </Text>
+        </View>
+        <View style={styles.amountRow}>
+          <Text style={styles.amountLabel}>Target</Text>
+          <Text style={styles.targetAmount}>
+            {formatAmount(goal.target_amount)}
+          </Text>
+        </View>
+        <View style={styles.amountRow}>
+          <Text style={styles.amountLabel}>Remaining</Text>
+          <Text style={styles.remainingAmount}>
+            {formatAmount(goal.target_amount - goal.current_amount)}
+          </Text>
+        </View>
       </View>
 
       {!compact && (
         <View style={styles.footer}>
-          {goal.target_date && (
-            <Text style={styles.targetDate}>
-              Target: {formatDate(goal.target_date)}
-            </Text>
-          )}
-          {goal.days_remaining !== undefined && goal.days_remaining > 0 && (
-            <Text style={styles.daysRemaining}>
-              {goal.days_remaining} days left
-            </Text>
+          <View style={styles.footerLeft}>
+            {goal.target_date && (
+              <Text style={styles.targetDate}>
+                🗓️ {formatDate(goal.target_date)}
+              </Text>
+            )}
+            {goal.days_remaining !== undefined && goal.days_remaining > 0 && (
+              <Text style={[styles.daysRemaining, { color: getDaysRemainingColor() }]}>
+                ⏰ {goal.days_remaining} days left
+              </Text>
+            )}
+          </View>
+          
+          {/* Quick Contribute Button */}
+          {onContribute && goal.status === 'active' && (
+            <TouchableOpacity
+              style={styles.contributeButton}
+              onPress={onContribute}
+              activeOpacity={0.8}
+            >
+              <Text style={styles.contributeButtonText}>+ Add</Text>
+            </TouchableOpacity>
           )}
         </View>
       )}
 
       {!compact && goal.monthly_savings_needed && goal.monthly_savings_needed > 0 && (
         <View style={styles.savingsNeeded}>
+          <Text style={styles.savingsIcon}>💡</Text>
           <Text style={styles.savingsText}>
-            Save {formatAmount(goal.monthly_savings_needed)}/month to reach goal
+            Save {formatAmount(goal.monthly_savings_needed)}/month to reach your goal on time
           </Text>
         </View>
       )}
@@ -142,36 +202,55 @@ export const GoalCard: React.FC<GoalCardProps> = ({ goal, onPress, compact = fal
 const styles = StyleSheet.create({
   container: {
     backgroundColor: colors.card,
-    borderRadius: 12,
+    borderRadius: 16,
     padding: spacing.lg,
     marginBottom: spacing.md,
     shadowColor: '#000',
     shadowOffset: {
       width: 0,
-      height: 2,
+      height: 4,
     },
-    shadowOpacity: 0.1,
-    shadowRadius: 3.84,
-    elevation: 5,
+    shadowOpacity: 0.15,
+    shadowRadius: 8,
+    elevation: 8,
+    position: 'relative',
   },
   compact: {
     padding: spacing.md,
     marginBottom: spacing.sm,
   },
+  statusIndicator: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    height: 4,
+    borderTopLeftRadius: 16,
+    borderTopRightRadius: 16,
+  },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'center',
+    alignItems: 'flex-start',
     marginBottom: spacing.md,
+    marginTop: spacing.xs,
   },
   titleSection: {
     flexDirection: 'row',
     alignItems: 'center',
     flex: 1,
   },
-  icon: {
-    fontSize: 24,
+  iconContainer: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: colors.primary + '20',
+    justifyContent: 'center',
+    alignItems: 'center',
     marginRight: spacing.md,
+  },
+  icon: {
+    fontSize: 20,
   },
   titleContainer: {
     flex: 1,
@@ -180,59 +259,97 @@ const styles = StyleSheet.create({
     ...typography.h3,
     color: colors.text,
     marginBottom: spacing.xs,
+    fontWeight: 'bold',
   },
   category: {
     ...typography.small,
     color: colors.textSecondary,
     textTransform: 'capitalize',
   },
+  headerRight: {
+    alignItems: 'flex-end',
+  },
   priorityBadge: {
     paddingHorizontal: spacing.sm,
     paddingVertical: spacing.xs,
     borderRadius: 12,
+    marginBottom: spacing.xs,
   },
   priorityText: {
     ...typography.small,
     color: colors.background,
     fontWeight: 'bold',
+    fontSize: 10,
+  },
+  statusBadge: {
+    paddingHorizontal: spacing.sm,
+    paddingVertical: spacing.xs,
+    borderRadius: 8,
+  },
+  statusText: {
+    ...typography.small,
+    fontWeight: '600',
+    fontSize: 10,
   },
   progressSection: {
-    flexDirection: 'row',
-    alignItems: 'center',
     marginBottom: spacing.md,
   },
+  progressInfo: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: spacing.sm,
+  },
+  progressLabel: {
+    ...typography.caption,
+    color: colors.textSecondary,
+    fontWeight: '600',
+  },
+  progressText: {
+    ...typography.caption,
+    fontWeight: 'bold',
+  },
   progressBar: {
-    flex: 1,
     height: 8,
     backgroundColor: colors.surface,
     borderRadius: 4,
-    marginRight: spacing.md,
+    overflow: 'hidden',
   },
   progressFill: {
     height: '100%',
     borderRadius: 4,
   },
-  progressText: {
-    ...typography.caption,
-    color: colors.text,
-    fontWeight: '600',
-    minWidth: 40,
-    textAlign: 'right',
-  },
   amountSection: {
+    backgroundColor: colors.surface,
+    borderRadius: 12,
+    padding: spacing.md,
+    marginBottom: spacing.md,
+  },
+  amountRow: {
     flexDirection: 'row',
-    alignItems: 'baseline',
-    marginBottom: spacing.sm,
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: spacing.xs,
   },
-  currentAmount: {
-    ...typography.h3,
-    color: colors.primary,
-    fontWeight: 'bold',
-    marginRight: spacing.sm,
-  },
-  targetAmount: {
+  amountLabel: {
     ...typography.caption,
     color: colors.textSecondary,
+    fontWeight: '600',
+  },
+  currentAmount: {
+    ...typography.body,
+    color: colors.primary,
+    fontWeight: 'bold',
+  },
+  targetAmount: {
+    ...typography.body,
+    color: colors.text,
+    fontWeight: 'bold',
+  },
+  remainingAmount: {
+    ...typography.body,
+    color: colors.warning,
+    fontWeight: 'bold',
   },
   footer: {
     flexDirection: 'row',
@@ -240,24 +357,56 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: spacing.sm,
   },
+  footerLeft: {
+    flex: 1,
+  },
   targetDate: {
     ...typography.small,
     color: colors.textSecondary,
+    marginBottom: spacing.xs,
   },
   daysRemaining: {
     ...typography.small,
-    color: colors.warning,
     fontWeight: '600',
   },
   savingsNeeded: {
-    backgroundColor: colors.surface,
-    padding: spacing.sm,
-    borderRadius: 8,
+    backgroundColor: colors.info + '10',
+    padding: spacing.md,
+    borderRadius: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderLeftWidth: 4,
+    borderLeftColor: colors.info,
+  },
+  savingsIcon: {
+    fontSize: 16,
+    marginRight: spacing.sm,
   },
   savingsText: {
     ...typography.small,
     color: colors.text,
-    textAlign: 'center',
     fontWeight: '500',
+    flex: 1,
+    lineHeight: 18,
+  },
+  contributeButton: {
+    backgroundColor: colors.primary,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    borderRadius: 20,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.2,
+    shadowRadius: 3,
+    elevation: 4,
+  },
+  contributeButtonText: {
+    ...typography.caption,
+    color: colors.background,
+    fontWeight: 'bold',
+    fontSize: 12,
   },
 });

@@ -3,11 +3,11 @@ import {
   View,
   Text,
   StyleSheet,
-  ScrollView,
   TouchableOpacity,
   Alert,
   TextInput,
   Modal,
+  ScrollView,
 } from 'react-native';
 import { useAppDispatch } from '../../hooks/useAppDispatch';
 import { useTypedSelector } from '../../hooks/useTypedSelector';
@@ -35,13 +35,15 @@ const TransactionCalendarScreen: React.FC<TransactionCalendarScreenProps> = ({ n
   const { calendarData } = useTypedSelector((state) => state.transactions);
   const { isAuthenticated } = useTypedSelector((state) => state.auth);
 
+
+
   useEffect(() => {
     if (isAuthenticated) {
       loadCalendarData();
     }
   }, [currentDate, isAuthenticated]);
 
-  const loadCalendarData = async () => {
+  const loadCalendarData = async (forceDateRange?: { startDate: string; endDate: string }) => {
     if (!isAuthenticated) {
       console.log('🚫 Skipping calendar data load - user not authenticated');
       return;
@@ -49,14 +51,31 @@ const TransactionCalendarScreen: React.FC<TransactionCalendarScreenProps> = ({ n
 
     setIsLoading(true);
     try {
-      if (isDateRangeActive && selectedStartDate && selectedEndDate) {
+      // Use forced date range or check current state
+      const shouldUseDateRange = forceDateRange || (isDateRangeActive && selectedStartDate && selectedEndDate);
+      
+      if (shouldUseDateRange) {
+        const startDate = forceDateRange?.startDate || selectedStartDate;
+        const endDate = forceDateRange?.endDate || selectedEndDate;
+        
         // Load data for date range
+        console.log('📅 Calendar: Loading date range data', {
+          startDate,
+          endDate,
+          isDateRangeActive,
+          forcedRange: !!forceDateRange
+        });
         await dispatch(fetchTransactionCalendar({
-          startDate: selectedStartDate,
-          endDate: selectedEndDate,
+          startDate,
+          endDate,
         }));
       } else {
         // Load data for current month
+        console.log('📅 Calendar: Loading monthly data', {
+          year: currentDate.getFullYear(),
+          month: currentDate.getMonth() + 1,
+          isDateRangeActive
+        });
         await dispatch(fetchTransactionCalendar({
           year: currentDate.getFullYear(),
           month: currentDate.getMonth() + 1,
@@ -117,7 +136,7 @@ const TransactionCalendarScreen: React.FC<TransactionCalendarScreenProps> = ({ n
     const firstDay = new Date(year, month, 1);
     const lastDay = new Date(year, month + 1, 0);
     const daysInMonth = lastDay.getDate();
-    const startingDayOfWeek = firstDay.getDay();
+    const startingDayOfWeek = firstDay.getDay(); // 0 = Sunday, 1 = Monday, etc.
 
     const days = [];
     
@@ -129,6 +148,12 @@ const TransactionCalendarScreen: React.FC<TransactionCalendarScreenProps> = ({ n
     // Add all days of the month
     for (let day = 1; day <= daysInMonth; day++) {
       days.push(day);
+    }
+    
+    // Fill remaining cells to complete the grid (6 rows × 7 days = 42 cells)
+    const totalCells = 42;
+    while (days.length < totalCells) {
+      days.push(null);
     }
     
     return days;
@@ -145,7 +170,7 @@ const TransactionCalendarScreen: React.FC<TransactionCalendarScreenProps> = ({ n
 
   const renderCalendarDay = (day: number | null, index: number) => {
     if (!day) {
-      return <View key={index} style={styles.emptyDay} />;
+      return <View key={`empty-${index}`} style={styles.emptyDay} />;
     }
 
     const dayData = getTransactionDataForDay(day);
@@ -200,18 +225,80 @@ const TransactionCalendarScreen: React.FC<TransactionCalendarScreenProps> = ({ n
   };
 
   const getDateRangeSummary = () => {
+    console.log('📊 getDateRangeSummary called', {
+      isDateRangeActive,
+      hasCalendarData: !!calendarData,
+      calendarDataType: typeof calendarData,
+      calendarDataKeys: calendarData ? Object.keys(calendarData) : null,
+      hasSummary: !!(calendarData?.summary),
+      hasTransactions: !!(calendarData?.transactions),
+      isArray: Array.isArray(calendarData)
+    });
+
     if (!isDateRangeActive || !calendarData) {
+      console.log('📊 Returning zeros - no date range active or no calendar data');
       return { totalIncome: 0, totalExpenses: 0, netAmount: 0, transactionCount: 0 };
     }
 
-    // Calculate summary from the date range data
-    const summary = calendarData.summary || {};
-    return {
-      totalIncome: summary.total_income || 0,
-      totalExpenses: summary.total_expenses || 0,
-      netAmount: (summary.total_income || 0) - (summary.total_expenses || 0),
-      transactionCount: summary.transaction_count || 0,
-    };
+    // Check if we have calendar-formatted data with summary
+    if (calendarData.summary) {
+      console.log('📊 Using summary data:', calendarData.summary);
+      const summary = calendarData.summary;
+      return {
+        totalIncome: summary.total_income || 0,
+        totalExpenses: summary.total_expenses || 0,
+        netAmount: (summary.total_income || 0) - (summary.total_expenses || 0),
+        transactionCount: summary.transaction_count || 0,
+      };
+    }
+
+    // If we have regular transaction data (array format), calculate summary manually
+    if (Array.isArray(calendarData)) {
+      let totalIncome = 0;
+      let totalExpenses = 0;
+      let transactionCount = calendarData.length;
+
+      calendarData.forEach((transaction: any) => {
+        const amount = transaction.amount || 0;
+        if (transaction.type?.toLowerCase() === 'income') {
+          totalIncome += amount;
+        } else if (transaction.type?.toLowerCase() === 'expense') {
+          totalExpenses += amount;
+        }
+      });
+
+      return {
+        totalIncome,
+        totalExpenses,
+        netAmount: totalIncome - totalExpenses,
+        transactionCount,
+      };
+    }
+
+    // If we have transactions property (wrapped format)
+    if (calendarData.transactions && Array.isArray(calendarData.transactions)) {
+      let totalIncome = 0;
+      let totalExpenses = 0;
+      let transactionCount = calendarData.transactions.length;
+
+      calendarData.transactions.forEach((transaction: any) => {
+        const amount = transaction.amount || 0;
+        if (transaction.type?.toLowerCase() === 'income') {
+          totalIncome += amount;
+        } else if (transaction.type?.toLowerCase() === 'expense') {
+          totalExpenses += amount;
+        }
+      });
+
+      return {
+        totalIncome,
+        totalExpenses,
+        netAmount: totalIncome - totalExpenses,
+        transactionCount,
+      };
+    }
+
+    return { totalIncome: 0, totalExpenses: 0, netAmount: 0, transactionCount: 0 };
   };
 
   const getMonthSummary = () => {
@@ -242,7 +329,11 @@ const TransactionCalendarScreen: React.FC<TransactionCalendarScreenProps> = ({ n
   };
 
   const formatDateForInput = (date: Date) => {
-    return date.toISOString().split('T')[0];
+    // Use local timezone to avoid date shifts
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
   };
 
   const formatDateForDisplay = (dateString: string) => {
@@ -291,22 +382,52 @@ const TransactionCalendarScreen: React.FC<TransactionCalendarScreenProps> = ({ n
           <View style={styles.quickDateButtons}>
             <TouchableOpacity
               style={styles.quickDateButton}
-              onPress={() => {
+              onPress={async () => {
                 const today = new Date();
                 const lastWeek = new Date(today.getTime() - 7 * 24 * 60 * 60 * 1000);
-                setSelectedStartDate(formatDateForInput(lastWeek));
-                setSelectedEndDate(formatDateForInput(today));
+                const startDateStr = formatDateForInput(lastWeek);
+                const endDateStr = formatDateForInput(today);
+                
+                console.log('📅 Last 7 Days clicked', {
+                  today: today.toDateString(),
+                  lastWeek: lastWeek.toDateString(),
+                  startDateStr,
+                  endDateStr
+                });
+                
+                setSelectedStartDate(startDateStr);
+                setSelectedEndDate(endDateStr);
+                setIsDateRangeActive(true);
+                setShowDateFilter(false);
+                
+                // Pass the date range directly to avoid state timing issues
+                await loadCalendarData({ startDate: startDateStr, endDate: endDateStr });
               }}
             >
               <Text style={styles.quickDateText}>Last 7 Days</Text>
             </TouchableOpacity>
             <TouchableOpacity
               style={styles.quickDateButton}
-              onPress={() => {
+              onPress={async () => {
                 const today = new Date();
                 const lastMonth = new Date(today.getTime() - 30 * 24 * 60 * 60 * 1000);
-                setSelectedStartDate(formatDateForInput(lastMonth));
-                setSelectedEndDate(formatDateForInput(today));
+                const startDateStr = formatDateForInput(lastMonth);
+                const endDateStr = formatDateForInput(today);
+                
+                console.log('📅 Last 30 Days clicked', {
+                  today: today.toDateString(),
+                  lastMonth: lastMonth.toDateString(),
+                  startDateStr,
+                  endDateStr
+                });
+                
+                setSelectedStartDate(startDateStr);
+                setSelectedEndDate(endDateStr);
+                setIsDateRangeActive(true);
+                setShowDateFilter(false);
+                
+                // Pass the date range directly to avoid state timing issues
+                await loadCalendarData({ startDate: startDateStr, endDate: endDateStr });
               }}
             >
               <Text style={styles.quickDateText}>Last 30 Days</Text>
@@ -414,130 +535,109 @@ const TransactionCalendarScreen: React.FC<TransactionCalendarScreenProps> = ({ n
   const weekDays = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
   return (
-    <View style={styles.container}>
-      <ScrollView style={styles.scrollView}>
-        {/* Filter Controls */}
-        <View style={styles.filterControls}>
+    <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
+      {/* Month Navigation or Date Range Display */}
+      {!isDateRangeActive ? (
+        <View style={styles.monthNavigation}>
           <TouchableOpacity
-            style={[styles.filterButton, isDateRangeActive && styles.filterButtonActive]}
-            onPress={() => setShowDateFilter(true)}
+            style={styles.navButton}
+            onPress={() => navigateMonth('prev')}
           >
-            <Text style={styles.filterIcon}>📅</Text>
-            <Text style={[styles.filterText, isDateRangeActive && styles.filterTextActive]}>
-              {isDateRangeActive ? 'Date Range Active' : 'Filter by Date Range'}
-            </Text>
+            <Text style={styles.navButtonText}>‹</Text>
           </TouchableOpacity>
-          
-          {isDateRangeActive && (
-            <TouchableOpacity
-              style={styles.clearAllFiltersButton}
-              onPress={clearDateFilter}
-            >
-              <Text style={styles.clearAllFiltersText}>Clear All</Text>
-            </TouchableOpacity>
-          )}
+          <Text style={styles.monthTitle}>{monthName}</Text>
+          <TouchableOpacity
+            style={styles.navButton}
+            onPress={() => navigateMonth('next')}
+          >
+            <Text style={styles.navButtonText}>›</Text>
+          </TouchableOpacity>
         </View>
+      ) : (
+        renderDateRangeView()
+      )}
 
-        {/* Month Navigation or Date Range Display */}
-        {!isDateRangeActive ? (
-          <View style={styles.monthNavigation}>
-            <TouchableOpacity
-              style={styles.navButton}
-              onPress={() => navigateMonth('prev')}
-            >
-              <Text style={styles.navButtonText}>‹</Text>
-            </TouchableOpacity>
-            <Text style={styles.monthTitle}>{monthName}</Text>
-            <TouchableOpacity
-              style={styles.navButton}
-              onPress={() => navigateMonth('next')}
-            >
-              <Text style={styles.navButtonText}>›</Text>
-            </TouchableOpacity>
-          </View>
-        ) : (
-          renderDateRangeView()
-        )}
+      {/* Summary */}
+      <View style={styles.summaryContainer}>
+        <View style={styles.summaryItem}>
+          <Text style={styles.summaryLabel}>Income</Text>
+          <Text style={[styles.summaryAmount, { color: colors.income }]}>
+            +{formatAmount(summary.totalIncome)}
+          </Text>
+        </View>
+        <View style={styles.summaryItem}>
+          <Text style={styles.summaryLabel}>Expenses</Text>
+          <Text style={[styles.summaryAmount, { color: colors.expense }]}>
+            -{formatAmount(summary.totalExpenses)}
+          </Text>
+        </View>
+        <View style={styles.summaryItem}>
+          <Text style={styles.summaryLabel}>Net</Text>
+          <Text style={[
+            styles.summaryAmount,
+            { color: summary.netAmount >= 0 ? colors.income : colors.expense }
+          ]}>
+            {summary.netAmount >= 0 ? '+' : ''}{formatAmount(summary.netAmount)}
+          </Text>
+        </View>
+        <View style={styles.summaryItem}>
+          <Text style={styles.summaryLabel}>Transactions</Text>
+          <Text style={styles.summaryAmount}>
+            {summary.transactionCount}
+          </Text>
+        </View>
+      </View>
 
-        {/* Summary */}
-        <View style={styles.summaryContainer}>
-          <View style={styles.summaryItem}>
-            <Text style={styles.summaryLabel}>Income</Text>
-            <Text style={[styles.summaryAmount, { color: colors.income }]}>
-              +{formatAmount(summary.totalIncome)}
-            </Text>
+      {/* Calendar Grid (only show for monthly view) */}
+      {!isDateRangeActive && (
+        <View style={styles.calendar}>
+          {/* Week day headers */}
+          <View style={styles.weekHeader}>
+            {weekDays.map((day) => (
+              <Text key={day} style={styles.weekDay}>
+                {day}
+              </Text>
+            ))}
           </View>
-          <View style={styles.summaryItem}>
-            <Text style={styles.summaryLabel}>Expenses</Text>
-            <Text style={[styles.summaryAmount, { color: colors.expense }]}>
-              -{formatAmount(summary.totalExpenses)}
-            </Text>
-          </View>
-          <View style={styles.summaryItem}>
-            <Text style={styles.summaryLabel}>Net</Text>
-            <Text style={[
-              styles.summaryAmount,
-              { color: summary.netAmount >= 0 ? colors.income : colors.expense }
-            ]}>
-              {summary.netAmount >= 0 ? '+' : ''}{formatAmount(summary.netAmount)}
-            </Text>
-          </View>
-          <View style={styles.summaryItem}>
-            <Text style={styles.summaryLabel}>Transactions</Text>
-            <Text style={styles.summaryAmount}>
-              {summary.transactionCount}
-            </Text>
+
+          {/* Calendar grid */}
+          <View style={styles.calendarGrid}>
+            {getDaysInMonth().map((day, index) => renderCalendarDay(day, index))}
           </View>
         </View>
+      )}
 
-        {/* Calendar Grid (only show for monthly view) */}
-        {!isDateRangeActive && (
-          <View style={styles.calendar}>
-            {/* Week day headers */}
-            <View style={styles.weekHeader}>
-              {weekDays.map((day) => (
-                <Text key={day} style={styles.weekDay}>
-                  {day}
-                </Text>
-              ))}
-            </View>
-
-            {/* Calendar grid */}
-            <View style={styles.calendarGrid}>
-              {getDaysInMonth().map((day, index) => renderCalendarDay(day, index))}
-            </View>
-          </View>
+      {/* Filter Controls */}
+      <View style={styles.filterControls}>
+        <TouchableOpacity
+          style={[styles.filterButton, isDateRangeActive && styles.filterButtonActive]}
+          onPress={() => setShowDateFilter(true)}
+        >
+          <Text style={styles.filterIcon}>📅</Text>
+          <Text style={[styles.filterText, isDateRangeActive && styles.filterTextActive]}>
+            {isDateRangeActive ? 'Date Range Active' : 'Filter by Date Range'}
+          </Text>
+        </TouchableOpacity>
+        
+        {isDateRangeActive && (
+          <TouchableOpacity
+            style={styles.clearAllFiltersButton}
+            onPress={clearDateFilter}
+          >
+            <Text style={styles.clearAllFiltersText}>Clear All</Text>
+          </TouchableOpacity>
         )}
+      </View>
 
-        {/* Legend */}
-        <View style={styles.legend}>
-          <Text style={styles.legendTitle}>Legend</Text>
-          <View style={styles.legendItems}>
-            <View style={styles.legendItem}>
-              <View style={[styles.legendColor, { backgroundColor: colors.income }]} />
-              <Text style={styles.legendText}>Income</Text>
-            </View>
-            <View style={styles.legendItem}>
-              <View style={[styles.legendColor, { backgroundColor: colors.expense }]} />
-              <Text style={styles.legendText}>Expenses</Text>
-            </View>
-            <View style={styles.legendItem}>
-              <View style={[styles.legendColor, { backgroundColor: colors.primary }]} />
-              <Text style={styles.legendText}>Today</Text>
-            </View>
-          </View>
+      {isLoading && (
+        <View style={styles.loadingOverlay}>
+          <LoadingSpinner />
         </View>
-
-        {isLoading && (
-          <View style={styles.loadingOverlay}>
-            <LoadingSpinner />
-          </View>
-        )}
-      </ScrollView>
+      )}
 
       {/* Date Filter Modal */}
       {renderDateFilterModal()}
-    </View>
+    </ScrollView>
   );
 };
 
@@ -545,19 +645,19 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.background,
-  },
-  scrollView: {
-    flex: 1,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
   },
   filterControls: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.md,
-    backgroundColor: colors.surface,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    backgroundColor: colors.card,
+    borderTopWidth: 1,
+    borderTopColor: colors.border,
+    borderRadius: 8,
   },
   filterButton: {
     flexDirection: 'row',
@@ -602,8 +702,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.lg,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
   },
   navButton: {
     width: 40,
@@ -703,18 +803,17 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-around',
     backgroundColor: colors.card,
-    marginHorizontal: spacing.lg,
-    marginBottom: spacing.lg,
-    borderRadius: 12,
-    padding: spacing.lg,
+    marginBottom: spacing.sm,
+    borderRadius: 8,
+    padding: spacing.md,
     shadowColor: '#000',
     shadowOffset: {
       width: 0,
-      height: 2,
+      height: 1,
     },
     shadowOpacity: 0.1,
-    shadowRadius: 3.84,
-    elevation: 5,
+    shadowRadius: 2,
+    elevation: 3,
   },
   summaryItem: {
     alignItems: 'center',
@@ -725,48 +824,57 @@ const styles = StyleSheet.create({
   },
   calendar: {
     backgroundColor: colors.card,
-    marginHorizontal: spacing.lg,
-    borderRadius: 12,
-    padding: spacing.md,
+    borderRadius: 8,
+    padding: spacing.sm,
+    marginBottom: spacing.md,
+    borderWidth: 1,
+    borderColor: colors.border,
     shadowColor: '#000',
     shadowOffset: {
       width: 0,
-      height: 2,
+      height: 1,
     },
     shadowOpacity: 0.1,
-    shadowRadius: 3.84,
-    elevation: 5,
+    shadowRadius: 2,
+    elevation: 3,
   },
   weekHeader: {
     flexDirection: 'row',
-    justifyContent: 'space-around',
     paddingVertical: spacing.md,
     borderBottomWidth: 1,
     borderBottomColor: colors.border,
+    backgroundColor: colors.surface,
+    borderTopLeftRadius: 8,
+    borderTopRightRadius: 8,
   },
   weekDay: {
-    ...typography.caption,
+    fontSize: 12,
     color: colors.textSecondary,
     fontWeight: 'bold',
     textAlign: 'center',
-    width: '14.28%',
+    width: '14.285714%', // Exactly 1/7 of the width
+    flex: 1,
   },
   calendarGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
+    backgroundColor: colors.background,
   },
   emptyDay: {
-    width: '14.28%',
-    height: 60,
+    width: '14.285714%', // Exactly 1/7 of the width
+    height: 50,
+    borderWidth: 0.5,
+    borderColor: colors.border + '40',
   },
   calendarDay: {
-    width: '14.28%',
-    height: 60,
+    width: '14.285714%', // Exactly 1/7 of the width
+    height: 50,
     padding: spacing.xs,
     alignItems: 'center',
     justifyContent: 'center',
-    borderRadius: 8,
-    margin: 1,
+    borderWidth: 0.5,
+    borderColor: colors.border + '40',
+    backgroundColor: colors.card,
   },
   today: {
     backgroundColor: colors.primary + '20',
@@ -775,12 +883,14 @@ const styles = StyleSheet.create({
   },
   dayWithTransactions: {
     backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.primary + '60',
   },
   dayNumber: {
-    ...typography.caption,
+    fontSize: 14,
     color: colors.text,
     fontWeight: '600',
-    marginBottom: spacing.xs,
+    marginBottom: 2,
   },
   todayText: {
     color: colors.primary,
@@ -788,61 +898,24 @@ const styles = StyleSheet.create({
   },
   dayWithTransactionsText: {
     fontWeight: 'bold',
+    color: colors.primary,
   },
   transactionSummary: {
     alignItems: 'center',
   },
   incomeAmount: {
-    ...typography.small,
-    color: colors.income,
     fontSize: 8,
+    color: colors.income,
     fontWeight: 'bold',
+    textAlign: 'center',
   },
   expenseAmount: {
-    ...typography.small,
-    color: colors.expense,
     fontSize: 8,
+    color: colors.expense,
     fontWeight: 'bold',
+    textAlign: 'center',
   },
-  legend: {
-    backgroundColor: colors.card,
-    marginHorizontal: spacing.lg,
-    marginTop: spacing.lg,
-    borderRadius: 12,
-    padding: spacing.lg,
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.1,
-    shadowRadius: 3.84,
-    elevation: 5,
-  },
-  legendTitle: {
-    ...typography.h3,
-    color: colors.text,
-    marginBottom: spacing.md,
-    fontWeight: 'bold',
-  },
-  legendItems: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-  },
-  legendItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  legendColor: {
-    width: 16,
-    height: 16,
-    borderRadius: 8,
-    marginRight: spacing.sm,
-  },
-  legendText: {
-    ...typography.caption,
-    color: colors.text,
-  },
+
   loadingOverlay: {
     position: 'absolute',
     top: 0,

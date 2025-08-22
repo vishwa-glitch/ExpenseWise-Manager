@@ -1,7 +1,9 @@
-import React from 'react';
-import { View, Text, StyleSheet, Dimensions } from 'react-native';
+import React, { useState } from 'react';
+import { View, Text, StyleSheet, Dimensions, ActivityIndicator, TouchableOpacity, Animated } from 'react-native';
 import { PieChart as RNPieChart } from 'react-native-chart-kit';
 import { colors, typography, spacing } from '../../constants/colors';
+import { pieChartConfig, chartDimensions, chartUtils } from '../../constants/chartConfig';
+import { TimePeriod } from '../common/TimePeriodSelector';
 
 const screenWidth = Dimensions.get('window').width;
 
@@ -17,6 +19,9 @@ interface PieChartProps {
   showLegend?: boolean;
   centerText?: string;
   centerSubtext?: string;
+  timePeriod?: TimePeriod;
+  isLoading?: boolean;
+  showPercentages?: boolean;
 }
 
 export const PieChart: React.FC<PieChartProps> = ({
@@ -25,15 +30,12 @@ export const PieChart: React.FC<PieChartProps> = ({
   showLegend = true,
   centerText,
   centerSubtext,
+  timePeriod,
+  isLoading = false,
+  showPercentages = true,
 }) => {
-  const chartConfig = {
-    backgroundGradientFrom: colors.background,
-    backgroundGradientTo: colors.background,
-    color: (opacity = 1) => `rgba(46, 125, 87, ${opacity})`,
-    strokeWidth: 2,
-    barPercentage: 0.5,
-    useShadowColorFromDataset: false,
-  };
+  const [highlightedIndex, setHighlightedIndex] = useState<number | null>(null);
+  const chartConfig = pieChartConfig;
 
   const chartData = data.map((item, index) => ({
     name: item.name,
@@ -44,49 +46,97 @@ export const PieChart: React.FC<PieChartProps> = ({
   }));
 
   const formatAmount = (amount: number) => {
-    return `₹${amount.toLocaleString('en-IN', {
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 0,
-    })}`;
+    return chartUtils.formatCurrency(amount);
   };
 
   const totalAmount = data.reduce((sum, item) => sum + item.amount, 0);
+
+  const renderLoadingSkeleton = () => (
+    <View style={styles.loadingContainer}>
+      <ActivityIndicator size="large" color={colors.primary} />
+      <Text style={styles.loadingText}>Loading chart data...</Text>
+    </View>
+  );
+
+  const renderEmptyState = () => (
+    <View style={styles.emptyContainer}>
+      <Text style={styles.emptyIcon}>📊</Text>
+      <Text style={styles.emptyTitle}>No Data Available</Text>
+      <Text style={styles.emptyMessage}>
+        No category data found for the selected period.
+      </Text>
+    </View>
+  );
+
+  const handleLegendPress = (index: number) => {
+    setHighlightedIndex(highlightedIndex === index ? null : index);
+  };
+
+  // Check if data is empty or invalid
+  const hasValidData = data && data.length > 0 && totalAmount > 0;
 
   return (
     <View style={styles.container}>
       {title && <Text style={styles.title}>{title}</Text>}
       
       <View style={styles.chartContainer}>
-        <RNPieChart
-          data={chartData}
-          width={screenWidth - 40}
-          height={220}
-          chartConfig={chartConfig}
-          accessor="population"
-          backgroundColor="transparent"
-          paddingLeft="15"
-          center={[10, 0]}
-          absolute={false}
-        />
-        
-        {centerText && (
-          <View style={styles.centerTextContainer}>
-            <Text style={styles.centerText}>{centerText}</Text>
-            {centerSubtext && (
-              <Text style={styles.centerSubtext}>{centerSubtext}</Text>
+        {isLoading ? (
+          renderLoadingSkeleton()
+        ) : !hasValidData ? (
+          renderEmptyState()
+        ) : (
+          <>
+            <RNPieChart
+              data={chartData}
+              width={chartDimensions.width}
+              height={chartDimensions.height}
+              chartConfig={chartConfig}
+              accessor="population"
+              backgroundColor="transparent"
+              paddingLeft="15"
+              center={[10, 0]}
+              absolute={false}
+            />
+            
+            {(centerText || totalAmount > 0) && (
+              <View style={styles.centerTextContainer}>
+                <Text style={styles.centerText}>
+                  {centerText || formatAmount(totalAmount)}
+                </Text>
+                {centerSubtext && (
+                  <Text style={styles.centerSubtext}>{centerSubtext}</Text>
+                )}
+                {timePeriod && (
+                  <Text style={styles.centerSubtext}>
+                    {timePeriod === 'weekly' ? 'This Week' :
+                     timePeriod === 'monthly' ? 'This Month' :
+                     timePeriod === '6months' ? '6 Months' :
+                     'This Year'}
+                  </Text>
+                )}
+              </View>
             )}
-          </View>
+          </>
         )}
       </View>
 
-      {showLegend && (
+      {showLegend && hasValidData && !isLoading && (
         <View style={styles.legendContainer}>
           {data.map((item, index) => (
-            <View key={index} style={styles.legendItem}>
+            <TouchableOpacity
+              key={index}
+              style={[
+                styles.legendItem,
+                highlightedIndex === index && styles.highlightedLegendItem,
+              ]}
+              onPress={() => handleLegendPress(index)}
+              activeOpacity={0.7}
+            >
               <View
                 style={[
                   styles.legendColor,
                   { backgroundColor: item.color || colors.categories[index % colors.categories.length] },
+                  highlightedIndex === index && styles.highlightedLegendColor,
                 ]}
               />
               <View style={styles.legendText}>
@@ -94,10 +144,11 @@ export const PieChart: React.FC<PieChartProps> = ({
                   {item.name}
                 </Text>
                 <Text style={styles.legendAmount}>
-                  {formatAmount(item.amount)} ({((item.amount / totalAmount) * 100).toFixed(1)}%)
+                  {formatAmount(item.amount)}
+                  {showPercentages && ` (${((item.amount / totalAmount) * 100).toFixed(1)}%)`}
                 </Text>
               </View>
-            </View>
+            </TouchableOpacity>
           ))}
         </View>
       )}
@@ -105,26 +156,14 @@ export const PieChart: React.FC<PieChartProps> = ({
   );
 };
 
+import { chartStyles, textStyles, responsive, accessibilityHelpers } from '../../utils/styleUtils';
+
 const styles = StyleSheet.create({
   container: {
-    backgroundColor: colors.card,
-    borderRadius: 12,
-    padding: spacing.lg,
-    marginBottom: spacing.md,
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.1,
-    shadowRadius: 3.84,
-    elevation: 5,
+    ...chartStyles.container,
   },
   title: {
-    ...typography.h3,
-    color: colors.text,
-    textAlign: 'center',
-    marginBottom: spacing.md,
+    ...textStyles.cardTitle,
   },
   chartContainer: {
     alignItems: 'center',
@@ -146,6 +185,34 @@ const styles = StyleSheet.create({
     ...typography.caption,
     color: colors.textSecondary,
   },
+  loadingContainer: {
+    ...chartStyles.loadingContainer,
+  },
+  loadingText: {
+    ...typography.caption,
+    color: colors.textSecondary,
+    marginTop: spacing.sm,
+  },
+  emptyContainer: {
+    ...chartStyles.emptyContainer,
+  },
+  emptyIcon: {
+    fontSize: 48,
+    marginBottom: spacing.md,
+  },
+  emptyTitle: {
+    ...typography.h3,
+    color: colors.text,
+    textAlign: 'center',
+    marginBottom: spacing.sm,
+  },
+  emptyMessage: {
+    ...typography.body,
+    color: colors.textSecondary,
+    textAlign: 'center',
+    lineHeight: 20,
+    marginBottom: spacing.lg,
+  },
   legendContainer: {
     marginTop: spacing.lg,
   },
@@ -153,12 +220,39 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     marginBottom: spacing.sm,
+    padding: spacing.xs,
+    borderRadius: 8,
+    backgroundColor: 'transparent',
+  },
+  highlightedLegendItem: {
+    backgroundColor: colors.surface,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 1,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+    elevation: 2,
   },
   legendColor: {
     width: 16,
     height: 16,
     borderRadius: 8,
     marginRight: spacing.md,
+  },
+  highlightedLegendColor: {
+    width: 18,
+    height: 18,
+    borderRadius: 9,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.3,
+    shadowRadius: 3,
+    elevation: 3,
   },
   legendText: {
     flex: 1,

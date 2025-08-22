@@ -13,6 +13,8 @@ const initialState: GoalsState = {
   goals: [],
   selectedGoal: null,
   aiSession: null,
+  goalProgress: null,
+  goalPredictions: null,
   isLoading: false,
   error: null,
 };
@@ -50,35 +52,124 @@ export const createGoal = createAsyncThunk(
   }
 );
 
+export const updateGoal = createAsyncThunk(
+  'goals/updateGoal',
+  async ({ id, data }: { id: string; data: any }) => {
+    const response = await apiService.updateGoal(id, data);
+    return response;
+  }
+);
+
+export const deleteGoal = createAsyncThunk(
+  'goals/deleteGoal',
+  async (id: string) => {
+    await apiService.deleteGoal(id);
+    return id;
+  }
+);
+
+export const fetchGoalProgress = createAsyncThunk(
+  'goals/fetchGoalProgress',
+  async (id: string) => {
+    const response = await apiService.getGoalProgress(id);
+    return response;
+  }
+);
+
+export const fetchGoalPredictions = createAsyncThunk(
+  'goals/fetchGoalPredictions',
+  async (id: string, { rejectWithValue }) => {
+    try {
+      const response = await apiService.getGoalPredictions(id);
+      return response;
+    } catch (error: any) {
+      // Handle 404 errors gracefully for predictions
+      if (error.response?.status === 404) {
+        console.log('🎯 Goal predictions endpoint not available (404) - using fallback data');
+        return {
+          estimated_completion_date: null,
+          monthly_contribution_needed: 0,
+          probability_of_success: 0,
+          suggestions: []
+        };
+      }
+      return rejectWithValue(error.message);
+    }
+  }
+);
+
 export const contributeToGoal = createAsyncThunk(
   'goals/contributeToGoal',
-  async ({ id, amount }: { id: string; amount: number }) => {
-    const response = await apiService.contributeToGoal(id, amount);
+  async ({ id, amount, accountId, description }: { 
+    id: string; 
+    amount: number; 
+    accountId: string; 
+    description?: string; 
+  }) => {
+    if (!accountId) {
+      throw new Error('Account ID is required for goal contribution');
+    }
+    const response = await apiService.contributeToGoal(id, amount, accountId, description);
     return response;
   }
 );
 
 export const startAIGoalSession = createAsyncThunk(
   'goals/startAISession',
-  async () => {
-    const response = await apiService.startAIGoalSession();
-    return response;
+  async (_, { rejectWithValue }) => {
+    try {
+      const response = await apiService.startAIGoalSession();
+      return response;
+    } catch (error: any) {
+      console.error('❌ startAIGoalSession error:', error.response?.data || error.message);
+      return rejectWithValue(
+        error.response?.data?.error || 
+        error.message || 
+        'Failed to start AI goal session'
+      );
+    }
   }
 );
 
 export const chatWithAI = createAsyncThunk(
   'goals/chatWithAI',
-  async ({ sessionId, message }: { sessionId: string; message: string }) => {
-    const response = await apiService.chatWithAI(sessionId, message);
-    return response;
+  async ({ sessionId, message }: { sessionId: string; message: string }, { rejectWithValue }) => {
+    try {
+      if (!sessionId) {
+        throw new Error('No active AI session. Please restart the session.');
+      }
+      console.log('🤖 Redux: Sending chat message to AI:', { sessionId, message });
+      const response = await apiService.chatWithAI(sessionId, message);
+      console.log('🤖 Redux: AI chat response received:', response);
+      return response;
+    } catch (error: any) {
+      console.error('❌ chatWithAI error:', error.response?.data || error.message);
+      return rejectWithValue(
+        error.response?.data?.error || 
+        error.message || 
+        'Failed to send message'
+      );
+    }
   }
 );
 
 export const finalizeAIGoal = createAsyncThunk(
   'goals/finalizeAIGoal',
-  async (sessionId: string) => {
-    const response = await apiService.finalizeAIGoal(sessionId);
-    return response;
+  async (sessionId: string, { rejectWithValue }) => {
+    try {
+      if (!sessionId) {
+        throw new Error('No active AI session. Please restart the session.');
+      }
+      const response = await apiService.finalizeAIGoal(sessionId);
+      return response;
+    } catch (error: any) {
+      console.error('❌ finalizeAIGoal error:', error.response?.data || error.message);
+      return rejectWithValue(
+        error.response?.data?.error || 
+        error.message || 
+        'Failed to create goal'
+      );
+    }
   }
 );
 
@@ -88,6 +179,12 @@ const goalsSlice = createSlice({
   reducers: {
     clearError: (state) => {
       state.error = null;
+    },
+    clearGoalProgress: (state) => {
+      state.goalProgress = null;
+    },
+    clearGoalPredictions: (state) => {
+      state.goalPredictions = null;
     },
     setSelectedGoal: (state, action) => {
       state.selectedGoal = action.payload;
@@ -117,11 +214,41 @@ const goalsSlice = createSlice({
       .addCase(fetchGoal.fulfilled, (state, action) => {
         state.selectedGoal = action.payload.goal;
       })
+      // Fetch goal progress
+      .addCase(fetchGoalProgress.fulfilled, (state, action) => {
+        state.goalProgress = action.payload.progress || action.payload;
+      })
+      // Fetch goal predictions
+      .addCase(fetchGoalPredictions.fulfilled, (state, action) => {
+        state.goalPredictions = action.payload.predictions || action.payload;
+      })
       // Create goal
       .addCase(createGoal.fulfilled, (state, action) => {
         const newGoal = action.payload.goal || action.payload;
         if (newGoal) {
           state.goals.push(newGoal);
+        }
+      })
+      // Update goal
+      .addCase(updateGoal.fulfilled, (state, action) => {
+        const updatedGoal = action.payload.goal || action.payload;
+        if (updatedGoal) {
+          const index = state.goals.findIndex(g => g.id === updatedGoal.id);
+          if (index !== -1) {
+            state.goals[index] = updatedGoal;
+          }
+          
+          // Also update selectedGoal if it matches
+          if (state.selectedGoal && state.selectedGoal.id === updatedGoal.id) {
+            state.selectedGoal = updatedGoal;
+          }
+        }
+      })
+      // Delete goal
+      .addCase(deleteGoal.fulfilled, (state, action) => {
+        state.goals = state.goals.filter(g => g.id !== action.payload);
+        if (state.selectedGoal && state.selectedGoal.id === action.payload) {
+          state.selectedGoal = null;
         }
       })
       // Contribute to goal
@@ -136,20 +263,60 @@ const goalsSlice = createSlice({
       })
       // AI Session
       .addCase(startAIGoalSession.fulfilled, (state, action) => {
+        state.isLoading = false;
+        console.log('🚀 Redux: AI session started:', action.payload);
         state.aiSession = action.payload;
+        state.error = null;
+      })
+      .addCase(startAIGoalSession.pending, (state) => {
+        state.isLoading = true;
+        state.error = null;
+      })
+      .addCase(startAIGoalSession.rejected, (state, action) => {
+        state.isLoading = false;
+        state.error = action.payload as string || 'Failed to start AI session';
+        state.aiSession = null;
       })
       .addCase(chatWithAI.fulfilled, (state, action) => {
+        state.isLoading = false;
+        console.log('💬 Redux: AI chat response processed:', action.payload);
         state.aiSession = action.payload;
+        state.error = null;
+      })
+      .addCase(chatWithAI.pending, (state) => {
+        state.isLoading = true;
+        state.error = null;
+      })
+      .addCase(chatWithAI.rejected, (state, action) => {
+        state.isLoading = false;
+        console.error('❌ Redux: AI chat failed:', action.error);
+        state.error = action.error.message || 'Failed to chat with AI';
       })
       .addCase(finalizeAIGoal.fulfilled, (state, action) => {
+        state.isLoading = false;
         const newGoal = action.payload.goal || action.payload;
         if (newGoal) {
           state.goals.push(newGoal);
         }
         state.aiSession = null;
+        state.error = null;
+      })
+      .addCase(finalizeAIGoal.pending, (state) => {
+        state.isLoading = true;
+        state.error = null;
+      })
+      .addCase(finalizeAIGoal.rejected, (state, action) => {
+        state.isLoading = false;
+        state.error = action.payload as string || 'Failed to create goal';
       });
-  },
+  }
 });
 
-export const { clearError, setSelectedGoal, clearAISession } = goalsSlice.actions;
+export const { 
+  clearError, 
+  setSelectedGoal, 
+  clearAISession, 
+  clearGoalProgress, 
+  clearGoalPredictions 
+} = goalsSlice.actions;
 export default goalsSlice.reducer;

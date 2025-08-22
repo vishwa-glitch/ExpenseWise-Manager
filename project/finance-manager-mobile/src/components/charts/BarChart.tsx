@@ -1,7 +1,10 @@
 import React from 'react';
-import { View, Text, StyleSheet, Dimensions } from 'react-native';
+import { View, Text, StyleSheet, Dimensions, ActivityIndicator, TouchableOpacity } from 'react-native';
 import { BarChart as RNBarChart } from 'react-native-chart-kit';
 import { colors, typography, spacing } from '../../constants/colors';
+import { barChartConfig, chartDimensions, chartUtils } from '../../constants/chartConfig';
+import { TimePeriod } from '../common/TimePeriodSelector';
+import { chartStyles, textStyles, responsive, accessibilityHelpers } from '../../utils/styleUtils';
 
 const screenWidth = Dimensions.get('window').width;
 
@@ -15,63 +18,94 @@ interface BarChartProps {
   };
   title?: string;
   yAxisSuffix?: string;
-  showGrid?: boolean;
   showValuesOnTopOfBars?: boolean;
+  showGrid?: boolean;
+  timePeriod?: TimePeriod;
+  isLoading?: boolean;
+  onRefresh?: () => void;
+  horizontal?: boolean;
 }
 
 export const BarChart: React.FC<BarChartProps> = ({
   data,
   title,
   yAxisSuffix = '',
-  showGrid = true,
   showValuesOnTopOfBars = false,
+  showGrid = true,
+  timePeriod,
+  isLoading = false,
+  onRefresh,
+  horizontal = false,
 }) => {
-  const chartConfig = {
-    backgroundColor: colors.background,
-    backgroundGradientFrom: colors.background,
-    backgroundGradientTo: colors.background,
-    decimalPlaces: 0,
-    color: (opacity = 1) => `rgba(46, 125, 87, ${opacity})`,
-    labelColor: (opacity = 1) => `rgba(33, 37, 41, ${opacity})`,
-    style: {
-      borderRadius: 16,
-    },
-    propsForBackgroundLines: {
-      strokeDasharray: '',
-      stroke: colors.border,
-      strokeWidth: 1,
-    },
-  };
+  const chartConfig = barChartConfig;
 
   const formatYLabel = (value: string) => {
-    const num = parseFloat(value);
-    if (num >= 100000) {
-      return `${(num / 100000).toFixed(1)}L${yAxisSuffix}`;
-    } else if (num >= 1000) {
-      return `${(num / 1000).toFixed(1)}K${yAxisSuffix}`;
-    }
-    return `${num}${yAxisSuffix}`;
+    return chartUtils.formatCurrency(parseFloat(value), yAxisSuffix);
   };
+
+  // Check if data is empty or invalid
+  const hasValidData = chartUtils.validateChartData(data);
+
+  const renderLoadingSkeleton = () => (
+    <View style={styles.loadingContainer}>
+      <ActivityIndicator size="large" color={colors.primary} />
+      <Text style={styles.loadingText}>Loading chart data...</Text>
+    </View>
+  );
+
+  const renderEmptyState = () => (
+    <View style={styles.emptyContainer}>
+      <Text style={styles.emptyIcon}>📊</Text>
+      <Text style={styles.emptyTitle}>No Data Available</Text>
+      <Text style={styles.emptyMessage}>
+        No data found for the selected period.
+      </Text>
+      {onRefresh && (
+        <TouchableOpacity style={styles.refreshButton} onPress={onRefresh}>
+          <Text style={styles.refreshButtonText}>Refresh</Text>
+        </TouchableOpacity>
+      )}
+    </View>
+  );
 
   return (
     <View style={styles.container}>
-      {title && <Text style={styles.title}>{title}</Text>}
+      {title && (
+        <View style={styles.titleContainer}>
+          <Text style={styles.title}>{title}</Text>
+          {timePeriod && (
+            <Text style={styles.subtitle}>
+              {timePeriod === 'weekly' ? 'Last 7 days' :
+               timePeriod === 'monthly' ? 'Last 30 days' :
+               timePeriod === '6months' ? 'Last 6 months' :
+               'Last 12 months'}
+            </Text>
+          )}
+        </View>
+      )}
       
       <View style={styles.chartContainer}>
-        <RNBarChart
-          data={data}
-          width={screenWidth - 40}
-          height={220}
-          chartConfig={chartConfig}
-          style={styles.chart}
-          formatYLabel={formatYLabel}
-          withHorizontalLabels={true}
-          withVerticalLabels={true}
-          withInnerLines={showGrid}
-          showValuesOnTopOfBars={showValuesOnTopOfBars}
-          showBarTops={false}
-          fromZero={true}
-        />
+        {isLoading ? (
+          renderLoadingSkeleton()
+        ) : !hasValidData ? (
+          renderEmptyState()
+        ) : (
+          <RNBarChart
+            data={data}
+            width={chartDimensions.width}
+            height={chartDimensions.height}
+            chartConfig={chartConfig}
+            style={styles.chart}
+            formatYLabel={formatYLabel}
+            withHorizontalLabels={true}
+            withVerticalLabels={true}
+            withInnerLines={showGrid}
+            showValuesOnTopOfBars={showValuesOnTopOfBars}
+            showBarTops={true}
+            fromZero={true}
+            segments={4}
+          />
+        )}
       </View>
     </View>
   );
@@ -79,24 +113,17 @@ export const BarChart: React.FC<BarChartProps> = ({
 
 const styles = StyleSheet.create({
   container: {
-    backgroundColor: colors.card,
-    borderRadius: 12,
-    padding: spacing.lg,
-    marginBottom: spacing.md,
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.1,
-    shadowRadius: 3.84,
-    elevation: 5,
+    ...chartStyles.container,
+  },
+  titleContainer: {
+    ...chartStyles.titleContainer,
   },
   title: {
-    ...typography.h3,
-    color: colors.text,
-    textAlign: 'center',
-    marginBottom: spacing.md,
+    ...textStyles.cardTitle,
+    marginBottom: spacing.xs,
+  },
+  subtitle: {
+    ...textStyles.subtitle,
   },
   chartContainer: {
     alignItems: 'center',
@@ -104,5 +131,44 @@ const styles = StyleSheet.create({
   chart: {
     marginVertical: 8,
     borderRadius: 16,
+  },
+  loadingContainer: {
+    ...chartStyles.loadingContainer,
+  },
+  loadingText: {
+    ...typography.caption,
+    color: colors.textSecondary,
+    marginTop: spacing.sm,
+  },
+  emptyContainer: {
+    ...chartStyles.emptyContainer,
+  },
+  emptyIcon: {
+    fontSize: 48,
+    marginBottom: spacing.md,
+  },
+  emptyTitle: {
+    ...typography.h3,
+    color: colors.text,
+    textAlign: 'center',
+    marginBottom: spacing.sm,
+  },
+  emptyMessage: {
+    ...typography.body,
+    color: colors.textSecondary,
+    textAlign: 'center',
+    lineHeight: 20,
+    marginBottom: spacing.lg,
+  },
+  refreshButton: {
+    backgroundColor: colors.primary,
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.sm,
+    borderRadius: 8,
+  },
+  refreshButtonText: {
+    ...typography.caption,
+    color: colors.background,
+    fontWeight: '600',
   },
 });

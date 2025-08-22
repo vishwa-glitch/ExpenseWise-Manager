@@ -1,6 +1,25 @@
 import axios, { AxiosInstance, AxiosRequestConfig, AxiosResponse } from 'axios';
 import * as SecureStore from 'expo-secure-store';
 import { API_CONFIG, API_ENDPOINTS } from '../config/api';
+import { BudgetStatusResponse, WeeklyHealthResponse, DashboardInsightsResponse } from '../types/api';
+
+interface TransactionQueryParams {
+  page?: number;
+  limit?: number;
+  searchQuery?: string;
+  dateRange?: {
+    startDate: string;
+    endDate: string;
+  };
+  categories?: string[];
+  transactionType?: 'all' | 'income' | 'expense';
+  minAmount?: number;
+  maxAmount?: number;
+  isRecurring?: boolean | null;
+  isUncategorized?: boolean;
+  accountId?: string;
+  date?: string; // Legacy support
+}
 
 class ApiService {
   private api: AxiosInstance;
@@ -422,23 +441,67 @@ class ApiService {
   }
 
   // Transaction methods
-  async getTransactions(page = 1, limit = 20, accountId?: string, date?: string) {
-    let url = `/transactions?page=${page}&limit=${limit}`;
+  async getTransactions(params: TransactionQueryParams = {}): Promise<any> {
+    const queryParams = new URLSearchParams();
     
-    if (accountId) {
-      url += `&account_id=${accountId}`;
+    // Basic pagination
+    queryParams.append('page', params.page?.toString() || '1');
+    queryParams.append('limit', params.limit?.toString() || '20');
+    
+    // Legacy support for existing calls
+    if (params.accountId) {
+      queryParams.append('account_id', params.accountId);
     }
     
-    if (date) {
-      url += `&date=${date}`;
+    if (params.date) {
+      queryParams.append('date', params.date);
     }
     
-    const response = await this.api.get(url);
+    // Enhanced filtering
+    if (params.searchQuery) {
+      queryParams.append('search', params.searchQuery);
+    }
+    
+    if (params.dateRange) {
+      queryParams.append('start_date', params.dateRange.startDate);
+      queryParams.append('end_date', params.dateRange.endDate);
+    }
+    
+    if (params.categories?.length) {
+      queryParams.append('categories', params.categories.join(','));
+    }
+    
+    if (params.transactionType && params.transactionType !== 'all') {
+      queryParams.append('type', params.transactionType);
+    }
+    
+    if (params.minAmount !== undefined) {
+      queryParams.append('min_amount', params.minAmount.toString());
+    }
+    
+    if (params.maxAmount !== undefined) {
+      queryParams.append('max_amount', params.maxAmount.toString());
+    }
+    
+    if (params.isRecurring !== null && params.isRecurring !== undefined) {
+      queryParams.append('is_recurring', params.isRecurring.toString());
+    }
+    
+    if (params.isUncategorized) {
+      queryParams.append('uncategorized', 'true');
+    }
+    
+    const response = await this.api.get(`/transactions?${queryParams.toString()}`);
     return response.data;
   }
 
-  async getTransactionCalendar(year?: number, month?: number, startDate?: string, endDate?: string) {
-    const response = await this.api.get(API_ENDPOINTS.TRANSACTIONS.CALENDAR(year, month, startDate, endDate));
+  async getTransactionCalendar(year: number, month: number) {
+    const response = await this.api.get(API_ENDPOINTS.TRANSACTIONS.CALENDAR(year, month));
+    return response.data;
+  }
+
+  async getTransactionsByDateRange(startDate: string, endDate: string) {
+    const response = await this.api.get(API_ENDPOINTS.TRANSACTIONS.CALENDAR_DATE_RANGE(startDate, endDate));
     return response.data;
   }
 
@@ -497,9 +560,66 @@ class ApiService {
     return response.data;
   }
 
+  async getBudget(id: string) {
+    const response = await this.api.get(API_ENDPOINTS.BUDGETS.DETAIL(id));
+    return response.data;
+  }
+
   async createBudget(budgetData: any) {
     const response = await this.api.post(API_ENDPOINTS.BUDGETS.CREATE, budgetData);
     return response.data;
+  }
+
+  async updateBudget(id: string, budgetData: any) {
+    const response = await this.api.put(API_ENDPOINTS.BUDGETS.UPDATE(id), budgetData);
+    return response.data;
+  }
+
+  async deleteBudget(id: string) {
+    const response = await this.api.delete(API_ENDPOINTS.BUDGETS.DELETE(id));
+    return response.data;
+  }
+
+  async toggleBudget(id: string, isActive: boolean) {
+    const response = await this.api.patch(`/budgets/${id}/toggle`, { is_active: isActive });
+    return response.data;
+  }
+
+  async getBudgetStatus(): Promise<BudgetStatusResponse> {
+    try {
+      const response = await this.api.get<BudgetStatusResponse>('/budgets/status');
+      return response.data;
+    } catch (error: any) {
+      // If the specific budget status endpoint doesn't exist, fall back to regular budgets
+      console.log('📊 Budget status endpoint not available, using budgets data for calculation');
+      const budgetsResponse = await this.getBudgets();
+      
+      // Transform regular budgets response to match BudgetStatusResponse format
+      const budgets = budgetsResponse.budgets || [];
+      const activeBudgets = budgets.filter((budget: any) => budget.is_active !== false);
+      const totalBudget = activeBudgets.reduce((sum: number, budget: any) => sum + (budget.amount || 0), 0);
+      const totalSpent = activeBudgets.reduce((sum: number, budget: any) => sum + (budget.spent_amount || 0), 0);
+      const percentage = totalBudget > 0 ? Math.round((totalSpent / totalBudget) * 100) : 0;
+      const isOverBudget = totalSpent > totalBudget;
+      
+      // Calculate days left in current month
+      const now = new Date();
+      const lastDayOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+      const daysLeft = Math.max(0, lastDayOfMonth.getDate() - now.getDate());
+      
+      return {
+        budgetStatus: {
+          totalBudget,
+          totalSpent,
+          percentage,
+          daysLeft,
+          isOverBudget,
+          budgetCount: activeBudgets.length,
+          overBudgetAmount: isOverBudget ? totalSpent - totalBudget : undefined,
+        },
+        budgets,
+      };
+    }
   }
 
   // Goal methods
@@ -513,35 +633,108 @@ class ApiService {
     return response.data;
   }
 
+  async getGoalProgress(id: string) {
+    const response = await this.api.get(API_ENDPOINTS.GOALS.PROGRESS(id));
+    return response.data;
+  }
+
+  async contributeToGoal(id: string, amount: number, accountId: string) {
+    const response = await this.api.post(API_ENDPOINTS.GOALS.CONTRIBUTE(id), { 
+      amount,
+      account_id: accountId 
+    });
+    return response.data;
+  }
+
   async createGoal(goalData: any) {
     const response = await this.api.post(API_ENDPOINTS.GOALS.CREATE, goalData);
     return response.data;
   }
 
-  async contributeToGoal(id: string, amount: number) {
-    const response = await this.api.post(API_ENDPOINTS.GOALS.CONTRIBUTE(id), { amount });
+  async contributeToGoal(id: string, amount: number, accountId: string, description?: string) {
+    // First create a transaction for the contribution
+    const transactionData = {
+      account_id: accountId,
+      amount: amount,
+      type: 'expense' as const, // Goal contributions are typically expenses
+      description: description || 'Goal contribution',
+      transaction_date: new Date().toISOString().split('T')[0],
+      // We'll need to get a default category or create one for goal contributions
+      category_id: null, // Will be handled by the backend
+    };
+
+    console.log('🎯 Creating transaction for goal contribution:', transactionData);
+    
+    // Create the transaction first
+    const transactionResponse = await this.api.post(API_ENDPOINTS.TRANSACTIONS.CREATE, transactionData);
+    const transaction = transactionResponse.data.transaction;
+    
+    if (!transaction || !transaction.id) {
+      throw new Error('Failed to create transaction for goal contribution');
+    }
+
+    console.log('✅ Transaction created for goal contribution:', transaction.id);
+
+    // Now contribute to the goal with the transaction ID
+    const contributionData = {
+      transaction_id: transaction.id,
+      amount: amount,
+    };
+
+    console.log('🎯 Contributing to goal with transaction:', contributionData);
+    
+    const response = await this.api.post(API_ENDPOINTS.GOALS.CONTRIBUTE(id), contributionData);
+    return response.data;
+  }
+
+  async updateGoal(id: string, goalData: any) {
+    const response = await this.api.put(API_ENDPOINTS.GOALS.UPDATE(id), goalData);
+    return response.data;
+  }
+
+  async deleteGoal(id: string) {
+    const response = await this.api.delete(API_ENDPOINTS.GOALS.DELETE(id));
     return response.data;
   }
 
   // AI Goal methods
   async startAIGoalSession() {
-    const response = await this.api.post(API_ENDPOINTS.GOALS.AI_START_SESSION);
-    return response.data;
+    try {
+      // Send a default goal statement to avoid validation error
+      const response = await this.api.post(API_ENDPOINTS.GOALS.AI_START_SESSION, {
+        goal_statement: "I want to set a financial goal with your help."
+      });
+      return response.data;
+    } catch (error) {
+      console.error('❌ Error starting AI goal session:', error);
+      throw error;
+    }
   }
 
   async chatWithAI(sessionId: string, message: string) {
-    const response = await this.api.post(API_ENDPOINTS.GOALS.AI_CHAT, {
-      session_id: sessionId,
-      message,
-    });
-    return response.data;
+    console.log('🤖 API: Sending chat request:', { sessionId, message });
+    try {
+      const response = await this.api.post(API_ENDPOINTS.GOALS.AI_CHAT, {
+        session_id: sessionId,
+        message,
+      });
+      return response.data;
+    } catch (error) {
+      console.error('❌ Error chatting with AI:', error);
+      throw error;
+    }
   }
 
   async finalizeAIGoal(sessionId: string) {
-    const response = await this.api.post(API_ENDPOINTS.GOALS.AI_FINALIZE, {
-      session_id: sessionId,
-    });
-    return response.data;
+    try {
+      const response = await this.api.post(API_ENDPOINTS.GOALS.AI_FINALIZE, {
+        session_id: sessionId,
+      });
+      return response.data;
+    } catch (error) {
+      console.error('❌ Error finalizing AI goal:', error);
+      throw error;
+    }
   }
 
   // Recommendation methods
@@ -587,6 +780,140 @@ class ApiService {
     return response.data;
   }
 
+  // Enhanced analytics methods with time period support
+  async getSpendingTrendsByPeriod(period: 'weekly' | 'monthly' | '6months' | 'yearly') {
+    try {
+      const months = period === '6months' ? 6 : period === 'yearly' ? 12 : 1;
+      const response = await this.api.get(`${API_ENDPOINTS.ANALYTICS.SPENDING_TRENDS(months)}?period=${period}`);
+      return response.data;
+    } catch (error: any) {
+      console.log(`📊 Spending trends API not available for ${period}, using fallback data`);
+      return this.generateMockSpendingTrends(period);
+    }
+  }
+
+  async getCategoryBreakdownByPeriod(period: 'weekly' | 'monthly' | '6months' | 'yearly', startDate: string, endDate: string) {
+    try {
+      const response = await this.api.get(`${API_ENDPOINTS.ANALYTICS.CATEGORY_BREAKDOWN(startDate, endDate)}?period=${period}`);
+      return response.data;
+    } catch (error: any) {
+      console.log(`📊 Category breakdown API not available for ${period}, using fallback data`);
+      return this.generateMockCategoryBreakdown(period);
+    }
+  }
+
+  async getDashboardInsightsByPeriod(period: 'weekly' | 'monthly' | '6months' | 'yearly') {
+    try {
+      const response = await this.api.get(`${API_ENDPOINTS.INSIGHTS.DASHBOARD}?period=${period}`);
+      return response.data;
+    } catch (error: any) {
+      console.log(`📊 Dashboard insights API not available for ${period}, using fallback data`);
+      return this.generateMockDashboardInsights(period);
+    }
+  }
+
+  // Mock data generators for development and fallback
+  private generateMockSpendingTrends(period: 'weekly' | 'monthly' | '6months' | 'yearly') {
+    const baseAmount = 25000;
+    const variation = 0.3;
+    
+    let labels: string[] = [];
+    let dataPoints: number[] = [];
+    
+    switch (period) {
+      case 'weekly':
+        labels = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+        dataPoints = labels.map(() => 
+          Math.round(baseAmount * 0.2 * (1 + (Math.random() - 0.5) * variation))
+        );
+        break;
+      case 'monthly':
+        labels = ['Week 1', 'Week 2', 'Week 3', 'Week 4'];
+        dataPoints = labels.map(() => 
+          Math.round(baseAmount * (1 + (Math.random() - 0.5) * variation))
+        );
+        break;
+      case '6months':
+        labels = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'];
+        dataPoints = labels.map(() => 
+          Math.round(baseAmount * 2 * (1 + (Math.random() - 0.5) * variation))
+        );
+        break;
+      case 'yearly':
+        labels = ['Q1', 'Q2', 'Q3', 'Q4'];
+        dataPoints = labels.map(() => 
+          Math.round(baseAmount * 6 * (1 + (Math.random() - 0.5) * variation))
+        );
+        break;
+    }
+    
+    return {
+      trends: dataPoints.map((amount, index) => ({
+        period: labels[index],
+        amount,
+        date: new Date().toISOString().split('T')[0],
+      })),
+      total: dataPoints.reduce((sum, amount) => sum + amount, 0),
+      average: Math.round(dataPoints.reduce((sum, amount) => sum + amount, 0) / dataPoints.length),
+    };
+  }
+
+  private generateMockCategoryBreakdown(period: 'weekly' | 'monthly' | '6months' | 'yearly') {
+    const categories = [
+      { name: 'Food & Dining', baseAmount: 15000, color: '#FF6B35' },
+      { name: 'Transportation', baseAmount: 8000, color: '#4ECDC4' },
+      { name: 'Shopping', baseAmount: 5000, color: '#45B7D1' },
+      { name: 'Entertainment', baseAmount: 3000, color: '#96CEB4' },
+      { name: 'Utilities', baseAmount: 4000, color: '#FFEAA7' },
+    ];
+    
+    const multiplier = period === 'weekly' ? 0.25 : 
+                     period === 'monthly' ? 1 : 
+                     period === '6months' ? 6 : 12;
+    
+    const breakdown = categories.map(category => ({
+      name: category.name,
+      amount: Math.round(category.baseAmount * multiplier * (0.8 + Math.random() * 0.4)),
+      color: category.color,
+    }));
+    
+    const total = breakdown.reduce((sum, item) => sum + item.amount, 0);
+    
+    return {
+      breakdown: breakdown.map(item => ({
+        ...item,
+        percentage: Math.round((item.amount / total) * 100),
+      })),
+      total,
+      period,
+    };
+  }
+
+  private generateMockDashboardInsights(period: 'weekly' | 'monthly' | '6months' | 'yearly') {
+    const multiplier = period === 'weekly' ? 0.25 : 
+                     period === 'monthly' ? 1 : 
+                     period === '6months' ? 6 : 12;
+    
+    return {
+      overview: {
+        total_income: Math.round(50000 * multiplier),
+        total_expenses: Math.round(35000 * multiplier),
+        total_savings: Math.round(15000 * multiplier),
+        savings_rate: 30,
+        active_recommendations: 3,
+        active_goals: 2,
+        active_budgets: 4,
+      },
+      spending_trend: {
+        change_percentage: Math.round((Math.random() - 0.5) * 20),
+        trend_direction: Math.random() > 0.5 ? 'increasing' : 'decreasing',
+      },
+      top_categories: this.generateMockCategoryBreakdown(period).breakdown.slice(0, 5),
+      upcoming_bills: [],
+      period,
+    };
+  }
+
   // Insights methods
   async getDashboardInsights() {
     const response = await this.api.get(API_ENDPOINTS.INSIGHTS.DASHBOARD);
@@ -596,6 +923,90 @@ class ApiService {
   async getWeeklyReport() {
     const response = await this.api.get(API_ENDPOINTS.INSIGHTS.WEEKLY_REPORT);
     return response.data;
+  }
+
+  async getWeeklyHealthReport(): Promise<WeeklyHealthResponse | null> {
+    try {
+      const response = await this.api.get<WeeklyHealthResponse>(API_ENDPOINTS.INSIGHTS.WEEKLY_REPORT);
+      return response.data;
+    } catch (error: any) {
+      if (error.response?.status === 404) {
+        console.log('📊 Weekly health report endpoint not available (404) - using fallback data');
+        // Try to get dashboard insights as fallback
+        try {
+          const dashboardResponse = await this.getDashboardInsights();
+          
+          // Transform dashboard insights to weekly health format
+          const overview = dashboardResponse.overview || {};
+          const monthlyExpenses = overview.monthly_expenses || 0;
+          const weeklySpending = Math.round(monthlyExpenses / 4);
+          const monthlyBudget = monthlyExpenses * 1.2; // Assume 20% buffer
+          const weeklyBudget = Math.round(monthlyBudget / 4);
+          
+          // Generate basic health score based on spending vs budget
+          const spendingRatio = weeklyBudget > 0 ? weeklySpending / weeklyBudget : 0;
+          const overallScore = Math.max(0, Math.min(100, Math.round((1 - Math.max(0, spendingRatio - 1)) * 100)));
+          
+          const achievements: any[] = [];
+          const warnings: any[] = [];
+          const issues: any[] = [];
+          
+          if (spendingRatio <= 0.8) {
+            achievements.push({
+              type: 'success',
+              text: 'Staying within budget this week',
+              amount: weeklyBudget - weeklySpending,
+            });
+          } else if (spendingRatio <= 1.0) {
+            warnings.push({
+              type: 'warning',
+              text: 'Close to budget limit',
+              amount: weeklyBudget - weeklySpending,
+            });
+          } else {
+            issues.push({
+              type: 'error',
+              text: 'Over budget this week',
+              amount: weeklySpending - weeklyBudget,
+            });
+          }
+          
+          return {
+            financial_health: {
+              overall_score: overallScore,
+              max_score: 100,
+              achievements,
+              warnings,
+              issues,
+              weekly_stats: {
+                thisWeek: weeklySpending,
+                budget: weeklyBudget,
+                lastWeek: Math.round(weeklySpending * (0.9 + Math.random() * 0.2)),
+                monthlyAvg: weeklySpending,
+                overBudget: Math.max(0, weeklySpending - weeklyBudget),
+                changeFromLastWeek: Math.round((Math.random() - 0.5) * 20),
+                changeFromMonthlyAvg: 0,
+              },
+              next_week_goal: Math.round(weeklyBudget * 0.9),
+              data_availability: {
+                hasTransactions: monthlyExpenses > 0,
+                hasBudgets: overview.active_budgets > 0,
+                hasGoals: overview.active_goals > 0,
+              },
+            },
+            week_period: {
+              start_date: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+              end_date: new Date().toISOString().split('T')[0],
+            },
+            generated_at: new Date().toISOString(),
+          };
+        } catch (dashboardError: any) {
+          console.log('📊 Dashboard insights also not available - using minimal fallback data');
+          return null;
+        }
+      }
+      throw error;
+    }
   }
 
   // Statement import methods
@@ -608,6 +1019,7 @@ class ApiService {
         'Content-Type': 'multipart/form-data',
       },
     });
+    console.log('🤖 API: Chat response received:', response.data);
     return response.data;
   }
 

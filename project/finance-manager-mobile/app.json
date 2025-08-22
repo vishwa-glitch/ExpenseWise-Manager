@@ -1,7 +1,7 @@
 {
   "expo": {
     "name": "finance-manager-mobile",
-    "slug": "finance-manager-mobile",
+    "slug": "fintech",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
@@ -26,8 +26,13 @@
       "favicon": "./assets/favicon.png"
     },
     "plugins": [
-      "expo-secure-store",
-      "expo-sharing"
-    ]
+      "expo-secure-store"
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "08cb1df3-0c2c-4482-9bcc-68006b5f2ab8"
+      }
+    },
+    "owner": "vishwa567"
   }
 }

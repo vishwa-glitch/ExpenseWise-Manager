@@ -4,7 +4,7 @@ import { createStackNavigator } from '@react-navigation/stack';
 import { useTypedSelector } from '../hooks/useTypedSelector';
 import { useAppDispatch } from '../hooks/useAppDispatch';
 import { checkAuthStatus, completeCurrencySelection } from '../store/slices/authSlice';
-import { loadUserCurrency } from '../store/slices/userSlice';
+import { fetchUserProfile, loadUserCurrency } from '../store/slices/userSlice';
 import { LoadingSpinner } from '../components/common/LoadingSpinner';
 
 // Import navigators
@@ -22,10 +22,15 @@ const AppNavigator: React.FC = () => {
     const initializeApp = async () => {
       await dispatch(checkAuthStatus());
       await dispatch(loadUserCurrency());
+      
+      // If authenticated, also fetch user profile
+      if (isAuthenticated) {
+        await dispatch(fetchUserProfile());
+      }
     };
     
     initializeApp();
-  }, [dispatch]);
+  }, [dispatch, isAuthenticated]);
 
   if (isLoading) {
     return <LoadingSpinner />;

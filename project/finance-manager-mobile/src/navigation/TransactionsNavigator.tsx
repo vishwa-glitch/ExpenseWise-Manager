@@ -81,13 +81,6 @@ const TransactionTopTabs: React.FC<{ navigation: any }> = ({ navigation }) => {
             tabBarLabel: 'Calendar',
           }}
         />
-        <Tab.Screen
-          name="ImportExport"
-          component={StatementImportScreen}
-          options={{
-            tabBarLabel: 'Import/Export',
-          }}
-        />
       </Tab.Navigator>
     </View>
   );

@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet } from 'react-native';
 import { colors, typography, spacing } from '../../constants/colors';
 import { CustomButton } from './CustomButton';
 import { formatCurrency, getDefaultCurrency } from '../../utils/currency';
@@ -26,23 +26,39 @@ export const RecommendationCard: React.FC<RecommendationCardProps> = ({
   onDismiss,
   onAct,
 }) => {
+  // Early return if recommendation is invalid
+  if (!recommendation || typeof recommendation !== 'object') {
+    return null;
+  }
   const formatAmount = (amount?: number) => {
-    if (!amount) return '';
-    const currency = recommendation.currency || getDefaultCurrency();
-    return formatCurrency(amount, currency, { maximumFractionDigits: 0 });
+    if (!amount || typeof amount !== 'number' || isNaN(amount)) return '';
+    try {
+      const currency = recommendation.currency || getDefaultCurrency();
+      const formatted = formatCurrency(amount, currency, { maximumFractionDigits: 0 });
+      return formatted || '';
+    } catch (error) {
+      console.error('Error formatting amount:', error);
+      return '';
+    }
   };
 
   const getTypeIcon = (type: string) => {
-    const iconMap: { [key: string]: string } = {
-      'goal_focused': '🎯',
-      'spending_optimization': '💡',
-      'budget_alert': '⚠️',
-      'savings_opportunity': '💰',
-      'investment_suggestion': '📈',
-      'bill_reminder': '📅',
-    };
-    
-    return iconMap[type] || '💡';
+    try {
+      if (!type || typeof type !== 'string') return '💡';
+      
+      const iconMap: { [key: string]: string } = {
+        'goal_focused': '🎯',
+        'spending_optimization': '💡',
+        'budget_alert': '⚠️',
+        'savings_opportunity': '💰',
+        'investment_suggestion': '📈',
+        'bill_reminder': '📅',
+      };
+      
+      return iconMap[type] || '💡';
+    } catch (error) {
+      return '💡';
+    }
   };
 
   const getPriorityColor = () => {
@@ -53,11 +69,15 @@ export const RecommendationCard: React.FC<RecommendationCardProps> = ({
   };
 
   const getConfidenceText = () => {
-    if (!recommendation.confidence_score) return '';
-    const score = recommendation.confidence_score * 100;
-    if (score >= 90) return 'High confidence';
-    if (score >= 70) return 'Medium confidence';
-    return 'Low confidence';
+    try {
+      if (!recommendation.confidence_score || typeof recommendation.confidence_score !== 'number') return '';
+      const score = recommendation.confidence_score * 100;
+      if (score >= 90) return 'High confidence';
+      if (score >= 70) return 'Medium confidence';
+      return 'Low confidence';
+    } catch (error) {
+      return '';
+    }
   };
 
   return (
@@ -66,31 +86,31 @@ export const RecommendationCard: React.FC<RecommendationCardProps> = ({
         <View style={styles.titleSection}>
           <Text style={styles.icon}>{getTypeIcon(recommendation.type)}</Text>
           <View style={styles.titleContainer}>
-            <Text style={styles.title}>{recommendation.title}</Text>
+            <Text style={styles.title}>{recommendation.title || 'Untitled Recommendation'}</Text>
             <View style={styles.metadata}>
               <View style={[styles.priorityBadge, { backgroundColor: getPriorityColor() }]}>
                 <Text style={styles.priorityText}>P{recommendation.priority}</Text>
               </View>
-              {recommendation.confidence_score && (
+              {recommendation.confidence_score && getConfidenceText() ? (
                 <Text style={styles.confidence}>
                   {getConfidenceText()}
                 </Text>
-              )}
+              ) : null}
             </View>
           </View>
         </View>
       </View>
 
-      <Text style={styles.description}>{recommendation.description}</Text>
+      <Text style={styles.description}>{recommendation.description || 'No description available'}</Text>
 
-      {recommendation.potential_savings && recommendation.potential_savings > 0 && (
+      {recommendation.potential_savings && recommendation.potential_savings > 0 ? (
         <View style={styles.savingsContainer}>
           <Text style={styles.savingsLabel}>Potential Savings:</Text>
           <Text style={styles.savingsAmount}>
-            {formatAmount(recommendation.potential_savings)}
+            {formatAmount(recommendation.potential_savings) || '$0'}
           </Text>
         </View>
-      )}
+      ) : null}
 
       <View style={styles.actions}>
         <CustomButton

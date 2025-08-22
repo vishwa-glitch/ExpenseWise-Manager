@@ -17,14 +17,21 @@ import { fetchAccounts } from '../../store/slices/accountsSlice';
 import { fetchTransactions } from '../../store/slices/transactionsSlice';
 import { fetchGoals } from '../../store/slices/goalsSlice';
 import { fetchRecommendations } from '../../store/slices/recommendationsSlice';
-import { fetchUnreadNotifications } from '../../store/slices/notificationsSlice';
+import { fetchBudgets } from '../../store/slices/budgetsSlice';
 import { TransactionItem } from '../../components/common/TransactionItem';
 import { GoalCard } from '../../components/common/GoalCard';
 import { RecommendationCard } from '../../components/common/RecommendationCard';
+import { SectionHeader } from '../../components/common/SectionHeader';
 import { PieChart } from '../../components/charts/PieChart';
 import { LineChart } from '../../components/charts/LineChart';
 import { LoadingSpinner } from '../../components/common/LoadingSpinner';
 import { CustomButton } from '../../components/common/CustomButton';
+import { SmartInsightsSection } from '../../components/dashboard/SmartInsightsSection';
+import { CategoryBreakdownSection } from '../../components/dashboard/CategoryBreakdownSection';
+import { BudgetStatusSection } from '../../components/dashboard/BudgetStatusSection';
+import { WeeklyFinancialHealthSection } from '../../components/dashboard/WeeklyFinancialHealthSection';
+import { ErrorBoundary } from '../../components/common/ErrorBoundary';
+import { TimePeriod } from '../../components/common/TimePeriodSelector';
 import { colors, typography, spacing } from '../../constants/colors';
 import { formatCurrency, getDefaultCurrency } from '../../utils/currency';
 
@@ -44,7 +51,6 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
   const { transactions } = useTypedSelector((state) => state.transactions);
   const { goals } = useTypedSelector((state) => state.goals);
   const { recommendations } = useTypedSelector((state) => state.recommendations);
-  const { unreadCount } = useTypedSelector((state) => state.notifications);
   const { dashboardInsights, isLoading } = useTypedSelector((state) => state.analytics);
 
   useEffect(() => {
@@ -69,7 +75,7 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
         dispatch(fetchTransactions({ limit: 10 })),
         dispatch(fetchGoals()),
         dispatch(fetchRecommendations()),
-        dispatch(fetchUnreadNotifications()),
+        dispatch(fetchBudgets()),
       ]);
     } catch (error) {
       console.error('Error loading dashboard data:', error);
@@ -88,65 +94,118 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
   };
 
   const calculateTotalBalance = () => {
-    return accounts.reduce((total, account) => total + account.balance, 0);
+    try {
+      if (!accounts || !Array.isArray(accounts)) {
+        return 0;
+      }
+      return accounts.reduce((total, account) => {
+        if (!account || typeof account.balance !== 'number' || isNaN(account.balance)) {
+          return total;
+        }
+        return total + account.balance;
+      }, 0);
+    } catch (error) {
+      return 0;
+    }
   };
 
   const getPrimaryCurrency = () => {
-    // Use the currency from the first account, or default to USD
-    if (accounts.length > 0 && accounts[0].currency) {
-      return accounts[0].currency;
+    try {
+      // Use the currency from the first account, or default to USD
+      if (accounts && Array.isArray(accounts) && accounts.length > 0 && accounts[0] && accounts[0].currency) {
+        return accounts[0].currency;
+      }
+      const defaultCurrency = getDefaultCurrency();
+      return defaultCurrency || 'USD';
+    } catch (error) {
+      return 'USD';
     }
-    return getDefaultCurrency();
   };
 
   const getRecentTransactions = () => {
-    // Limit to maximum 3 recent transactions
-    return transactions.slice(0, 3);
+    try {
+      // Limit to maximum 3 recent transactions
+      if (!transactions || !Array.isArray(transactions)) {
+        return [];
+      }
+      return transactions.slice(0, 3).filter(transaction => transaction);
+    } catch (error) {
+      return [];
+    }
   };
 
   const getActiveGoals = () => {
-    return goals.filter(goal => goal.status === 'active').slice(0, 3);
+    try {
+      if (!goals || !Array.isArray(goals)) {
+        return [];
+      }
+      return goals.filter(goal => goal && goal.status === 'active').slice(0, 2);
+    } catch (error) {
+      return [];
+    }
   };
 
   const getTopRecommendations = () => {
-    return recommendations.slice(0, 2);
+    try {
+      if (!recommendations || !Array.isArray(recommendations)) {
+        return [];
+      }
+      return recommendations.slice(0, 2).filter(recommendation => recommendation);
+    } catch (error) {
+      return [];
+    }
   };
 
   const getCategoryBreakdownData = () => {
-    if (!dashboardInsights?.top_categories || dashboardInsights.top_categories.length === 0) {
+    try {
+      if (!dashboardInsights?.top_categories || !Array.isArray(dashboardInsights.top_categories) || dashboardInsights.top_categories.length === 0) {
+        return [];
+      }
+      
+      return dashboardInsights.top_categories.map((category: any, index: number) => ({
+        name: category?.name || 'Unknown',
+        amount: category?.amount || 0,
+        color: colors.categories && Array.isArray(colors.categories) ? colors.categories[index % colors.categories.length] : '#000000',
+      })).filter((item: any) => item);
+    } catch (error) {
       return [];
     }
-    
-    return dashboardInsights.top_categories.map((category: any, index: number) => ({
-      name: category.name,
-      amount: category.amount,
-      color: colors.categories[index % colors.categories.length],
-    }));
   };
 
   const getSpendingTrendData = () => {
-    // Always return a valid data structure for the chart
-    if (!dashboardInsights?.spending_trend) {
-      // Return default data with a single transparent dataset to prevent chart errors
+    try {
+      // Always return a valid data structure for the chart
+      if (!dashboardInsights?.spending_trend) {
+        // Return default data with a single transparent dataset to prevent chart errors
+        return {
+          labels: ['No Data'],
+          datasets: [{
+            data: [0],
+            color: (opacity = 1) => `rgba(0, 0, 0, 0)`, // Transparent
+            strokeWidth: 0,
+          }],
+        };
+      }
+      
+      // Mock data for demonstration - replace with actual trend data when available
+      return {
+        labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'],
+        datasets: [{
+          data: [20000, 25000, 22000, 28000, 24000, 26000],
+          color: (opacity = 1) => `rgba(46, 125, 87, ${opacity})`,
+          strokeWidth: 2,
+        }],
+      };
+    } catch (error) {
       return {
         labels: ['No Data'],
         datasets: [{
           data: [0],
-          color: (opacity = 1) => `rgba(0, 0, 0, 0)`, // Transparent
+          color: (opacity = 1) => `rgba(0, 0, 0, 0)`,
           strokeWidth: 0,
         }],
       };
     }
-    
-    // Mock data for demonstration - replace with actual trend data when available
-    return {
-      labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'],
-      datasets: [{
-        data: [20000, 25000, 22000, 28000, 24000, 26000],
-        color: (opacity = 1) => `rgba(46, 125, 87, ${opacity})`,
-        strokeWidth: 2,
-      }],
-    };
   };
 
   const handleAddAccount = () => {
@@ -175,45 +234,81 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
 
   const handleDismissRecommendation = (id: string) => {
     // Handle recommendation dismissal
-    console.log('Dismiss recommendation:', id);
+    // TODO: Implement recommendation dismissal logic
   };
 
   const handleActOnRecommendation = (id: string) => {
     // Handle recommendation action
-    console.log('Act on recommendation:', id);
+    // TODO: Implement recommendation action logic
+  };
+
+  const handleInsightsRefresh = async (period: TimePeriod) => {
+    console.log('Refreshing insights for period:', period);
+    // This will be handled by the SmartInsightsSection component
+    // which will dispatch the appropriate actions
   };
 
   const getCurrentDate = () => {
-    return new Date().toLocaleDateString('en-IN', {
-      weekday: 'long',
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric',
-    });
+    try {
+      const date = new Date();
+      if (isNaN(date.getTime())) {
+        return new Date().toDateString();
+      }
+      const formattedDate = date.toLocaleDateString('en-IN', {
+        weekday: 'long',
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric',
+      });
+      return formattedDate || new Date().toDateString();
+    } catch (error) {
+      return new Date().toDateString();
+    }
   };
 
   const formatBalance = (amount: number) => {
-    const currency = getPrimaryCurrency();
-    return formatCurrency(amount, currency);
+    try {
+      if (typeof amount !== 'number' || isNaN(amount)) {
+        return '$0.00';
+      }
+      const currency = getPrimaryCurrency();
+      const formatted = formatCurrency(amount, currency);
+      return formatted || '$0.00';
+    } catch (error) {
+      return '$0.00';
+    }
   };
 
   const getBalanceColor = () => {
-    const balance = calculateTotalBalance();
-    return balance >= 0 ? colors.income : colors.expense;
+    try {
+      const balance = calculateTotalBalance();
+      if (typeof balance !== 'number' || isNaN(balance)) {
+        return colors.income;
+      }
+      return balance >= 0 ? colors.income : colors.expense;
+    } catch (error) {
+      return colors.income;
+    }
   };
 
   const getAccountTypeIcon = (type: string) => {
-    switch (type.toLowerCase()) {
-      case 'checking':
-        return '🏦';
-      case 'savings':
-        return '💰';
-      case 'credit':
-        return '💳';
-      case 'investment':
-        return '📈';
-      default:
-        return '💼';
+    try {
+      if (!type || typeof type !== 'string') return '💼';
+      
+      switch (type.toLowerCase()) {
+        case 'checking':
+          return '🏦';
+        case 'savings':
+          return '💰';
+        case 'credit':
+          return '💳';
+        case 'investment':
+          return '📈';
+        default:
+          return '💼';
+      }
+    } catch (error) {
+      return '💼';
     }
   };
 
@@ -224,10 +319,10 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
 
   const totalBalance = calculateTotalBalance();
 
-  // Calculate expanded height based on number of accounts
+  // Calculate expanded height based on number of accounts - Fixed: ensure accounts is array
   const expandedHeight = animation.interpolate({
     inputRange: [0, 1],
-    outputRange: [0, accounts.length * 60 + 16],
+    outputRange: [0, (accounts && Array.isArray(accounts) ? accounts.length : 0) * 60 + 16],
   });
 
   return (
@@ -253,19 +348,6 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
               {getCurrentDate()}
             </Text>
           </View>
-          <TouchableOpacity
-            style={styles.notificationButton}
-            onPress={() => navigation.navigate('NotificationCenter')}
-          >
-            <Text style={styles.notificationIcon}>🔔</Text>
-            {unreadCount > 0 && (
-              <View style={styles.notificationBadge}>
-                <Text style={styles.notificationBadgeText}>
-                  {unreadCount > 99 ? '99+' : unreadCount}
-                </Text>
-              </View>
-            )}
-          </TouchableOpacity>
         </View>
 
         {/* Compact Total Balance Card */}
@@ -280,31 +362,29 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
                   </Text>
                 </View>
                 <Text style={[styles.balanceAmount, { color: getBalanceColor() }]}>
-                  {totalBalance < 0 ? '-' : ''}
-                  {formatBalance(Math.abs(totalBalance))}
+                  {`${totalBalance < 0 ? '-' : ''}${formatBalance(Math.abs(totalBalance))}`}
                 </Text>
                 <Text style={styles.balanceSubtitle}>
-                  Across {accounts.length} accounts
+                  Across {accounts && Array.isArray(accounts) ? accounts.length : 0} accounts
                 </Text>
               </View>
-            </View>
             
-            {/* Trend indicator if available */}
-            {dashboardInsights?.spending_trend?.change_percentage && (
-              <View style={styles.trendContainer}>
-                <Text style={[
-                  styles.trendText,
-                  { color: dashboardInsights.spending_trend.trend_direction === 'increasing' ? colors.income : colors.expense }
-                ]}>
-                  {dashboardInsights.spending_trend.trend_direction === 'increasing' ? '↗' : '↘'} 
-                  {Math.abs(dashboardInsights.spending_trend.change_percentage)}% this month
-                </Text>
-              </View>
-            )}
+              {/* Trend indicator if available - Fixed: Wrapped in proper condition */}
+              {dashboardInsights?.spending_trend?.change_percentage ? (
+                <View style={styles.trendContainer}>
+                  <Text style={[
+                    styles.trendText,
+                    { color: dashboardInsights.spending_trend.trend_direction === 'increasing' ? colors.income : colors.expense }
+                  ]}>
+                    {`${dashboardInsights.spending_trend.trend_direction === 'increasing' ? '↗' : '↘'} ${Math.abs(dashboardInsights.spending_trend.change_percentage)}% this month`}
+                  </Text>
+                </View>
+              ) : null}
+            </View>
           </TouchableOpacity>
 
-          {/* Expandable Accounts List */}
-          {accounts.length > 0 && (
+          {/* Expandable Accounts List - Fixed: Added proper null check */}
+          {accounts && Array.isArray(accounts) && accounts.length > 0 ? (
             <Animated.View style={[styles.expandedContent, { height: expandedHeight }]}>
               <View style={styles.accountsList}>
                 {accounts.map((account) => (
@@ -316,28 +396,28 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
                   >
                     <View style={styles.accountLeft}>
                       <Text style={styles.accountIcon}>
-                        {getAccountTypeIcon(account.type)}
+                        {getAccountTypeIcon(account.type || '')}
                       </Text>
                       <View style={styles.accountDetails}>
                         <Text style={styles.accountName} numberOfLines={1}>
-                          {account.name}
+                          {account.name || 'Unnamed Account'}
                         </Text>
                         <Text style={styles.accountType}>
-                          {account.type.charAt(0).toUpperCase() + account.type.slice(1)}
+                          {account.type ? account.type.charAt(0).toUpperCase() + account.type.slice(1) : 'Account'}
                         </Text>
                       </View>
                     </View>
                     <Text style={[
                       styles.accountBalance,
-                      { color: account.balance >= 0 ? colors.income : colors.expense }
+                      { color: (account.balance || 0) >= 0 ? colors.income : colors.expense }
                     ]}>
-                      {formatCurrency(account.balance, account.currency || getPrimaryCurrency())}
+                      {formatCurrency(account.balance || 0, account.currency || getPrimaryCurrency())}
                     </Text>
                   </TouchableOpacity>
                 ))}
               </View>
             </Animated.View>
-          )}
+          ) : null}
 
           {/* Add Account Button */}
           <View style={styles.addAccountSection}>
@@ -351,16 +431,32 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
           </View>
         </View>
 
+        {/* Budget Status */}
+        <BudgetStatusSection 
+          onPress={() => navigation.navigate('More', { screen: 'Budgets' })}
+        />
+
+        {/* Weekly Financial Health */}
+        <WeeklyFinancialHealthSection 
+          onPress={() => navigation.navigate('More', { screen: 'Analytics' })}
+        />
+
         {/* Recent Activity */}
         <View style={styles.section}>
-          <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>Recent Activity</Text>
-            <TouchableOpacity
-              onPress={() => navigation.navigate('Transactions')}
-            >
-              <Text style={styles.seeAllText}>See All</Text>
-            </TouchableOpacity>
-          </View>
+          <SectionHeader 
+            title="Recent Activity"
+            showDivider={true}
+            rightComponent={
+              <TouchableOpacity
+                onPress={() => navigation.navigate('Transactions')}
+                accessibilityRole="button"
+                accessibilityLabel="See all transactions"
+                accessibilityHint="Navigate to the full transactions list"
+              >
+                <Text style={styles.seeAllText}>See All</Text>
+              </TouchableOpacity>
+            }
+          />
           {getRecentTransactions().length > 0 ? (
             getRecentTransactions().map((transaction) => (
               <TransactionItem
@@ -370,6 +466,12 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
                   navigation.navigate('Transactions', {
                     screen: 'TransactionDetail',
                     params: { transactionId: transaction.id },
+                  })
+                }
+                onContribute={() =>
+                  navigation.navigate('Goals', {
+                    screen: 'GoalDetail',
+                    params: { openContribution: true },
                   })
                 }
               />
@@ -391,41 +493,41 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
           )}
         </View>
 
-        {/* Smart Insights */}
-        {(getCategoryBreakdownData().length > 0 || dashboardInsights?.spending_trend) && (
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Smart Insights</Text>
-            
-            {/* Spending Trend Chart */}
-            {dashboardInsights?.spending_trend && (
-              <LineChart
-                data={getSpendingTrendData()}
-                title="Spending Trend (Last 6 Months)"
-                yAxisSuffix={getPrimaryCurrency()}
-              />
-            )}
+        {/* Smart Insights - Enhanced with time period controls */}
+        <ErrorBoundary>
+          <SmartInsightsSection
+            dashboardInsights={dashboardInsights}
+            isLoading={isLoading}
+            onRefresh={handleInsightsRefresh}
+          />
+        </ErrorBoundary>
 
-            {/* Category Breakdown */}
-            {getCategoryBreakdownData().length > 0 && (
-              <PieChart
-                data={getCategoryBreakdownData()}
-                title="Category Breakdown (This Month)"
-              />
-            )}
-          </View>
-        )}
+        {/* Category Breakdown */}
+        <ErrorBoundary>
+          <CategoryBreakdownSection
+            dashboardInsights={dashboardInsights}
+            isLoading={isLoading}
+            onRefresh={() => handleInsightsRefresh('monthly')}
+          />
+        </ErrorBoundary>
 
-        {/* Recommendations */}
-        {getTopRecommendations().length > 0 && (
+        {/* Recommendations - Fixed: Added proper condition */}
+        {getTopRecommendations().length > 0 ? (
           <View style={styles.section}>
-            <View style={styles.sectionHeader}>
-              <Text style={styles.sectionTitle}>Smart Recommendations</Text>
-              <TouchableOpacity
-                onPress={() => navigation.navigate('RecommendationsHistory')}
-              >
-                <Text style={styles.seeAllText}>See All</Text>
-              </TouchableOpacity>
-            </View>
+            <SectionHeader 
+              title="Smart Recommendations"
+              showDivider={true}
+              rightComponent={
+                <TouchableOpacity
+                  onPress={() => navigation.navigate('RecommendationsHistory')}
+                  accessibilityRole="button"
+                  accessibilityLabel="See all recommendations"
+                  accessibilityHint="Navigate to the full recommendations list"
+                >
+                  <Text style={styles.seeAllText}>See All</Text>
+                </TouchableOpacity>
+              }
+            />
             {getTopRecommendations().map((recommendation) => (
               <RecommendationCard
                 key={recommendation.id}
@@ -435,38 +537,66 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
               />
             ))}
           </View>
-        )}
+        ) : null}
 
-        {/* Goals Progress */}
-        {getActiveGoals().length > 0 && (
+        {/* Goals Progress - Fixed: Added proper condition */}
+        {getActiveGoals().length > 0 ? (
           <View style={styles.section}>
-            <View style={styles.sectionHeader}>
-              <Text style={styles.sectionTitle}>Goals Progress</Text>
-              <TouchableOpacity
-                onPress={() => navigation.navigate('Goals')}
-              >
+            <TouchableOpacity 
+              style={styles.goalsSummaryCard}
+              onPress={() => navigation.navigate('Goals')}
+            >
+              <View style={styles.goalsSummaryHeader}>
+                <Text style={styles.goalsSummaryTitle}>Financial Goals</Text>
                 <Text style={styles.seeAllText}>See All</Text>
-              </TouchableOpacity>
-            </View>
-            {getActiveGoals().map((goal) => (
-              <GoalCard
-                key={goal.id}
-                goal={goal}
-                compact={true}
-                onPress={() =>
-                  navigation.navigate('Goals', {
-                    screen: 'GoalDetail',
-                    params: { goalId: goal.id },
-                  })
-                }
-              />
-            ))}
+              </View>
+              
+              <View style={styles.goalsGrid}>
+                {getActiveGoals().map((goal) => (
+                  <View key={goal.id} style={styles.goalItem}>
+                    <View style={styles.goalIconContainer}>
+                      <Text style={styles.goalIcon}>
+                        {goal.category === 'emergency' ? '🚨' : 
+                         goal.category === 'vacation' ? '🏖️' : 
+                         goal.category === 'car' ? '🚗' : 
+                         goal.category === 'house' ? '🏠' : 
+                         goal.category === 'education' ? '🎓' : 
+                         goal.category === 'retirement' ? '👴' : 
+                         goal.category === 'investment' ? '📈' : '🎯'}
+                      </Text>
+                    </View>
+                    <Text style={styles.goalName} numberOfLines={1}>{goal.title || 'Untitled Goal'}</Text>
+                    <View style={styles.goalProgressBar}>
+                      <View 
+                        style={[
+                          styles.goalProgressFill, 
+                          { width: `${Math.min(goal.progress_percentage || 0, 100)}%` }
+                        ]} 
+                      />
+                    </View>
+                    <Text style={styles.goalProgressText}>
+                      {(goal.progress_percentage || 0).toFixed(0)}%
+                    </Text>
+                  </View>
+                ))}
+                
+                <TouchableOpacity 
+                  style={styles.addGoalItem}
+                  onPress={() => navigation.navigate('Goals', { screen: 'AddManualGoal' })}
+                >
+                  <View style={styles.addGoalIconContainer}>
+                    <Text style={styles.addGoalIcon}>+</Text>
+                  </View>
+                  <Text style={styles.addGoalText}>Add Goal</Text>
+                </TouchableOpacity>
+              </View>
+            </TouchableOpacity>
           </View>
-        )}
+        ) : null}
 
         {/* Quick Actions */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Quick Actions</Text>
+          <SectionHeader title="Quick Actions" showDivider={true} />
           <View style={styles.actionButtons}>
             <TouchableOpacity
               style={styles.actionButton}
@@ -481,13 +611,6 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
             >
               <Text style={styles.actionIcon}>🏦</Text>
               <Text style={styles.actionText}>View Accounts</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={styles.actionButton}
-              onPress={() => navigation.navigate('StatementImport')}
-            >
-              <Text style={styles.actionIcon}>📄</Text>
-              <Text style={styles.actionText}>Import</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -536,29 +659,6 @@ const styles = StyleSheet.create({
   dateText: {
     ...typography.caption,
     color: colors.textSecondary,
-  },
-  notificationButton: {
-    position: 'relative',
-    padding: spacing.sm,
-  },
-  notificationIcon: {
-    fontSize: 24,
-  },
-  notificationBadge: {
-    position: 'absolute',
-    top: 0,
-    right: 0,
-    backgroundColor: colors.error,
-    borderRadius: 10,
-    minWidth: 20,
-    height: 20,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  notificationBadgeText: {
-    ...typography.small,
-    color: colors.background,
-    fontWeight: 'bold',
   },
   balanceCard: {
     backgroundColor: colors.card,
@@ -696,7 +796,7 @@ const styles = StyleSheet.create({
     fontSize: 14,
   },
   section: {
-    marginBottom: spacing.md,
+    marginBottom: spacing.lg,
   },
   sectionTitle: {
     ...typography.h3,
@@ -717,103 +817,205 @@ const styles = StyleSheet.create({
     color: colors.primary,
     fontWeight: '600',
   },
+  goalsSummaryCard: {
+    backgroundColor: colors.card,
+    borderRadius: 16,
+    padding: spacing.lg,
+    marginHorizontal: spacing.md,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 4,
+    },
+    shadowOpacity: 0.15,
+    shadowRadius: 8,
+    elevation: 8,
+  },
+  goalsSummaryHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: spacing.md,
+  },
+  goalsSummaryTitle: {
+    ...typography.h3,
+    color: colors.text,
+    fontWeight: 'bold',
+  },
+  goalsGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'space-between',
+  },
+  goalItem: {
+    width: '48%',
+    backgroundColor: colors.surface,
+    borderRadius: 12,
+    padding: spacing.md,
+    marginBottom: spacing.md,
+  },
+  goalIconContainer: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: colors.primary + '20',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: spacing.sm,
+  },
+  goalIcon: {
+    fontSize: 20,
+  },
+  goalName: {
+    ...typography.body,
+    color: colors.text,
+    fontWeight: '600',
+    marginBottom: spacing.sm,
+  },
+  goalProgressBar: {
+    height: 6,
+    backgroundColor: colors.border,
+    borderRadius: 3,
+    marginBottom: spacing.xs,
+  },
+  goalProgressFill: {
+    height: '100%',
+    backgroundColor: colors.primary,
+    borderRadius: 3,
+  },
+  goalProgressText: {
+    ...typography.small,
+    color: colors.textSecondary,
+    fontWeight: '600',
+  },
+  addGoalItem: {
+    width: '48%',
+    backgroundColor: colors.surface,
+    borderRadius: 12,
+    padding: spacing.md,
+    marginBottom: spacing.md,
+    borderWidth: 2,
+    borderColor: colors.border,
+    borderStyle: 'dashed',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  addGoalIconContainer: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: colors.primary,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: spacing.sm,
+  },
+  addGoalIcon: {
+    fontSize: 24,
+    color: colors.background,
+    fontWeight: 'bold',
+  },
+  addGoalText: {
+    ...typography.body,
+    color: colors.text,
+    fontWeight: '600',
+  },
   actionButtons: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     paddingHorizontal: spacing.md,
   },
   actionButton: {
-    flex: 1,
-    backgroundColor: colors.card,
-    borderRadius: 12,
-    padding: spacing.sm,
-    alignItems: 'center',
-    marginHorizontal: spacing.xs,
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.1,
-    shadowRadius: 3.84,
-    elevation: 5,
-  },
-  actionIcon: {
-    fontSize: 20,
-    marginBottom: spacing.xs,
-  },
-  actionText: {
-    ...typography.small,
-    color: colors.text,
-    textAlign: 'center',
-    fontWeight: '600',
-    fontSize: 11,
-  },
-  emptyState: {
-    backgroundColor: colors.surface,
-    borderRadius: 12,
-    padding: spacing.lg,
-    alignItems: 'center',
-    marginHorizontal: spacing.md,
-  },
-  emptyIcon: {
-    fontSize: 40,
-    marginBottom: spacing.sm,
-  },
-  emptyTitle: {
-    ...typography.h3,
-    color: colors.text,
-    marginBottom: spacing.xs,
-    textAlign: 'center',
-    fontSize: 16,
-  },
-  emptyMessage: {
-    ...typography.body,
-    color: colors.textSecondary,
-    textAlign: 'center',
-    lineHeight: 20,
-    marginBottom: spacing.md,
-    fontSize: 14,
-  },
-  addTransactionButton: {
-    backgroundColor: colors.primary,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
-    borderRadius: 8,
-  },
-  addTransactionText: {
-    ...typography.body,
-    color: colors.background,
-    fontWeight: '600',
-    fontSize: 14,
-  },
-  fab: {
-    position: 'absolute',
-    bottom: spacing.xl,
-    right: spacing.lg,
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    backgroundColor: colors.primary,
-    justifyContent: 'center',
-    alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 4,
-    },
-    shadowOpacity: 0.3,
-    shadowRadius: 4.65,
-    elevation: 8,
-  },
-  fabIcon: {
-    fontSize: 24,
-    color: colors.background,
-    fontWeight: 'bold',
-  },
-  bottomSpacing: {
-    height: spacing.lg,
-  },
+   flex: 1,
+   backgroundColor: colors.card,
+   borderRadius: 12,
+   padding: spacing.sm,
+   alignItems: 'center',
+   marginHorizontal: spacing.xs,
+   shadowColor: '#000',
+   shadowOffset: {
+     width: 0,
+     height: 2,
+   },
+   shadowOpacity: 0.1,
+   shadowRadius: 3.84,
+   elevation: 5,
+ },
+ actionIcon: {
+   fontSize: 20,
+   marginBottom: spacing.xs,
+ },
+ actionText: {
+   ...typography.small,
+   color: colors.text,
+   textAlign: 'center',
+   fontWeight: '600',
+   fontSize: 11,
+ },
+ emptyState: {
+   backgroundColor: colors.surface,
+   borderRadius: 12,
+   padding: spacing.lg,
+   alignItems: 'center',
+   marginHorizontal: spacing.md,
+ },
+ emptyIcon: {
+   fontSize: 40,
+   marginBottom: spacing.sm,
+ },
+ emptyTitle: {
+   ...typography.h3,
+   color: colors.text,
+   marginBottom: spacing.xs,
+   textAlign: 'center',
+   fontSize: 16,
+ },
+ emptyMessage: {
+   ...typography.body,
+   color: colors.textSecondary,
+   textAlign: 'center',
+   lineHeight: 20,
+   marginBottom: spacing.md,
+   fontSize: 14,
+ },
+ addTransactionButton: {
+   backgroundColor: colors.primary,
+   paddingHorizontal: spacing.md,
+   paddingVertical: spacing.sm,
+   borderRadius: 8,
+ },
+ addTransactionText: {
+   ...typography.body,
+   color: colors.background,
+   fontWeight: '600',
+   fontSize: 14,
+ },
+ fab: {
+   position: 'absolute',
+   bottom: spacing.xl,
+   right: spacing.lg,
+   width: 56,
+   height: 56,
+   borderRadius: 28,
+   backgroundColor: colors.primary,
+   justifyContent: 'center',
+   alignItems: 'center',
+   shadowColor: '#000',
+   shadowOffset: {
+     width: 0,
+     height: 4,
+   },
+   shadowOpacity: 0.3,
+   shadowRadius: 4.65,
+   elevation: 8,
+ },
+ fabIcon: {
+   fontSize: 24,
+   color: colors.background,
+   fontWeight: 'bold',
+ },
+ bottomSpacing: {
+   height: spacing.lg,
+ },
 });
 
 export default DashboardScreen;

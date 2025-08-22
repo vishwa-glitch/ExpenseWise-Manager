@@ -1,0 +1,52 @@
+{
+  "name": "jsx-text-wrapping-compliance",
+  "version": "1.0.0",
+  "description": "JSX Text Wrapping Compliance system for React Native applications",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "bin": {
+    "jsx-compliance": "dist/cli.js"
+  },
+  "scripts": {
+    "build": "tsc",
+    "build:cli": "tsc && chmod +x dist/cli.js",
+    "build:watch": "tsc --watch",
+    "test": "jest",
+    "test:watch": "jest --watch",
+    "test:coverage": "jest --coverage",
+    "lint": "eslint src/**/*.ts",
+    "lint:fix": "eslint src/**/*.ts --fix",
+    "clean": "rimraf dist"
+  },
+  "keywords": [
+    "react-native",
+    "jsx",
+    "text-wrapping",
+    "compliance",
+    "ast",
+    "typescript"
+  ],
+  "author": "JSX Text Wrapping Compliance Team",
+  "license": "MIT",
+  "dependencies": {
+    "typescript": "^5.0.0"
+  },
+  "devDependencies": {
+    "@types/jest": "^29.0.0",
+    "@types/node": "^20.0.0",
+    "@typescript-eslint/eslint-plugin": "^6.0.0",
+    "@typescript-eslint/parser": "^6.0.0",
+    "eslint": "^8.0.0",
+    "jest": "^29.0.0",
+    "rimraf": "^5.0.0",
+    "ts-jest": "^29.0.0"
+  },
+  "files": [
+    "dist/**/*",
+    "README.md",
+    "LICENSE"
+  ],
+  "engines": {
+    "node": ">=16.0.0"
+  }
+}

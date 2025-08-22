@@ -36,13 +36,13 @@ const MoreScreen: React.FC<MoreScreenProps> = ({ navigation }) => {
     {
       title: 'Bills & Reminders',
       icon: '📅',
-      screen: 'Bills',
+      screen: 'Bills', 
       description: 'Manage recurring bills',
     },
     {
       title: 'Analytics',
       icon: '📈',
-      screen: 'Analytics',
+      screen: 'Analytics', 
       description: 'Detailed financial insights',
     },
   ];
@@ -132,7 +132,7 @@ const MoreScreen: React.FC<MoreScreenProps> = ({ navigation }) => {
               style={styles.quickActionButton}
               onPress={() =>
                 navigation.navigate('Goals', {
-                  screen: 'AddManualGoal',
+                  screen: 'GoalsList',
                 })
               }
             >
@@ -149,13 +149,6 @@ const MoreScreen: React.FC<MoreScreenProps> = ({ navigation }) => {
             >
               <Text style={styles.quickActionIcon}>🏦</Text>
               <Text style={styles.quickActionText}>Add Account</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={styles.quickActionButton}
-              onPress={() => navigation.navigate('StatementImport')}
-            >
-              <Text style={styles.quickActionIcon}>📄</Text>
-              <Text style={styles.quickActionText}>Import</Text>
             </TouchableOpacity>
           </View>
         </View>

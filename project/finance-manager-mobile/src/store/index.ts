@@ -7,7 +7,6 @@ import categoriesSlice from './slices/categoriesSlice';
 import budgetsSlice from './slices/budgetsSlice';
 import goalsSlice from './slices/goalsSlice';
 import recommendationsSlice from './slices/recommendationsSlice';
-import notificationsSlice from './slices/notificationsSlice';
 import analyticsSlice from './slices/analyticsSlice';
 import uiSlice from './slices/uiSlice';
 
@@ -21,7 +20,6 @@ export const store = configureStore({
     budgets: budgetsSlice,
     goals: goalsSlice,
     recommendations: recommendationsSlice,
-    notifications: notificationsSlice,
     analytics: analyticsSlice,
     ui: uiSlice,
   },

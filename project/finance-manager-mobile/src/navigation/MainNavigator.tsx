@@ -129,7 +129,7 @@ const TabNavigator: React.FC = () => {
       tabBarPosition="bottom"
       tabBar={(props) => <CustomBottomTabBar {...props} />}
       screenOptions={{
-        swipeEnabled: true,
+        swipeEnabled: false,
         lazy: true,
         lazyPreloadDistance: 1,
         animationEnabled: true,
@@ -188,22 +188,6 @@ const MainNavigator: React.FC = () => {
         options={{
           drawerLabel: 'Accounts',
           drawerIcon: () => <Text style={{ fontSize: 20 }}>🏦</Text>,
-        }}
-      />
-      <Drawer.Screen
-        name="StatementImport"
-        component={StatementImportScreen}
-        options={{
-          drawerLabel: 'Statement Import',
-          drawerIcon: () => <Text style={{ fontSize: 20 }}>📄</Text>,
-        }}
-      />
-      <Drawer.Screen
-        name="NotificationCenter"
-        component={NotificationCenterScreen}
-        options={{
-          drawerLabel: 'Notifications',
-          drawerIcon: () => <Text style={{ fontSize: 20 }}>🔔</Text>,
         }}
       />
       <Drawer.Screen
