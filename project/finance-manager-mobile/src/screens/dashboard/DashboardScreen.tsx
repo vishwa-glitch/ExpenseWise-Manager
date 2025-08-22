@@ -30,10 +30,11 @@ import { SmartInsightsSection } from '../../components/dashboard/SmartInsightsSe
 import { CategoryBreakdownSection } from '../../components/dashboard/CategoryBreakdownSection';
 import { BudgetStatusSection } from '../../components/dashboard/BudgetStatusSection';
 import { WeeklyFinancialHealthSection } from '../../components/dashboard/WeeklyFinancialHealthSection';
+import CurrencySummary from '../../components/dashboard/CurrencySummary';
 import { ErrorBoundary } from '../../components/common/ErrorBoundary';
 import { TimePeriod } from '../../components/common/TimePeriodSelector';
 import { colors, typography, spacing } from '../../constants/colors';
-import { formatCurrency, getDefaultCurrency } from '../../utils/currency';
+import { formatCurrency } from '../../utils/currency';
 
 interface DashboardScreenProps {
   navigation: any;
@@ -52,6 +53,7 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
   const { goals } = useTypedSelector((state) => state.goals);
   const { recommendations } = useTypedSelector((state) => state.recommendations);
   const { dashboardInsights, isLoading } = useTypedSelector((state) => state.analytics);
+  const { displayCurrency } = useTypedSelector((state) => state.user);
 
   useEffect(() => {
     // Only load dashboard data when user is authenticated
@@ -94,33 +96,25 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
   };
 
   const calculateTotalBalance = () => {
+    // TODO: Implement proper currency conversion for multi-currency accounts.
+    // This is a temporary solution that only sums accounts matching the display currency.
     try {
       if (!accounts || !Array.isArray(accounts)) {
         return 0;
       }
-      return accounts.reduce((total, account) => {
-        if (!account || typeof account.balance !== 'number' || isNaN(account.balance)) {
-          return total;
-        }
-        return total + account.balance;
-      }, 0);
+      return accounts
+        .filter(account => account.currency === displayCurrency)
+        .reduce((total, account) => {
+          if (!account || typeof account.balance !== 'number' || isNaN(account.balance)) {
+            return total;
+          }
+          return total + account.balance;
+        }, 0);
     } catch (error) {
       return 0;
     }
   };
 
-  const getPrimaryCurrency = () => {
-    try {
-      // Use the currency from the first account, or default to USD
-      if (accounts && Array.isArray(accounts) && accounts.length > 0 && accounts[0] && accounts[0].currency) {
-        return accounts[0].currency;
-      }
-      const defaultCurrency = getDefaultCurrency();
-      return defaultCurrency || 'USD';
-    } catch (error) {
-      return 'USD';
-    }
-  };
 
   const getRecentTransactions = () => {
     try {
@@ -187,11 +181,10 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
         };
       }
       
-      // Mock data for demonstration - replace with actual trend data when available
       return {
-        labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'],
+        labels: dashboardInsights.spending_trend.labels,
         datasets: [{
-          data: [20000, 25000, 22000, 28000, 24000, 26000],
+          data: dashboardInsights.spending_trend.data,
           color: (opacity = 1) => `rgba(46, 125, 87, ${opacity})`,
           strokeWidth: 2,
         }],
@@ -269,13 +262,11 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
   const formatBalance = (amount: number) => {
     try {
       if (typeof amount !== 'number' || isNaN(amount)) {
-        return '$0.00';
+        return formatCurrency(0, displayCurrency);
       }
-      const currency = getPrimaryCurrency();
-      const formatted = formatCurrency(amount, currency);
-      return formatted || '$0.00';
+      return formatCurrency(amount, displayCurrency);
     } catch (error) {
-      return '$0.00';
+      return formatCurrency(0, displayCurrency);
     }
   };
 
@@ -365,7 +356,7 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
                   {`${totalBalance < 0 ? '-' : ''}${formatBalance(Math.abs(totalBalance))}`}
                 </Text>
                 <Text style={styles.balanceSubtitle}>
-                  Across {accounts && Array.isArray(accounts) ? accounts.length : 0} accounts
+                  In {displayCurrency} (from {accounts.filter(a => a.currency === displayCurrency).length} of {accounts.length} accounts)
                 </Text>
               </View>
             
@@ -376,15 +367,17 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
                     styles.trendText,
                     { color: dashboardInsights.spending_trend.trend_direction === 'increasing' ? colors.income : colors.expense }
                   ]}>
-                    {`${dashboardInsights.spending_trend.trend_direction === 'increasing' ? '↗' : '↘'} ${Math.abs(dashboardInsights.spending_trend.change_percentage)}% this month`}
+                    {`${dashboardInsights.spending_trend.trend_direction === 'increasing' ? '↗' : '↘'} ${Math.round(Math.abs(dashboardInsights.spending_trend.change_percentage))}% this month`}
                   </Text>
                 </View>
               ) : null}
             </View>
           </TouchableOpacity>
 
+          <CurrencySummary accounts={accounts} />
+
           {/* Expandable Accounts List - Fixed: Added proper null check */}
-          {accounts && Array.isArray(accounts) && accounts.length > 0 ? (
+          {accounts && accounts.length > 0 ? (
             <Animated.View style={[styles.expandedContent, { height: expandedHeight }]}>
               <View style={styles.accountsList}>
                 {accounts.map((account) => (
@@ -411,7 +404,7 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
                       styles.accountBalance,
                       { color: (account.balance || 0) >= 0 ? colors.income : colors.expense }
                     ]}>
-                      {formatCurrency(account.balance || 0, account.currency || getPrimaryCurrency())}
+                      {formatCurrency(account.balance || 0, account.currency || displayCurrency)}
                     </Text>
                   </TouchableOpacity>
                 ))}
@@ -466,12 +459,6 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
                   navigation.navigate('Transactions', {
                     screen: 'TransactionDetail',
                     params: { transactionId: transaction.id },
-                  })
-                }
-                onContribute={() =>
-                  navigation.navigate('Goals', {
-                    screen: 'GoalDetail',
-                    params: { openContribution: true },
                   })
                 }
               />

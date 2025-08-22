@@ -1,7 +1,7 @@
 import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { colors, typography, spacing } from '../../constants/colors';
-import { formatCurrency, getDefaultCurrency } from '../../utils/currency';
+import { formatCurrency } from '../../utils/currency';
 
 interface AccountCardProps {
   account: {
@@ -17,23 +17,19 @@ interface AccountCardProps {
 }
 
 export const AccountCard: React.FC<AccountCardProps> = ({ account, onPress }) => {
-  const formatBalance = (amount: number) => {
-    const currency = account.currency || getDefaultCurrency();
-    return formatCurrency(amount, currency);
-  };
 
   const getAccountTypeIcon = (type: string) => {
     switch (type.toLowerCase()) {
       case 'checking':
-        return '🏦';
+        return '';
       case 'savings':
-        return '💰';
+        return '';
       case 'credit':
-        return '💳';
+        return '';
       case 'investment':
-        return '📈';
+        return '';
       default:
-        return '💼';
+        return '';
     }
   };
 
@@ -57,8 +53,7 @@ export const AccountCard: React.FC<AccountCardProps> = ({ account, onPress }) =>
         </View>
         <View style={styles.balanceContainer}>
           <Text style={[styles.balance, { color: getBalanceColor() }]}>
-            {account.balance < 0 ? '-' : ''}
-            {formatBalance(account.balance)}
+            {formatCurrency(account.balance, account.currency || 'USD')}
           </Text>
           {account.transaction_count !== undefined && (
             <Text style={styles.transactionCount}>

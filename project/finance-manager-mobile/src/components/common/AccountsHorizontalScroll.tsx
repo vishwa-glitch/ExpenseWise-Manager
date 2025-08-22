@@ -1,7 +1,8 @@
 import React from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Dimensions } from 'react-native';
 import { colors, typography, spacing } from '../../constants/colors';
-import { formatCurrency, getDefaultCurrency } from '../../utils/currency';
+import { useTypedSelector } from '../../hooks/useTypedSelector';
+import { formatCurrency } from '../../utils/currency';
 
 const { width: screenWidth } = Dimensions.get('window');
 
@@ -24,12 +25,14 @@ export const AccountsHorizontalScroll: React.FC<AccountsHorizontalScrollProps> =
   onAccountPress,
   onAddAccount,
 }) => {
+  const { displayCurrency } = useTypedSelector((state) => state.user);
+
   const getAccountTypeIcon = (type: string) => {
     switch (type.toLowerCase()) {
       case 'checking':
-        return '🏦';
+        return '';
       case 'savings':
-        return '💰';
+        return '';
       case 'credit':
         return '💳';
       case 'investment':
@@ -44,7 +47,7 @@ export const AccountsHorizontalScroll: React.FC<AccountsHorizontalScrollProps> =
   };
 
   const formatBalance = (amount: number, currency?: string) => {
-    return formatCurrency(amount, currency || getDefaultCurrency());
+    return formatCurrency(amount, currency || displayCurrency || 'USD');
   };
 
   const renderAccountCard = (account: any) => (

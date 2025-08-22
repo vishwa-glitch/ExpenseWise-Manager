@@ -17,7 +17,7 @@ import { CustomTextInput } from '../../components/common/CustomTextInput';
 import { CustomButton } from '../../components/common/CustomButton';
 import { LoadingSpinner } from '../../components/common/LoadingSpinner';
 import { colors, typography, spacing } from '../../constants/colors';
-import { getCurrencySymbol, getDefaultCurrency } from '../../utils/currency';
+import { getCurrencySymbol } from '../../utils/currency';
 
 interface AddEditTransactionScreenProps {
   navigation: any;
@@ -31,8 +31,11 @@ const AddEditTransactionScreen: React.FC<AddEditTransactionScreenProps> = ({ nav
 
   const { accounts } = useTypedSelector((state) => state.accounts);
   const { categories, isLoading: categoriesLoading } = useTypedSelector((state) => state.categories);
-  const { preferredCurrency } = useTypedSelector((state) => state.user);
+  const { displayCurrency } = useTypedSelector((state) => state.user);
   const { isAuthenticated } = useTypedSelector((state) => state.auth);
+
+  const selectedAccount = accounts.find(acc => acc.id === formData.account_id);
+  const currency = selectedAccount?.currency || displayCurrency || 'USD';
 
   const [formData, setFormData] = useState({
     account_id: accountId || '',
@@ -428,7 +431,7 @@ const AddEditTransactionScreen: React.FC<AddEditTransactionScreenProps> = ({ nav
             keyboardType="numeric"
             error={errors.amount}
             leftIcon={<Text style={styles.inputIcon}>
-              {getCurrencySymbol(preferredCurrency || getDefaultCurrency())}
+              {getCurrencySymbol(currency)}
             </Text>}
           />
 

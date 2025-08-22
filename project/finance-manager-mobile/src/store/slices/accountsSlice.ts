@@ -1,8 +1,10 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import { apiService } from '../../services/api';
+import { setDisplayCurrency } from './userSlice';
+import { Account } from '../../types';
 
 interface AccountsState {
-  accounts: any[];
+  accounts: Account[];
   selectedAccount: any | null;
   balanceHistory: any[];
   accountSummary: any | null;
@@ -21,8 +23,14 @@ const initialState: AccountsState = {
 
 export const fetchAccounts = createAsyncThunk(
   'accounts/fetchAccounts',
-  async () => {
+  async (_, { dispatch }) => {
     const response = await apiService.getAccounts();
+    if (response.accounts && response.accounts.length > 0) {
+      const primaryCurrency = response.accounts[0].currency;
+      if (primaryCurrency) {
+        dispatch(setDisplayCurrency(primaryCurrency));
+      }
+    }
     return response;
   }
 );
@@ -37,7 +45,7 @@ export const fetchAccount = createAsyncThunk(
 
 export const createAccount = createAsyncThunk(
   'accounts/createAccount',
-  async (accountData: any) => {
+  async (accountData: { name: string; type: string; balance: number; currency: string }) => {
     const response = await apiService.createAccount(accountData);
     return response;
   }
@@ -45,10 +53,8 @@ export const createAccount = createAsyncThunk(
 
 export const updateAccount = createAsyncThunk(
   'accounts/updateAccount',
-  async ({ id, data }: { id: string; data: any }) => {
-    console.log('🏦 Redux: Dispatching updateAccount thunk with data:', { id, data });
-    const response = await apiService.updateAccount(id, data);
-    console.log('✅ Redux: updateAccount response received:', response);
+  async ({ id, ...accountData }: { id: string; name: string; type: string; currency: string }) => {
+    const response = await apiService.updateAccount(id, accountData);
     return response;
   }
 );

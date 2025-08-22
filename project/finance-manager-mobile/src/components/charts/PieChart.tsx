@@ -2,7 +2,8 @@ import React, { useState } from 'react';
 import { View, Text, StyleSheet, Dimensions, ActivityIndicator, TouchableOpacity, Animated } from 'react-native';
 import { PieChart as RNPieChart } from 'react-native-chart-kit';
 import { colors, typography, spacing } from '../../constants/colors';
-import { pieChartConfig, chartDimensions, chartUtils } from '../../constants/chartConfig';
+import { pieChartConfig, chartDimensions } from '../../constants/chartConfig';
+import { formatCurrency } from '../../utils/currency';
 import { TimePeriod } from '../common/TimePeriodSelector';
 
 const screenWidth = Dimensions.get('window').width;
@@ -22,6 +23,7 @@ interface PieChartProps {
   timePeriod?: TimePeriod;
   isLoading?: boolean;
   showPercentages?: boolean;
+  displayCurrency: string;
 }
 
 export const PieChart: React.FC<PieChartProps> = ({
@@ -33,6 +35,7 @@ export const PieChart: React.FC<PieChartProps> = ({
   timePeriod,
   isLoading = false,
   showPercentages = true,
+  displayCurrency,
 }) => {
   const [highlightedIndex, setHighlightedIndex] = useState<number | null>(null);
   const chartConfig = pieChartConfig;
@@ -46,7 +49,7 @@ export const PieChart: React.FC<PieChartProps> = ({
   }));
 
   const formatAmount = (amount: number) => {
-    return chartUtils.formatCurrency(amount);
+    return formatCurrency(amount, displayCurrency);
   };
 
   const totalAmount = data.reduce((sum, item) => sum + item.amount, 0);
@@ -101,7 +104,7 @@ export const PieChart: React.FC<PieChartProps> = ({
             {(centerText || totalAmount > 0) && (
               <View style={styles.centerTextContainer}>
                 <Text style={styles.centerText}>
-                  {centerText || formatAmount(totalAmount)}
+                  {centerText || formatCurrency(totalAmount, displayCurrency)}
                 </Text>
                 {centerSubtext && (
                   <Text style={styles.centerSubtext}>{centerSubtext}</Text>
@@ -144,7 +147,7 @@ export const PieChart: React.FC<PieChartProps> = ({
                   {item.name}
                 </Text>
                 <Text style={styles.legendAmount}>
-                  {formatAmount(item.amount)}
+                  {formatCurrency(item.amount, displayCurrency)}
                   {showPercentages && ` (${((item.amount / totalAmount) * 100).toFixed(1)}%)`}
                 </Text>
               </View>

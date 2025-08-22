@@ -22,7 +22,7 @@ import { CustomButton } from '../../components/common/CustomButton';
 import { LoadingSpinner } from '../../components/common/LoadingSpinner';
 import { ProgressDonut } from '../../components/charts/ProgressDonut';
 import { colors, typography, spacing } from '../../constants/colors';
-import { formatCurrency, getDefaultCurrency } from '../../utils/currency';
+import { formatCurrency } from '../../utils/currency';
 
 interface GoalDetailScreenProps {
   navigation: any;
@@ -52,7 +52,7 @@ const GoalDetailScreen: React.FC<GoalDetailScreenProps> = ({ navigation, route }
   useEffect(() => {
     // Auto-open contribution modal if requested
     if (openContribution && selectedGoal && accounts.length > 0) {
-      setShowContributionModal(true);
+      setShowContributeModal(true);
     }
   }, [openContribution, selectedGoal, accounts]);
   const loadData = async () => {
@@ -86,7 +86,6 @@ const GoalDetailScreen: React.FC<GoalDetailScreenProps> = ({ navigation, route }
     setIsContributing(true);
     try {
       await dispatch(contributeToGoal({
-        id: goalId,
         id: goalId,
         amount,
         accountId: selectedAccountId,
@@ -129,8 +128,8 @@ const GoalDetailScreen: React.FC<GoalDetailScreenProps> = ({ navigation, route }
   };
 
   const formatAmount = (amount: number) => {
-    const currency = selectedGoal?.currency || getDefaultCurrency();
-    return formatCurrency(amount, currency, { maximumFractionDigits: 0 });
+    const currency = selectedGoal?.currency || 'USD';
+    return formatCurrency(amount, currency);
   };
 
   const formatDate = (dateString?: string) => {

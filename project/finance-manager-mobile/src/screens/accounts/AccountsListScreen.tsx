@@ -19,7 +19,6 @@ import { BalanceCard } from '../../components/common/BalanceCard';
 import { LoadingSpinner } from '../../components/common/LoadingSpinner';
 import { colors, typography, spacing } from '../../constants/colors';
 import { SUBSCRIPTION_TIERS } from '../../config/api';
-import { getDefaultCurrency } from '../../utils/currency';
 
 interface AccountsListScreenProps {
   navigation: any;
@@ -30,7 +29,7 @@ const AccountsListScreen: React.FC<AccountsListScreenProps> = ({ navigation }) =
   const [refreshing, setRefreshing] = useState(false);
 
   const { accounts, isLoading } = useTypedSelector((state) => state.accounts);
-  const { profile } = useTypedSelector((state) => state.user);
+  const { profile, displayCurrency } = useTypedSelector((state) => state.user);
   const { isAuthenticated } = useTypedSelector((state) => state.auth);
 
   useEffect(() => {
@@ -71,14 +70,6 @@ const AccountsListScreen: React.FC<AccountsListScreenProps> = ({ navigation }) =
 
   const calculateTotalBalance = () => {
     return accounts.reduce((total, account) => total + account.balance, 0);
-  };
-
-  const getPrimaryCurrency = () => {
-    // Use the currency from the first account, or default to USD
-    if (accounts.length > 0 && accounts[0].currency) {
-      return accounts[0].currency;
-    }
-    return getDefaultCurrency();
   };
 
   const getActiveAccounts = () => {
@@ -128,7 +119,7 @@ const AccountsListScreen: React.FC<AccountsListScreenProps> = ({ navigation }) =
       <BalanceCard
         title="Total Balance"
         balance={calculateTotalBalance()}
-        currency={getPrimaryCurrency()}
+        currency={displayCurrency}
         subtitle={`Across ${getActiveAccounts().length} active accounts`}
       />
       

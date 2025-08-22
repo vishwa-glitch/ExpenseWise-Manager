@@ -15,7 +15,7 @@ import { fetchCategories } from '../../store/slices/categoriesSlice';
 import { CustomTextInput } from '../../components/common/CustomTextInput';
 import { CustomButton } from '../../components/common/CustomButton';
 import { colors, typography, spacing } from '../../constants/colors';
-import { getCurrencySymbol, getDefaultCurrency } from '../../utils/currency';
+import { getCurrencySymbol } from '../../utils/currency';
 
 interface CreateEditBudgetScreenProps {
   navigation: any;
@@ -28,7 +28,7 @@ const CreateEditBudgetScreen: React.FC<CreateEditBudgetScreenProps> = ({ navigat
   const isEditing = !!budgetId;
 
   const { categories } = useTypedSelector((state) => state.categories);
-  const { preferredCurrency } = useTypedSelector((state) => state.user);
+  const { displayCurrency } = useTypedSelector((state) => state.user);
 
   const [formData, setFormData] = useState({
     name: '',
@@ -37,7 +37,7 @@ const CreateEditBudgetScreen: React.FC<CreateEditBudgetScreenProps> = ({ navigat
     category_id: '',
     start_date: '',
     end_date: '',
-    currency: preferredCurrency || 'USD',
+    currency: displayCurrency,
     is_active: true,
   });
 
@@ -69,14 +69,14 @@ const CreateEditBudgetScreen: React.FC<CreateEditBudgetScreenProps> = ({ navigat
         category_id: budget.category_id || '',
         start_date: budget.start_date || '',
         end_date: budget.end_date || '',
-        currency: budget.currency || preferredCurrency || 'USD',
+        currency: budget.currency || displayCurrency,
         is_active: budget.is_active !== undefined ? budget.is_active : true,
       });
     } else {
       // Set default dates for new budget
       setDefaultDates('monthly');
     }
-  }, [isEditing, budget, preferredCurrency]);
+  }, [isEditing, budget, displayCurrency]);
 
   const loadCategories = async () => {
     try {

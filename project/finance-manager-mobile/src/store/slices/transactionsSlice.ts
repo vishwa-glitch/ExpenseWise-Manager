@@ -3,6 +3,7 @@ import { apiService } from "../../services/api";
 import * as FileSystem from "expo-file-system";
 import * as Sharing from "expo-sharing";
 import { Platform } from "react-native";
+import { Transaction } from "../../types/transaction";
 
 interface FilterState {
   searchQuery: string;
@@ -35,7 +36,7 @@ interface FilterState {
 
 interface QueryCache {
   [key: string]: {
-    data: any[];
+    data: Transaction[];
     pagination: any;
     timestamp: number;
     ttl: number; // Time to live in milliseconds
@@ -43,8 +44,8 @@ interface QueryCache {
 }
 
 interface TransactionsState {
-  transactions: any[];
-  filteredTransactions: any[];
+  transactions: Transaction[];
+  filteredTransactions: Transaction[];
   calendarData: any;
   pagination: any;
   activeFilters: FilterState;

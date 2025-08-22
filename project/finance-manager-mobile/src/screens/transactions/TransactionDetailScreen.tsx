@@ -14,7 +14,7 @@ import { deleteTransaction } from '../../store/slices/transactionsSlice';
 import { CustomButton } from '../../components/common/CustomButton';
 import { LoadingSpinner } from '../../components/common/LoadingSpinner';
 import { colors, typography, spacing } from '../../constants/colors';
-import { formatCurrency, getDefaultCurrency } from '../../utils/currency';
+import { formatCurrency } from '../../utils/currency';
 
 interface TransactionDetailScreenProps {
   navigation: any;
@@ -27,6 +27,7 @@ const TransactionDetailScreen: React.FC<TransactionDetailScreenProps> = ({ navig
   const [transaction, setTransaction] = useState(routeTransaction);
 
   const { transactions } = useTypedSelector((state) => state.transactions);
+  const { displayCurrency } = useTypedSelector((state) => state.user);
 
   useEffect(() => {
     // If transaction not passed via route, find it in the store
@@ -39,7 +40,7 @@ const TransactionDetailScreen: React.FC<TransactionDetailScreenProps> = ({ navig
   }, [transactionId, transactions, transaction]);
 
   const formatAmount = (amount: number, type: string) => {
-    const currency = transaction?.currency || getDefaultCurrency();
+    const currency = transaction?.currency || displayCurrency || 'USD';
     const formattedAmount = formatCurrency(amount, currency);
     return type === 'expense' ? `-${formattedAmount}` : `+${formattedAmount}`;
   };

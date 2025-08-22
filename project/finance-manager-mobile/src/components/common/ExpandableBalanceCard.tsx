@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Animated } from 'react-native';
 import { colors, typography, spacing } from '../../constants/colors';
-import { formatCurrency, getDefaultCurrency } from '../../utils/currency';
+import { useTypedSelector } from '../../hooks/useTypedSelector';
+import { formatCurrency } from '../../utils/currency';
 
 interface ExpandableBalanceCardProps {
   title: string;
@@ -24,7 +25,7 @@ interface ExpandableBalanceCardProps {
 export const ExpandableBalanceCard: React.FC<ExpandableBalanceCardProps> = ({
   title,
   balance,
-  currency = getDefaultCurrency(),
+  currency: propCurrency,
   subtitle,
   accounts = [],
   showTrend = false,
@@ -32,6 +33,8 @@ export const ExpandableBalanceCard: React.FC<ExpandableBalanceCardProps> = ({
   trendDirection,
   onAccountPress,
 }) => {
+  const { displayCurrency } = useTypedSelector((state) => state.user);
+  const currency = propCurrency || displayCurrency || 'USD';
   const [isExpanded, setIsExpanded] = useState(false);
   const [animation] = useState(new Animated.Value(0));
 
@@ -131,7 +134,7 @@ export const ExpandableBalanceCard: React.FC<ExpandableBalanceCardProps> = ({
                   styles.accountBalance,
                   { color: account.balance >= 0 ? colors.income : colors.expense }
                 ]}>
-                  {formatCurrency(account.balance, account.currency || currency)}
+                  {formatCurrency(account.balance, account.currency || propCurrency || displayCurrency || 'USD')}
                 </Text>
               </TouchableOpacity>
             ))}

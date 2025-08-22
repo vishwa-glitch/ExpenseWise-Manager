@@ -31,7 +31,6 @@ const EditProfileScreen: React.FC<EditProfileScreenProps> = ({ navigation }) => 
     last_name: '',
     email: '',
     phone: '',
-    preferred_currency: '',
   });
 
   const [errors, setErrors] = useState({
@@ -52,7 +51,6 @@ const EditProfileScreen: React.FC<EditProfileScreenProps> = ({ navigation }) => 
         last_name: userData.last_name || '',
         email: userData.email || '',
         phone: userData.phone || '',
-        preferred_currency: userData.preferred_currency || 'USD',
       });
     }
   }, [profile, user]);
@@ -114,7 +112,6 @@ const EditProfileScreen: React.FC<EditProfileScreenProps> = ({ navigation }) => 
         last_name: formData.last_name.trim(),
         email: formData.email.trim(),
         phone: formData.phone.trim() || undefined,
-        preferred_currency: formData.preferred_currency,
       };
 
       await dispatch(updateUserProfile(updateData)).unwrap();
@@ -146,45 +143,6 @@ const EditProfileScreen: React.FC<EditProfileScreenProps> = ({ navigation }) => 
       setErrors(prev => ({ ...prev, [field]: '' }));
     }
   };
-
-  const currencyOptions = [
-    { code: 'USD', name: 'US Dollar', symbol: '$' },
-    { code: 'EUR', name: 'Euro', symbol: '€' },
-    { code: 'GBP', name: 'British Pound', symbol: '£' },
-    { code: 'JPY', name: 'Japanese Yen', symbol: '¥' },
-    { code: 'INR', name: 'Indian Rupee', symbol: '₹' },
-    { code: 'CAD', name: 'Canadian Dollar', symbol: 'C$' },
-    { code: 'AUD', name: 'Australian Dollar', symbol: 'A$' },
-  ];
-
-  const renderCurrencySelector = () => (
-    <View style={styles.currencySelector}>
-      <Text style={styles.label}>Preferred Currency</Text>
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.currencyScroll}>
-        {currencyOptions.map((currency) => (
-          <TouchableOpacity
-            key={currency.code}
-            style={[
-              styles.currencyOption,
-              formData.preferred_currency === currency.code && styles.currencyOptionSelected,
-            ]}
-            onPress={() => updateFormData('preferred_currency', currency.code)}
-          >
-            <Text style={styles.currencySymbol}>{currency.symbol}</Text>
-            <Text
-              style={[
-                styles.currencyCode,
-                formData.preferred_currency === currency.code && styles.currencyCodeSelected,
-              ]}
-            >
-              {currency.code}
-            </Text>
-            <Text style={styles.currencyName}>{currency.name}</Text>
-          </TouchableOpacity>
-        ))}
-      </ScrollView>
-    </View>
-  );
 
   if (!isAuthenticated) {
     return <LoadingSpinner />;
@@ -245,16 +203,6 @@ const EditProfileScreen: React.FC<EditProfileScreenProps> = ({ navigation }) => 
             error={errors.phone}
             leftIcon={<Text style={styles.inputIcon}>📱</Text>}
           />
-
-          {renderCurrencySelector()}
-
-          <View style={styles.infoBox}>
-            <Text style={styles.infoIcon}>💡</Text>
-            <Text style={styles.infoText}>
-              Your preferred currency will be used as the default for new accounts and transactions. 
-              Existing accounts will keep their current currency settings.
-            </Text>
-          </View>
 
           <View style={styles.subscriptionInfo}>
             <Text style={styles.subscriptionTitle}>Current Subscription</Text>

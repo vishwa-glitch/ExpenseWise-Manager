@@ -26,14 +26,14 @@ const AddEditAccountScreen: React.FC<AddEditAccountScreenProps> = ({ navigation,
   const { accountId, account } = route.params || {};
   const isEditing = !!accountId;
 
-  // Get user's preferred currency from Redux store
-  const { preferredCurrency } = useTypedSelector((state) => state.user);
+  // Get display currency from Redux store
+  const { displayCurrency } = useTypedSelector((state) => state.user);
 
   const [formData, setFormData] = useState({
     name: '',
     type: 'checking',
     balance: '',
-    currency: preferredCurrency || 'USD', // Use user's preferred currency as default
+    currency: displayCurrency, // Use display currency as default
   });
 
   const [originalBalance, setOriginalBalance] = useState<number>(0);
@@ -61,18 +61,18 @@ const AddEditAccountScreen: React.FC<AddEditAccountScreenProps> = ({ navigation,
         name: account.name || '',
         type: account.type || 'checking',
         balance: accountBalance.toString(),
-        currency: account.currency || preferredCurrency || 'USD',
+        currency: account.currency || displayCurrency,
       });
       setOriginalBalance(accountBalance);
       console.log('📝 Form initialized for editing with balance:', accountBalance);
     } else {
-      // For new accounts, always use user's preferred currency
+      // For new accounts, use the dynamic display currency
       setFormData(prev => ({
         ...prev,
-        currency: preferredCurrency || 'USD'
+        currency: displayCurrency
       }));
     }
-  }, [isEditing, account, preferredCurrency]);
+  }, [isEditing, account, displayCurrency]);
 
   const validateForm = () => {
     const newErrors = {
@@ -143,7 +143,7 @@ const AddEditAccountScreen: React.FC<AddEditAccountScreenProps> = ({ navigation,
             balance: newBalance,
             currency: formData.currency,
           };
-          await dispatch(updateAccount({ id: accountId, data: accountData })).unwrap();
+          await dispatch(updateAccount({ id: accountId, ...accountData })).unwrap();
         }
       } else {
         // Creating new account
@@ -252,7 +252,7 @@ const AddEditAccountScreen: React.FC<AddEditAccountScreenProps> = ({ navigation,
               {getCurrencySymbol(formData.currency)} {formData.currency}
             </Text>
             <Text style={styles.currencyInfoNote}>
-              Using your preferred currency. Change it in settings if needed.
+              Currency is set to your display currency and cannot be changed.
             </Text>
           </View>
 

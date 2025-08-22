@@ -26,7 +26,7 @@ import { LineChart } from '../../components/charts/LineChart';
 import { LoadingSpinner } from '../../components/common/LoadingSpinner';
 import { CustomButton } from '../../components/common/CustomButton';
 import { colors, typography, spacing } from '../../constants/colors';
-import { formatCurrency, getDefaultCurrency } from '../../utils/currency';
+import { formatCurrency } from '../../utils/currency';
 
 interface AccountDetailScreenProps {
   navigation: any;
@@ -40,6 +40,7 @@ const AccountDetailScreen: React.FC<AccountDetailScreenProps> = ({ navigation, r
 
   const { selectedAccount, balanceHistory, accountSummary, isLoading } = useTypedSelector((state) => state.accounts);
   const { transactions } = useTypedSelector((state) => state.transactions);
+  const { displayCurrency } = useTypedSelector((state) => state.user);
 
   const loadAccountData = useCallback(async () => {
     try {
@@ -181,7 +182,7 @@ const AccountDetailScreen: React.FC<AccountDetailScreenProps> = ({ navigation, r
   };
 
   const formatAmount = (amount: number) => {
-    const currency = selectedAccount?.currency || getDefaultCurrency();
+    const currency = selectedAccount?.currency || displayCurrency;
     return formatCurrency(amount, currency, { maximumFractionDigits: 0 });
   };
 
@@ -320,6 +321,7 @@ const AccountDetailScreen: React.FC<AccountDetailScreenProps> = ({ navigation, r
         <BalanceCard
           title="Current Balance"
           balance={selectedAccount.balance}
+          currency={selectedAccount.currency || displayCurrency}
           subtitle={`${selectedAccount.transaction_count || 0} transactions`}
         />
 

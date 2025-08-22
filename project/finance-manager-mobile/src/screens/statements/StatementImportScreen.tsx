@@ -21,7 +21,7 @@ import { CustomButton } from '../../components/common/CustomButton';
 import { CustomTextInput } from '../../components/common/CustomTextInput';
 import { LoadingSpinner } from '../../components/common/LoadingSpinner';
 import { colors, typography, spacing } from '../../constants/colors';
-import { formatCurrency, getDefaultCurrency } from '../../utils/currency';
+import { formatCurrency } from '../../utils/currency';
 import { SUBSCRIPTION_TIERS } from '../../config/api';
 
 interface ParsedTransaction {
@@ -50,7 +50,7 @@ const StatementImportScreen: React.FC = () => {
   const dispatch = useAppDispatch();
   const { accounts } = useTypedSelector((state) => state.accounts);
   const { categories } = useTypedSelector((state) => state.categories);
-  const { profile } = useTypedSelector((state) => state.user);
+  const { profile, displayCurrency } = useTypedSelector((state) => state.user);
   const { isAuthenticated } = useTypedSelector((state) => state.auth);
 
   const [isLoading, setIsLoading] = useState(false);
@@ -427,7 +427,7 @@ const StatementImportScreen: React.FC = () => {
           styles.transactionAmount,
           { color: item.type === 'income' ? colors.income : colors.expense }
         ]}>
-          {item.type === 'income' ? '+' : '-'}{formatCurrency(item.amount, getDefaultCurrency())}
+          {item.type === 'income' ? '+' : '-'}{formatCurrency(item.amount, displayCurrency)}
         </Text>
       </View>
       <View style={styles.transactionDetails}>
@@ -461,13 +461,13 @@ const StatementImportScreen: React.FC = () => {
                 <View style={styles.summaryRow}>
                   <Text style={styles.summaryLabel}>Total Income:</Text>
                   <Text style={[styles.summaryValue, { color: colors.income }]}>
-                    {formatCurrency(importPreview.summary.income, getDefaultCurrency())}
+                    {formatCurrency(importPreview.summary.income, displayCurrency)}
                   </Text>
                 </View>
                 <View style={styles.summaryRow}>
                   <Text style={styles.summaryLabel}>Total Expenses:</Text>
                   <Text style={[styles.summaryValue, { color: colors.expense }]}>
-                    {formatCurrency(importPreview.summary.expenses, getDefaultCurrency())}
+                    {formatCurrency(importPreview.summary.expenses, displayCurrency)}
                   </Text>
                 </View>
               </View>

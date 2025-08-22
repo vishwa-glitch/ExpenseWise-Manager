@@ -1,94 +1,70 @@
-import { store } from "../store";
+// Define Account interface locally for utility functions
+interface Account {
+  id: string;
+  name: string;
+  balance: number;
+  currency: string;
+  type: string;
+  transaction_count?: number; // Optional as it's not always present
+}
 
-/**
- * Get the currency symbol for a given currency code
- * @param currency The currency code (e.g., USD, EUR)
- * @returns The currency symbol (e.g., $, €)
- */
-export const getCurrencySymbol = (currency: string): string => {
-  const currencySymbols: { [key: string]: string } = {
-    USD: "$",
-    EUR: "€",
-    GBP: "£",
-    JPY: "¥",
-    INR: "₹",
-    CAD: "C$",
-    AUD: "A$",
-    CHF: "CHF",
-    CNY: "¥",
-    SEK: "kr",
-    NOK: "kr",
-    MXN: "$",
-    NZD: "NZ$",
-    SGD: "S$",
-    HKD: "HK$",
-    ZAR: "R",
-    BRL: "R$",
-    RUB: "₽",
-    KRW: "₩",
-    TRY: "₺",
-  };
-
-  return currencySymbols[currency.toUpperCase()] || currency;
-};
-
-export const formatCurrency = (
-  amount: number,
-  currency?: string,
-  options: {
-    showSymbol?: boolean;
-    showCode?: boolean;
-    minimumFractionDigits?: number;
-    maximumFractionDigits?: number;
-  } = {}
-): string => {
-  const {
-    showSymbol = true,
-    showCode = false,
-    minimumFractionDigits = 2,
-    maximumFractionDigits = 2,
-  } = options;
-
-  // Use provided currency or get from user preference
-  const finalCurrency = currency || getDefaultCurrency();
-  const symbol = getCurrencySymbol(finalCurrency);
-  const absAmount = Math.abs(amount);
-
-  // Ensure minimumFractionDigits is not greater than maximumFractionDigits
-  const safeMinimumFractionDigits = Math.min(
-    minimumFractionDigits,
-    maximumFractionDigits
-  );
-
-  // Format the number with proper locale and safe fraction digits
-  const formattedAmount = absAmount.toLocaleString("en-US", {
-    minimumFractionDigits: safeMinimumFractionDigits,
-    maximumFractionDigits,
-  });
-
-  let result = "";
-
-  if (showSymbol) {
-    result = `${symbol}${formattedAmount}`;
-  } else {
-    result = formattedAmount;
+export const formatCurrency = (amount: number, currency: string): string => {
+  // Handle cases where currency might be null, undefined, or an empty string
+  if (!currency) {
+    // Fallback to a default non-currency format
+    return new Intl.NumberFormat(undefined, {
+      style: 'decimal',
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    }).format(amount);
   }
 
-  if (showCode) {
-    result += ` ${finalCurrency.toUpperCase()}`;
-  }
-
-  return result;
-};
-
-export const getDefaultCurrency = (): string => {
-  // Get currency from Redux store if available
   try {
-    const state = store.getState();
-    return state.user.preferredCurrency || "USD";
+    return new Intl.NumberFormat(undefined, {
+      style: 'currency',
+      currency: currency,
+    }).format(amount);
   } catch (error) {
-    return "USD";
+    // Handle invalid currency codes that might still be passed
+    console.warn(`Invalid currency code '${currency}' provided to formatCurrency. Formatting as decimal.`);
+    return new Intl.NumberFormat(undefined, {
+      style: 'decimal',
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    }).format(amount);
   }
+};
+
+export const getCurrencySymbol = (currency: string): string => {
+  const symbols: Record<string, string> = {
+    'USD': '$',
+    'EUR': '€',
+    'GBP': '£',
+    'JPY': '¥',
+    'CAD': 'C$',
+    'AUD': 'A$',
+    'INR': '₹'
+  };
+  return symbols[currency] || currency;
+};
+
+export const groupAccountsByCurrency = (accounts: Account[]): Record<string, Account[]> => {
+  return accounts.reduce((groups, account) => {
+    const currency = account.currency;
+    if (!groups[currency]) {
+      groups[currency] = [];
+    }
+    groups[currency].push(account);
+    return groups;
+  }, {} as Record<string, Account[]>);
+};
+
+export const calculateTotalsByCurrency = (accounts: Account[]): Record<string, number> => {
+  return accounts.reduce((totals, account) => {
+    const currency = account.currency;
+    totals[currency] = (totals[currency] || 0) + account.balance;
+    return totals;
+  }, {} as Record<string, number>);
 };
 
 export const getSupportedCurrencies = () => [

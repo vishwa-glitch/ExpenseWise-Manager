@@ -18,7 +18,7 @@ import { ProgressDonut } from '../../components/charts/ProgressDonut';
 import { LoadingSpinner } from '../../components/common/LoadingSpinner';
 import { CustomButton } from '../../components/common/CustomButton';
 import { colors, typography, spacing } from '../../constants/colors';
-import { formatCurrency, getDefaultCurrency } from '../../utils/currency';
+import { formatCurrency } from '../../utils/currency';
 
 interface BudgetDetailScreenProps {
   navigation: any;
@@ -98,8 +98,8 @@ const BudgetDetailScreen: React.FC<BudgetDetailScreenProps> = ({ navigation, rou
   };
 
   const formatAmount = (amount: number) => {
-    const currency = selectedBudget?.currency || getDefaultCurrency();
-    return formatCurrency(amount, currency, { maximumFractionDigits: 0 });
+    const currency = selectedBudget?.currency || 'USD';
+    return formatCurrency(amount, currency);
   };
 
   const getProgressPercentage = () => {
@@ -193,8 +193,7 @@ const BudgetDetailScreen: React.FC<BudgetDetailScreenProps> = ({ navigation, rou
               styles.statValue,
               { color: getRemainingAmount() >= 0 ? colors.income : colors.error }
             ]}>
-              {getRemainingAmount() >= 0 ? '' : '-'}
-              {formatAmount(Math.abs(getRemainingAmount()))}
+              {formatAmount(getRemainingAmount())}
             </Text>
           </View>
         </View>

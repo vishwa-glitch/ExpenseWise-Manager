@@ -110,7 +110,7 @@ export function useRenderPerformance(componentName: string): void {
 /**
  * Hook for cleanup operations and memory management
  */
-export function useCleanup(): () => void {
+export function useCleanup(): (cleanupFn: () => void) => void {
   const cleanupFunctions = React.useRef<(() => void)[]>([]);
 
   const addCleanup = React.useCallback((cleanupFn: () => void) => {

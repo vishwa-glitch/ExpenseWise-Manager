@@ -37,6 +37,10 @@ class ApiService {
     this.setupInterceptors();
   }
 
+  public async get<T = any, R = AxiosResponse<T>>(url: string, config?: AxiosRequestConfig): Promise<R> {
+    return this.api.get(url, config);
+  }
+
   private setupInterceptors() {
     // Request interceptor to add auth token
     this.api.interceptors.request.use(
@@ -635,19 +639,6 @@ class ApiService {
 
   async getGoalProgress(id: string) {
     const response = await this.api.get(API_ENDPOINTS.GOALS.PROGRESS(id));
-    return response.data;
-  }
-
-  async contributeToGoal(id: string, amount: number, accountId: string) {
-    const response = await this.api.post(API_ENDPOINTS.GOALS.CONTRIBUTE(id), { 
-      amount,
-      account_id: accountId 
-    });
-    return response.data;
-  }
-
-  async createGoal(goalData: any) {
-    const response = await this.api.post(API_ENDPOINTS.GOALS.CREATE, goalData);
     return response.data;
   }
 

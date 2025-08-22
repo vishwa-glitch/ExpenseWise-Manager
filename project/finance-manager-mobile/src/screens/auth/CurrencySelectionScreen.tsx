@@ -1,19 +1,21 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   View,
   Text,
   StyleSheet,
   SafeAreaView,
-  ScrollView,
+  FlatList,
   TouchableOpacity,
   Alert,
+  TextInput,
+  ActivityIndicator,
 } from 'react-native';
 import { useAppDispatch } from '../../hooks/useAppDispatch';
-import { setUserCurrency } from '../../store/slices/userSlice';
+import { setDisplayCurrency } from '../../store/slices/userSlice';
 import { completeCurrencySelection } from '../../store/slices/authSlice';
 import { CustomButton } from '../../components/common/CustomButton';
 import { colors, typography, spacing } from '../../constants/colors';
-import { getSupportedCurrencies } from '../../utils/currency';
+import { currencyService, Currency } from '../../services/currencyService';
 
 interface CurrencySelectionScreenProps {
   navigation: any;
@@ -24,8 +26,38 @@ const CurrencySelectionScreen: React.FC<CurrencySelectionScreenProps> = ({ navig
   const dispatch = useAppDispatch();
   const [selectedCurrency, setSelectedCurrency] = useState('USD');
   const [isLoading, setIsLoading] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [currencies, setCurrencies] = useState<Currency[]>([]);
+  const [isLoadingCurrencies, setIsLoadingCurrencies] = useState(true);
 
-  const supportedCurrencies = getSupportedCurrencies();
+  useEffect(() => {
+    const fetchCurrencies = async () => {
+      try {
+        setIsLoadingCurrencies(true);
+        const supportedCurrencies = await currencyService.getSupportedCurrencies();
+        setCurrencies(supportedCurrencies);
+      } catch (error) {
+        Alert.alert('Error', 'Could not load currencies. Please check your connection.');
+      } finally {
+        setIsLoadingCurrencies(false);
+      }
+    };
+
+    fetchCurrencies();
+  }, []);
+
+  const filteredCurrencies = useMemo(() => {
+    if (!searchQuery) {
+      return currencies;
+    }
+    const lowercasedQuery = searchQuery.toLowerCase();
+    return currencies.filter(
+      (currency) =>
+        currency.name.toLowerCase().includes(lowercasedQuery) ||
+        currency.code.toLowerCase().includes(lowercasedQuery) ||
+        currency.symbol.toLowerCase().includes(lowercasedQuery)
+    );
+  }, [currencies, searchQuery]);
 
   const handleContinue = async () => {
     if (!selectedCurrency) {
@@ -36,8 +68,9 @@ const CurrencySelectionScreen: React.FC<CurrencySelectionScreenProps> = ({ navig
     setIsLoading(true);
 
     try {
-      // Update user's preferred currency
-      await dispatch(setUserCurrency(selectedCurrency)).unwrap();
+      // Store as display currency (used as default for new accounts)
+      // This is NOT saved to backend - it's just a UI preference
+      dispatch(setDisplayCurrency(selectedCurrency));
       
       // Mark currency selection as complete
       dispatch(completeCurrencySelection());
@@ -49,7 +82,7 @@ const CurrencySelectionScreen: React.FC<CurrencySelectionScreenProps> = ({ navig
     }
   };
 
-  const renderCurrencyOption = (currency: any) => (
+  const renderCurrencyOption = ({ item: currency }: { item: Currency }) => (
     <TouchableOpacity
       key={currency.code}
       style={[
@@ -75,33 +108,41 @@ const CurrencySelectionScreen: React.FC<CurrencySelectionScreenProps> = ({ navig
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
         <Text style={styles.logo}>💰</Text>
-        <Text style={styles.title}>Choose Your Currency</Text>
-        <Text style={styles.subtitle}>
-          Select your preferred currency. This will be used as the default for all your accounts and transactions.
-        </Text>
+        <Text style={styles.title}>Select Your Currency</Text>
       </View>
-
       <View style={styles.content}>
-        <Text style={styles.sectionTitle}>Available Currencies</Text>
-        
-        <ScrollView 
-          horizontal 
-          showsHorizontalScrollIndicator={false}
-          style={styles.currencyScrollView}
-          contentContainerStyle={styles.currencyScrollContent}
-        >
-          {supportedCurrencies.map(renderCurrencyOption)}
-        </ScrollView>
+        <TextInput
+          style={styles.searchInput}
+          placeholder="Search currency (e.g., Dollar, EUR, $)"
+          placeholderTextColor={colors.textSecondary}
+          value={searchQuery}
+          onChangeText={setSearchQuery}
+        />
+
+        {isLoadingCurrencies ? (
+          <ActivityIndicator size="large" color={colors.primary} style={styles.loader} />
+        ) : (
+          <FlatList
+            data={filteredCurrencies}
+            renderItem={renderCurrencyOption}
+            keyExtractor={(item) => item.code}
+            style={styles.currencyList}
+            showsVerticalScrollIndicator={false}
+            ListEmptyComponent={() => (
+              <Text style={styles.emptyListText}>No currencies found.</Text>
+            )}
+          />
+        )}
 
         <View style={styles.selectedInfo}>
           <Text style={styles.selectedLabel}>Selected Currency:</Text>
           <View style={styles.selectedCurrency}>
             <Text style={styles.selectedSymbol}>
-              {supportedCurrencies.find(c => c.code === selectedCurrency)?.symbol}
+              {currencies.find(c => c.code === selectedCurrency)?.symbol}
             </Text>
             <Text style={styles.selectedCode}>{selectedCurrency}</Text>
             <Text style={styles.selectedName}>
-              {supportedCurrencies.find(c => c.code === selectedCurrency)?.name}
+              {currencies.find(c => c.code === selectedCurrency)?.name}
             </Text>
           </View>
         </View>
@@ -163,30 +204,38 @@ const styles = StyleSheet.create({
     marginBottom: spacing.lg,
     textAlign: 'center',
   },
-  currencyScrollView: {
-    flexGrow: 0,
-    marginBottom: spacing.xl,
+  searchInput: {
+    backgroundColor: colors.surface,
+    borderRadius: 12,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.md,
+    ...typography.body,
+    color: colors.text,
+    marginBottom: spacing.lg,
+    borderWidth: 1,
+    borderColor: colors.border,
   },
-  currencyScrollContent: {
-    paddingHorizontal: spacing.sm,
+  loader: {
+    marginVertical: spacing.xl,
+  },
+  currencyList: {
+    flex: 1,
+  },
+  emptyListText: {
+    ...typography.body,
+    color: colors.textSecondary,
+    textAlign: 'center',
+    marginTop: spacing.xl,
   },
   currencyOption: {
     backgroundColor: colors.card,
-    borderRadius: 16,
-    padding: spacing.lg,
+    borderRadius: 12,
+    padding: spacing.md,
+    flexDirection: 'row',
     alignItems: 'center',
-    marginHorizontal: spacing.sm,
-    borderWidth: 3,
+    marginBottom: spacing.md,
+    borderWidth: 2,
     borderColor: 'transparent',
-    minWidth: 120,
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
   },
   currencyOptionSelected: {
     backgroundColor: colors.primaryLight + '20',
@@ -196,23 +245,26 @@ const styles = StyleSheet.create({
     elevation: 6,
   },
   currencySymbol: {
-    fontSize: 32,
-    marginBottom: spacing.sm,
+    fontSize: 24,
+    width: 40,
+    textAlign: 'center',
+    marginRight: spacing.md,
+    color: colors.text,
+  },
+  currencyInfo: {
+    flex: 1,
   },
   currencyCode: {
     ...typography.h3,
     color: colors.text,
     fontWeight: 'bold',
-    marginBottom: spacing.xs,
   },
   currencyCodeSelected: {
     color: colors.primary,
   },
   currencyName: {
-    ...typography.small,
+    ...typography.caption,
     color: colors.textSecondary,
-    textAlign: 'center',
-    lineHeight: 16,
   },
   selectedInfo: {
     backgroundColor: colors.surface,

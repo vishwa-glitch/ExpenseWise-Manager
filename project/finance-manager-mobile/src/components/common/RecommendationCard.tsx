@@ -2,7 +2,8 @@ import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { colors, typography, spacing } from '../../constants/colors';
 import { CustomButton } from './CustomButton';
-import { formatCurrency, getDefaultCurrency } from '../../utils/currency';
+import { useTypedSelector } from '../../hooks/useTypedSelector';
+import { formatCurrency } from '../../utils/currency';
 
 interface RecommendationCardProps {
   recommendation: {
@@ -26,6 +27,8 @@ export const RecommendationCard: React.FC<RecommendationCardProps> = ({
   onDismiss,
   onAct,
 }) => {
+  const { displayCurrency } = useTypedSelector((state) => state.user);
+
   // Early return if recommendation is invalid
   if (!recommendation || typeof recommendation !== 'object') {
     return null;
@@ -33,7 +36,7 @@ export const RecommendationCard: React.FC<RecommendationCardProps> = ({
   const formatAmount = (amount?: number) => {
     if (!amount || typeof amount !== 'number' || isNaN(amount)) return '';
     try {
-      const currency = recommendation.currency || getDefaultCurrency();
+      const currency = recommendation.currency || displayCurrency || 'USD';
       const formatted = formatCurrency(amount, currency, { maximumFractionDigits: 0 });
       return formatted || '';
     } catch (error) {

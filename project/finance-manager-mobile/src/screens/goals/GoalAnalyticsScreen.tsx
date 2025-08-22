@@ -16,7 +16,7 @@ import { LoadingSpinner } from '../../components/common/LoadingSpinner';
 import { TimePeriodSelector, TimePeriod } from '../../components/common/TimePeriodSelector';
 import { colors, typography, spacing } from '../../constants/colors';
 import { chartUtils } from '../../constants/chartConfig';
-import { formatCurrency, getDefaultCurrency } from '../../utils/currency';
+import { formatCurrency, getCurrencySymbol } from '../../utils/currency';
 
 interface GoalAnalyticsScreenProps {
   navigation: any;
@@ -29,6 +29,7 @@ const GoalAnalyticsScreen: React.FC<GoalAnalyticsScreenProps> = ({ navigation })
 
   const { goals, isLoading } = useTypedSelector((state) => state.goals);
   const { isAuthenticated } = useTypedSelector((state) => state.auth);
+  const { displayCurrency } = useTypedSelector((state) => state.user);
 
   useEffect(() => {
     if (isAuthenticated) {
@@ -54,24 +55,27 @@ const GoalAnalyticsScreen: React.FC<GoalAnalyticsScreenProps> = ({ navigation })
 
   const getGoalsByCategory = () => {
     const categoryMap = new Map();
-    
-    goals.forEach(goal => {
-      const category = goal.category || 'other';
-      if (!categoryMap.has(category)) {
-        categoryMap.set(category, {
-          name: category.charAt(0).toUpperCase() + category.slice(1),
-          count: 0,
-          totalTarget: 0,
-          totalCurrent: 0,
-        });
-      }
-      
-      const categoryData = categoryMap.get(category);
-      categoryData.count += 1;
-      categoryData.totalTarget += goal.target_amount || 0;
-      categoryData.totalCurrent += goal.current_amount || 0;
-    });
-    
+
+    // TODO: Implement proper currency conversion. For now, only aggregating goals in the display currency.
+    goals
+      .filter(goal => goal.currency === displayCurrency)
+      .forEach(goal => {
+        const category = goal.category || 'other';
+        if (!categoryMap.has(category)) {
+          categoryMap.set(category, {
+            name: category.charAt(0).toUpperCase() + category.slice(1),
+            count: 0,
+            totalTarget: 0,
+            totalCurrent: 0,
+          });
+        }
+
+        const categoryData = categoryMap.get(category);
+        categoryData.count += 1;
+        categoryData.totalTarget += goal.target_amount || 0;
+        categoryData.totalCurrent += goal.current_amount || 0;
+      });
+
     return Array.from(categoryMap.values());
   };
 
@@ -183,11 +187,17 @@ const GoalAnalyticsScreen: React.FC<GoalAnalyticsScreenProps> = ({ navigation })
   };
 
   const calculateTotalSavings = () => {
-    return goals.reduce((total, goal) => total + (goal.current_amount || 0), 0);
+    // TODO: Implement proper currency conversion. For now, only summing goals in the display currency.
+    return goals
+      .filter(goal => goal.currency === displayCurrency)
+      .reduce((total, goal) => total + (goal.current_amount || 0), 0);
   };
 
   const calculateTotalTarget = () => {
-    return goals.reduce((total, goal) => total + (goal.target_amount || 0), 0);
+    // TODO: Implement proper currency conversion. For now, only summing goals in the display currency.
+    return goals
+      .filter(goal => goal.currency === displayCurrency)
+      .reduce((total, goal) => total + (goal.target_amount || 0), 0);
   };
 
   const calculateAverageProgress = () => {
@@ -225,8 +235,11 @@ const GoalAnalyticsScreen: React.FC<GoalAnalyticsScreenProps> = ({ navigation })
   };
 
   const formatAmount = (amount: number) => {
-    return formatCurrency(amount, getDefaultCurrency(), { maximumFractionDigits: 0 });
+    // TODO: This should use a display currency and proper conversion for aggregated values
+    return formatCurrency(amount, displayCurrency);
   };
+
+  const currencySymbol = getCurrencySymbol(displayCurrency);
 
   if (!isAuthenticated || isLoading) {
     return <LoadingSpinner />;
@@ -322,7 +335,7 @@ const GoalAnalyticsScreen: React.FC<GoalAnalyticsScreenProps> = ({ navigation })
           <BarChart
             data={getGoalComparisonData()}
             title="Current vs Target Amount"
-            yAxisSuffix="₹"
+            yAxisSuffix={currencySymbol}
             showValuesOnTopOfBars={false}
             timePeriod={selectedPeriod}
             isLoading={isLoading}
@@ -334,7 +347,7 @@ const GoalAnalyticsScreen: React.FC<GoalAnalyticsScreenProps> = ({ navigation })
           <LineChart
             data={getMonthlySavingsData()}
             title="Monthly Savings Trend"
-            yAxisSuffix="₹"
+            yAxisSuffix={currencySymbol}
             bezier={true}
             timePeriod={selectedPeriod}
             isLoading={isLoading}

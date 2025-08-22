@@ -18,7 +18,7 @@ import { FadeInView } from '../common/FadeInView';
 import { useMemoizedCalculation, useCleanup } from '../../utils/performanceUtils';
 import { useAccessibilityEnhancements } from '../../utils/accessibilityEnhancements';
 import { colors, typography, spacing } from '../../constants/colors';
-import { formatCurrency } from '../../utils/currency';
+import { formatCurrency, getCurrencySymbol } from '../../utils/currency';
 
 interface WeeklyFinancialHealthSectionProps {
   onPress?: () => void;
@@ -34,61 +34,13 @@ const WeeklyFinancialHealthSectionContent: React.FC<WeeklyFinancialHealthSection
     weeklyHealthError,
     dashboardInsights 
   } = useTypedSelector((state) => state.analytics);
+  const { displayCurrency } = useTypedSelector((state) => state.user);
   
   const { getScenarioErrorMessage } = useErrorHandler();
   const networkState = useNetworkState();
   const { isUpdating, startUpdateAnimation } = useUpdateAnimation();
   const addCleanup = useCleanup();
   const { generateWeeklyHealthLabel, announceChange } = useAccessibilityEnhancements();
-
-  // Fetch weekly health data on component mount
-  useEffect(() => {
-    dispatch(fetchWeeklyHealth());
-  }, [dispatch]);
-
-  // Set up automatic refresh
-  const refreshWeeklyHealthData = React.useCallback(() => {
-    startUpdateAnimation();
-    dispatch(fetchWeeklyHealth());
-  }, [dispatch, startUpdateAnimation]);
-
-  useAutoRefresh('weeklyHealth', refreshWeeklyHealthData, {
-    enabled: true,
-    interval: 5 * 60 * 1000, // 5 minutes for weekly health data
-    onAppForeground: true,
-  });
-
-  // Automatically refresh when network reconnects
-  useEffect(() => {
-    const handleNetworkReconnect = () => {
-      if (weeklyHealthError) {
-        dispatch(fetchWeeklyHealth());
-      }
-    };
-
-    // Use React Native's DeviceEventEmitter for custom events
-    const subscription = DeviceEventEmitter.addListener('networkReconnected', handleNetworkReconnect);
-    
-    // Add to cleanup manager
-    addCleanup(() => {
-      subscription.remove();
-    });
-  }, [weeklyHealthError, dispatch, addCleanup]);
-
-  // Announce health score changes for screen readers
-  useEffect(() => {
-    if (healthData && !weeklyHealthLoading && !weeklyHealthError && healthData.overallScore > 0) {
-      const score = Math.round((healthData.overallScore / healthData.maxScore) * 10 * 10) / 10;
-      const message = `Financial health updated: ${score} out of 10`;
-      
-      // Delay announcement to avoid conflicts with loading states
-      const timer = setTimeout(() => {
-        announceChange(message);
-      }, 500);
-
-      addCleanup(() => clearTimeout(timer));
-    }
-  }, [healthData, weeklyHealthLoading, weeklyHealthError, announceChange, addCleanup]);
 
   // Memoized weekly health data calculation for performance
   const healthData = useMemoizedCalculation(
@@ -200,8 +152,59 @@ const WeeklyFinancialHealthSectionContent: React.FC<WeeklyFinancialHealthSection
     };
     },
     [weeklyHealth, dashboardInsights],
-    `weekly-health-${weeklyHealth?.overallScore || 0}-${dashboardInsights?.overview?.monthly_expenses || 0}`
+    {
+      calculationName: `weekly-health-${weeklyHealth?.overallScore || 0}-${dashboardInsights?.overview?.monthly_expenses || 0}`
+    }
   );
+
+  // Fetch weekly health data on component mount
+  useEffect(() => {
+    dispatch(fetchWeeklyHealth());
+  }, [dispatch]);
+
+  // Set up automatic refresh
+  const refreshWeeklyHealthData = React.useCallback(() => {
+    startUpdateAnimation();
+    dispatch(fetchWeeklyHealth());
+  }, [dispatch, startUpdateAnimation]);
+
+  useAutoRefresh('weeklyHealth', refreshWeeklyHealthData, {
+    enabled: true,
+    interval: 5 * 60 * 1000, // 5 minutes for weekly health data
+    onAppForeground: true,
+  });
+
+  // Automatically refresh when network reconnects
+  useEffect(() => {
+    const handleNetworkReconnect = () => {
+      if (weeklyHealthError) {
+        dispatch(fetchWeeklyHealth());
+      }
+    };
+
+    // Use React Native's DeviceEventEmitter for custom events
+    const subscription = DeviceEventEmitter.addListener('networkReconnected', handleNetworkReconnect);
+    
+    // Add to cleanup manager
+    addCleanup(() => {
+      subscription.remove();
+    });
+  }, [weeklyHealthError, dispatch, addCleanup]);
+
+  // Announce health score changes for screen readers
+  useEffect(() => {
+    if (healthData && !weeklyHealthLoading && !weeklyHealthError && healthData.overallScore > 0) {
+      const score = Math.round((healthData.overallScore / healthData.maxScore) * 10 * 10) / 10;
+      const message = `Financial health updated: ${score} out of 10`;
+      
+      // Delay announcement to avoid conflicts with loading states
+      const timer = setTimeout(() => {
+        announceChange(message);
+      }, 500);
+
+      addCleanup(() => clearTimeout(timer));
+    }
+  }, [healthData, weeklyHealthLoading, weeklyHealthError, announceChange, addCleanup]);
 
   const getScoreColor = (score: number) => {
     if (score >= 8) return colors.income;
@@ -299,7 +302,7 @@ const WeeklyFinancialHealthSectionContent: React.FC<WeeklyFinancialHealthSection
           <View style={styles.basicStatsContainer}>
             <Text style={styles.basicStatsTitle}>This Week So Far:</Text>
             <Text style={styles.basicStatsAmount}>
-              {formatCurrency(healthData.weeklyStats.thisWeek, 'INR')}
+              {formatCurrency(healthData.weeklyStats.thisWeek, displayCurrency)}
             </Text>
           </View>
         )}
@@ -427,7 +430,7 @@ const WeeklyFinancialHealthSectionContent: React.FC<WeeklyFinancialHealthSection
           <View style={styles.statItem}>
             <Text style={styles.statLabel}>This Week:</Text>
             <Text style={styles.statValue}>
-              {formatCurrency(healthData.weeklyStats.thisWeek, 'INR')}
+              {formatCurrency(healthData.weeklyStats.thisWeek, displayCurrency)}
             </Text>
           </View>
           
@@ -437,9 +440,9 @@ const WeeklyFinancialHealthSectionContent: React.FC<WeeklyFinancialHealthSection
               styles.statValue,
               { color: healthData.weeklyStats.overBudget > 0 ? colors.error : colors.textSecondary }
             ]}>
-              {formatCurrency(healthData.weeklyStats.budget, 'INR')} 
+              {formatCurrency(healthData.weeklyStats.budget, displayCurrency)} 
               {healthData.weeklyStats.overBudget > 0 && 
-                ` (₹${healthData.weeklyStats.overBudget} over)`
+                ` (${getCurrencySymbol(displayCurrency)}${healthData.weeklyStats.overBudget} over)`
               }
             </Text>
           </View>
@@ -447,7 +450,7 @@ const WeeklyFinancialHealthSectionContent: React.FC<WeeklyFinancialHealthSection
           <View style={styles.statItem}>
             <Text style={styles.statLabel}>Last Week:</Text>
             <Text style={styles.statValue}>
-              {formatCurrency(healthData.weeklyStats.lastWeek, 'INR')} 
+              {formatCurrency(healthData.weeklyStats.lastWeek, displayCurrency)} 
               <Text style={[
                 styles.changeText,
                 { color: lastWeekChange > 0 ? colors.error : colors.income }
@@ -460,7 +463,7 @@ const WeeklyFinancialHealthSectionContent: React.FC<WeeklyFinancialHealthSection
           <View style={styles.statItem}>
             <Text style={styles.statLabel}>Monthly Avg:</Text>
             <Text style={styles.statValue}>
-              {formatCurrency(healthData.weeklyStats.monthlyAvg, 'INR')} 
+              {formatCurrency(healthData.weeklyStats.monthlyAvg, displayCurrency)} 
               <Text style={[
                 styles.changeText,
                 { color: monthlyAvgChange > 0 ? colors.error : colors.income }
@@ -475,7 +478,7 @@ const WeeklyFinancialHealthSectionContent: React.FC<WeeklyFinancialHealthSection
       <View style={styles.goalSection}>
         <Text style={styles.goalIcon}>💡</Text>
         <Text style={styles.goalText}>
-          Next Week Goal: Keep under {formatCurrency(healthData.nextWeekGoal, 'INR')}
+          Next Week Goal: Keep under {formatCurrency(healthData.nextWeekGoal, displayCurrency)}
         </Text>
       </View>
       </TouchableOpacity>

@@ -1,7 +1,8 @@
 import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { colors, typography, spacing } from '../../constants/colors';
-import { formatCurrency, getDefaultCurrency } from '../../utils/currency';
+import { useTypedSelector } from '../../hooks/useTypedSelector';
+import { formatCurrency } from '../../utils/currency';
 
 interface GoalCardProps {
   goal: {
@@ -24,8 +25,9 @@ interface GoalCardProps {
 }
 
 export const GoalCard: React.FC<GoalCardProps> = ({ goal, onPress, onContribute, compact = false }) => {
+  const { displayCurrency } = useTypedSelector((state) => state.user);
   const formatAmount = (amount: number) => {
-    const currency = goal.currency || getDefaultCurrency();
+    const currency = goal.currency || displayCurrency || 'USD';
     return formatCurrency(amount, currency, { maximumFractionDigits: 0 });
   };
 

@@ -51,18 +51,10 @@ export const checkAuthStatus = createAsyncThunk(
       console.log('✅ Token exists, fetching user profile...');
       const userProfile = await apiService.getUserProfile();
       
-      // Check if user has preferred currency in backend (single source of truth)
-      const backendPreferredCurrency = userProfile.user?.preferred_currency;
-      const needsCurrencySelection = !backendPreferredCurrency;
-      
-      // Sync backend currency to local storage if it exists
-      if (backendPreferredCurrency) {
-        console.log('💰 Syncing backend currency to local storage:', backendPreferredCurrency);
-        await SecureStore.setItemAsync('preferred_currency', backendPreferredCurrency);
-      }
+      // Currency selection is handled post-login or on first account creation.
+      const needsCurrencySelection = false;
       
       console.log('👤 User profile fetched successfully');
-      console.log(`💰 Backend preferred currency: ${backendPreferredCurrency || 'NONE'}`);
       console.log(`💰 Currency selection needed: ${needsCurrencySelection ? 'YES' : 'NO'}`);
       
       return { ...userProfile, needsCurrencySelection };

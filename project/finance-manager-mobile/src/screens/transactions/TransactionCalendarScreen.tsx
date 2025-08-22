@@ -15,7 +15,7 @@ import { fetchTransactionCalendar } from '../../store/slices/transactionsSlice';
 import { LoadingSpinner } from '../../components/common/LoadingSpinner';
 import { CustomButton } from '../../components/common/CustomButton';
 import { colors, typography, spacing } from '../../constants/colors';
-import { formatCurrency, getDefaultCurrency } from '../../utils/currency';
+import { formatCurrency } from '../../utils/currency';
 
 interface TransactionCalendarScreenProps {
   navigation: any;
@@ -34,8 +34,7 @@ const TransactionCalendarScreen: React.FC<TransactionCalendarScreenProps> = ({ n
 
   const { calendarData } = useTypedSelector((state) => state.transactions);
   const { isAuthenticated } = useTypedSelector((state) => state.auth);
-
-
+  const { displayCurrency } = useTypedSelector((state) => state.user);
 
   useEffect(() => {
     if (isAuthenticated) {
@@ -165,7 +164,7 @@ const TransactionCalendarScreen: React.FC<TransactionCalendarScreenProps> = ({ n
   };
 
   const formatAmount = (amount: number) => {
-    return formatCurrency(amount, getDefaultCurrency(), { maximumFractionDigits: 0 });
+    return formatCurrency(amount, displayCurrency || 'USD', { maximumFractionDigits: 0 });
   };
 
   const renderCalendarDay = (day: number | null, index: number) => {

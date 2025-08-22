@@ -1,7 +1,8 @@
 import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { colors, typography, spacing } from '../../constants/colors';
-import { formatCurrency, getDefaultCurrency } from '../../utils/currency';
+import { useTypedSelector } from '../../hooks/useTypedSelector';
+import { formatCurrency } from '../../utils/currency';
 
 interface BalanceCardProps {
   title: string;
@@ -18,7 +19,7 @@ interface BalanceCardProps {
 export const BalanceCard: React.FC<BalanceCardProps> = ({
   title,
   balance,
-  currency = getDefaultCurrency(),
+  currency: currencyProp,
   subtitle,
   onPress,
   variant = 'default',
@@ -26,6 +27,9 @@ export const BalanceCard: React.FC<BalanceCardProps> = ({
   trendValue,
   trendDirection,
 }) => {
+  const { displayCurrency } = useTypedSelector((state) => state.user);
+  const currency = currencyProp || displayCurrency || 'USD';
+
   const formatBalance = (amount: number) => {
     return formatCurrency(amount, currency);
   };
@@ -41,7 +45,7 @@ export const BalanceCard: React.FC<BalanceCardProps> = ({
     return trendDirection === 'up' ? colors.income : colors.expense;
   };
 
-  const CardComponent = onPress ? TouchableOpacity : View;
+  const CardComponent: React.ComponentType<any> = onPress ? TouchableOpacity : View;
 
   return (
     <CardComponent

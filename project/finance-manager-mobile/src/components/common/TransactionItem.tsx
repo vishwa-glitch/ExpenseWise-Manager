@@ -2,21 +2,16 @@ import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Animated } from 'react-native';
 import { Swipeable } from 'react-native-gesture-handler';
 import { colors, typography, spacing } from '../../constants/colors';
-import { formatCurrency, getDefaultCurrency } from '../../utils/currency';
+import { formatCurrency } from '../../utils/currency';
+import { Transaction } from '../../types/transaction';
+
+// Extend the Transaction interface to include the runningBalance prop
+interface TransactionWithRunningBalance extends Transaction {
+  runningBalance?: number;
+}
 
 interface TransactionItemProps {
-  transaction: {
-    id: string;
-    amount: number;
-    type: string;
-    description: string;
-    category_name?: string;
-    account_name?: string;
-    transaction_date: string;
-    merchant?: string;
-    currency?: string;
-    tags?: string[];
-  };
+  transaction: TransactionWithRunningBalance;
   onPress?: () => void;
   onLongPress?: () => void;
   onEdit?: () => void;
@@ -34,10 +29,23 @@ export const TransactionItem: React.FC<TransactionItemProps> = ({
   showAccount = true,
   runningBalance,
 }) => {
+
   const formatAmount = (amount: number, type: string) => {
-    const currency = transaction.currency || getDefaultCurrency();
-    const formattedAmount = formatCurrency(amount, currency);
-    return type.toLowerCase() === 'expense' ? `-${formattedAmount}` : `+${formattedAmount}`;
+    // Use account_currency as primary, fallback to currency, then to 'USD'
+    const currency = transaction.account_currency || transaction.currency || 'USD';
+    const signedAmount = type.toLowerCase() === 'expense' ? -Math.abs(amount) : Math.abs(amount);
+    const formatted = formatCurrency(signedAmount, currency);
+    if (type.toLowerCase() === 'income') {
+      return `+${formatted}`;
+    }
+    return formatted;
+  };
+
+  // Format running balance with the transaction's currency
+  const formatRunningBalance = (balance: number | undefined) => {
+    if (balance === undefined) return null;
+    const currency = transaction.account_currency || transaction.currency || 'USD';
+    return formatCurrency(balance, currency);
   };
 
   const formatDate = (dateString: string) => {
@@ -179,7 +187,7 @@ export const TransactionItem: React.FC<TransactionItemProps> = ({
             styles.runningBalance,
             { color: runningBalance >= 0 ? colors.income : colors.expense }
           ]}>
-            {formatCurrency(Math.abs(runningBalance), transaction.currency || getDefaultCurrency())}
+            {formatRunningBalance(runningBalance)}
           </Text>
         )}
       </View>
@@ -211,7 +219,6 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     padding: spacing.md,
     marginBottom: spacing.sm,
-    backgroundColor: colors.card,
     flexDirection: 'row',
     alignItems: 'center',
     shadowColor: '#000',

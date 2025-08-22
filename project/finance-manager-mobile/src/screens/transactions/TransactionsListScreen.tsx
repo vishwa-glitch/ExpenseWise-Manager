@@ -18,6 +18,8 @@ import {
 import { TransactionItem } from "../../components/common/TransactionItem";
 import { LoadingSpinner } from "../../components/common/LoadingSpinner";
 import { colors, spacing } from "../../constants/colors";
+import { formatCurrency } from "../../utils/currency";
+import { Transaction } from "../../types/transaction";
 
 // Enhanced filter components
 import SearchBar from "../../components/transactions/SearchBar";
@@ -49,6 +51,7 @@ const TransactionsListScreen: React.FC<TransactionsListScreenProps> = ({
     (state) => state.transactions
   );
   const { isAuthenticated } = useTypedSelector((state) => state.auth);
+  const { displayCurrency } = useTypedSelector((state) => state.user);
 
   // Get accountId, filterDate, startDate, and endDate from route params
   const { accountId, filterDate, startDate, endDate } = route?.params || {};
@@ -198,7 +201,7 @@ const TransactionsListScreen: React.FC<TransactionsListScreenProps> = ({
     setLoadingMore(false);
   };
 
-  const groupAndCalculateRunningBalance = (transactionsList: any[]) => {
+  const groupAndCalculateRunningBalance = (transactionsList: Transaction[]) => {
     // Helper function to extract date key without timezone issues
     const getDateKey = (transaction: any) => {
       if (transaction.transaction_date.includes("T")) {
@@ -291,7 +294,7 @@ const TransactionsListScreen: React.FC<TransactionsListScreenProps> = ({
     return result.sort((a, b) => b.title.localeCompare(a.title));
   };
 
-  const handleTransactionPress = (transaction: any) => {
+  const handleTransactionPress = (transaction: Transaction) => {
     navigation.navigate("TransactionDetail", {
       transactionId: transaction.id,
       transaction,
@@ -324,7 +327,7 @@ const TransactionsListScreen: React.FC<TransactionsListScreenProps> = ({
     );
   };
 
-  const handleEditTransaction = (transaction: any) => {
+  const handleEditTransaction = (transaction: Transaction) => {
     navigation.navigate("AddEditTransaction", {
       transactionId: transaction.id,
       transaction,
@@ -425,7 +428,7 @@ const TransactionsListScreen: React.FC<TransactionsListScreenProps> = ({
     });
   };
 
-  const renderTransactionItem = ({ item }: { item: any }) => {
+  const renderTransactionItem = ({ item }: { item: Transaction }) => {
     return (
       <TransactionItem
         transaction={item}
@@ -463,9 +466,10 @@ const TransactionsListScreen: React.FC<TransactionsListScreenProps> = ({
               },
             ]}
           >
-            {`${section.totalAmount >= 0 ? "+" : ""}₹${Math.abs(
-              section.totalAmount
-            ).toLocaleString("en-IN")}`}
+            {`${section.totalAmount >= 0 ? "+" : ""}${formatCurrency(
+              Math.abs(section.totalAmount),
+              displayCurrency || 'USD'
+            )}`}
           </Text>
           <Text style={styles.sectionHeaderCount}>
             {section.data.length} transactions

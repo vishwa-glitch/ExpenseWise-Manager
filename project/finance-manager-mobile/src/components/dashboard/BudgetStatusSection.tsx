@@ -35,6 +35,7 @@ const BudgetStatusSectionContent: React.FC<BudgetStatusSectionProps> = ({
     budgetStatusLoading, 
     budgetStatusError 
   } = useTypedSelector((state) => state.budgets);
+  const { displayCurrency } = useTypedSelector((state) => state.user);
   
   const { getScenarioErrorMessage } = useErrorHandler();
   const networkState = useNetworkState();
@@ -78,26 +79,8 @@ const BudgetStatusSectionContent: React.FC<BudgetStatusSectionProps> = ({
     const subscription = DeviceEventEmitter.addListener('networkReconnected', handleNetworkReconnect);
     
     // Add to cleanup manager
-    addCleanup(() => {
-      subscription.remove();
-    });
+    addCleanup(() => subscription.remove());
   }, [budgetStatusError, dispatch, addCleanup]);
-
-  // Announce changes for screen readers
-  useEffect(() => {
-    if (currentBudgetStatus && !budgetStatusLoading && !budgetStatusError) {
-      const message = currentBudgetStatus.isOverBudget 
-        ? `Budget alert: You are over budget by ${formatCurrency(currentBudgetStatus.overBudgetAmount || 0, 'INR')}`
-        : `Budget update: ${currentBudgetStatus.percentage}% of budget used`;
-      
-      // Delay announcement to avoid conflicts with loading states
-      const timer = setTimeout(() => {
-        announceChange(message);
-      }, 500);
-
-      addCleanup(() => clearTimeout(timer));
-    }
-  }, [currentBudgetStatus, budgetStatusLoading, budgetStatusError, announceChange, addCleanup]);
 
   // Memoized budget status calculation for performance
   const currentBudgetStatus = useMemoizedCalculation(
@@ -108,6 +91,7 @@ const BudgetStatusSectionContent: React.FC<BudgetStatusSectionProps> = ({
       }
 
       // Fallback to calculating from budgets array
+      // TODO: Implement proper currency conversion. For now, only aggregating budgets in the display currency.
       if (!budgets || !Array.isArray(budgets) || budgets.length === 0) {
         return {
           totalBudget: 0,
@@ -119,7 +103,9 @@ const BudgetStatusSectionContent: React.FC<BudgetStatusSectionProps> = ({
         };
       }
 
-      const activeBudgets = budgets.filter(budget => budget.is_active !== false);
+      const activeBudgets = budgets.filter(budget => 
+        budget.is_active !== false && budget.currency === displayCurrency
+      );
       const totalBudget = activeBudgets.reduce((sum, budget) => sum + (budget.amount || 0), 0);
       const totalSpent = activeBudgets.reduce((sum, budget) => sum + (budget.spent_amount || 0), 0);
       const percentage = totalBudget > 0 ? Math.round((totalSpent / totalBudget) * 100) : 0;
@@ -139,9 +125,28 @@ const BudgetStatusSectionContent: React.FC<BudgetStatusSectionProps> = ({
         overBudgetAmount: percentage > 100 ? totalSpent - totalBudget : undefined,
       };
     },
-    [budgetStatus, budgets],
-    `budget-status-${budgets?.length || 0}-${budgetStatus?.totalSpent || 0}`
+    [budgetStatus, budgets, displayCurrency],
+    {
+      calculationName: `budget-status-${budgets?.length || 0}-${budgetStatus?.totalSpent || 0}-${displayCurrency}`
+    }
   );
+
+  // Announce changes for screen readers
+  useEffect(() => {
+    if (currentBudgetStatus && !budgetStatusLoading && !budgetStatusError) {
+      // TODO: Implement proper currency conversion for announcements
+      const message = currentBudgetStatus.isOverBudget 
+        ? `Budget alert: You are over budget by ${formatCurrency(currentBudgetStatus.overBudgetAmount || 0, displayCurrency)}`
+        : `Budget update: ${currentBudgetStatus.percentage}% of budget used`;
+      
+      // Delay announcement to avoid conflicts with loading states
+      const timer = setTimeout(() => {
+        announceChange(message);
+      }, 500);
+
+      addCleanup(() => clearTimeout(timer));
+    }
+  }, [currentBudgetStatus, budgetStatusLoading, budgetStatusError, announceChange, addCleanup]);
 
   const getProgressBarColor = () => {
     if (currentBudgetStatus.percentage >= 100) return colors.error;
@@ -153,7 +158,8 @@ const BudgetStatusSectionContent: React.FC<BudgetStatusSectionProps> = ({
     if (currentBudgetStatus.percentage >= 100) {
       const overAmount = currentBudgetStatus.overBudgetAmount || 
         (currentBudgetStatus.totalSpent - currentBudgetStatus.totalBudget);
-      return `Over budget by ${formatCurrency(overAmount, 'INR')}`;
+      // TODO: Implement proper currency conversion
+      return `Over budget by ${formatCurrency(overAmount, displayCurrency)}`;
     }
     return `${currentBudgetStatus.percentage}% used • ${currentBudgetStatus.daysLeft} days left`;
   };
@@ -271,7 +277,8 @@ const BudgetStatusSectionContent: React.FC<BudgetStatusSectionProps> = ({
             numberOfLines={2}
             ellipsizeMode="tail"
           >
-            {formatCurrency(currentBudgetStatus.totalSpent, 'INR')} of {formatCurrency(currentBudgetStatus.totalBudget, 'INR')}
+            {/* TODO: Implement proper currency conversion */}
+            {formatCurrency(currentBudgetStatus.totalSpent, displayCurrency)} of {formatCurrency(currentBudgetStatus.totalBudget, displayCurrency)}
           </Text>
           {(budgetStatusLoading || isUpdating) && (
             <ActivityIndicator 
@@ -389,7 +396,6 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     fontSize: 14,
     flexShrink: 1,
-    numberOfLines: 2,
   },
   amountContainer: {
     flexDirection: 'row',
@@ -453,7 +459,7 @@ const styles = StyleSheet.create({
   },
   retryButtonText: {
     ...typography.body,
-    color: colors.white,
+    color: colors.background,
     fontWeight: '600',
     fontSize: 14,
   },

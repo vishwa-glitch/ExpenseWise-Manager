@@ -38,6 +38,7 @@ export const CategoryBreakdownSection: React.FC<CategoryBreakdownSectionProps> =
   const [refreshing, setRefreshing] = useState(false);
 
   const { categoryBreakdown } = useTypedSelector((state) => state.analytics);
+  const { displayCurrency } = useTypedSelector((state) => state.user);
 
   const handleRefresh = async () => {
     setRefreshing(true);
@@ -156,7 +157,7 @@ export const CategoryBreakdownSection: React.FC<CategoryBreakdownSectionProps> =
         <View style={styles.totalContainer}>
           <Text style={styles.totalLabel}>Total Spending</Text>
           <Text style={styles.totalAmount}>
-            {formatCurrency(totalAmount, 'INR')}
+            {formatCurrency(totalAmount, displayCurrency)}
           </Text>
         </View>
         
@@ -165,6 +166,7 @@ export const CategoryBreakdownSection: React.FC<CategoryBreakdownSectionProps> =
           title="Category Breakdown"
           isLoading={isLoading}
           showPercentages={true}
+          displayCurrency={displayCurrency}
         />
         
         <View style={styles.categoryList}>
@@ -174,7 +176,7 @@ export const CategoryBreakdownSection: React.FC<CategoryBreakdownSectionProps> =
               style={styles.categoryItem}
               activeOpacity={0.7}
               accessibilityRole="button"
-              accessibilityLabel={`${category.name} category, spent ${formatCurrency(category.amount, 'INR')}, ${((category.amount / totalAmount) * 100).toFixed(1)} percent of total spending`}
+              accessibilityLabel={`${category.name} category, spent ${formatCurrency(category.amount, displayCurrency)}, ${((category.amount / totalAmount) * 100).toFixed(1)} percent of total spending`}
               accessibilityHint="Tap to view category details"
             >
               <View style={styles.categoryLeft}>
@@ -188,7 +190,7 @@ export const CategoryBreakdownSection: React.FC<CategoryBreakdownSectionProps> =
               </View>
               <View style={styles.categoryRight}>
                 <Text style={styles.categoryAmount}>
-                  {formatCurrency(category.amount, 'INR')}
+                  {formatCurrency(category.amount, displayCurrency)}
                 </Text>
                 <Text style={styles.categoryPercentage}>
                   {((category.amount / totalAmount) * 100).toFixed(1)}%
