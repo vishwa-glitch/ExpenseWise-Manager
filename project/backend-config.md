@@ -67,10 +67,11 @@ Full API Base: [TO BE DEPLOYED]/api
 - `GET /api/accounts` - List all user accounts
 - `GET /api/accounts/:id` - Get specific account details
 - `POST /api/accounts` - Create new account
-- `PUT /api/accounts/:id` - Update account
+- `PUT /api/accounts/:id` - Update account (supports currency conversion)
 - `DELETE /api/accounts/:id` - Delete/deactivate account
 - `GET /api/accounts/:id/balance-history?days=30` - Get balance history
 - `GET /api/accounts/:id/summary?period=month` - Get account summary
+- `GET /api/accounts/currency-summary` - Get account totals grouped by currency
 
 ### 💰 Transaction Management
 - `GET /api/transactions?page=1&limit=20` - List transactions (paginated)
@@ -80,6 +81,11 @@ Full API Base: [TO BE DEPLOYED]/api
 - `DELETE /api/transactions/:id` - Delete transaction
 - `POST /api/transactions/bulk-import` - Bulk import transactions
 - `GET /api/transactions/export?format=excel` - Export transactions
+
+### 💱 Currency Management
+- `GET /api/currency/supported` - Get list of supported currencies
+- `GET /api/currency/rates/:baseCurrency` - Get exchange rates for base currency
+- `POST /api/currency/convert` - Convert amount between currencies
 
 ### 🏷️ Category Management
 - `GET /api/categories` - List all categories
@@ -168,25 +174,45 @@ Full API Base: [TO BE DEPLOYED]/api
 
 ### Environment Variables Required
 ```bash
-# Database
+# Database Configuration
 DB_HOST=localhost
 DB_PORT=5432
-DB_NAME=finance_manager
+DB_NAME=finance-db
 DB_USER=postgres
 DB_PASSWORD=your_password
 
-# JWT
-JWT_SECRET=your-super-secret-jwt-key
-JWT_REFRESH_SECRET=your-refresh-secret-key
+# Redis Configuration (for caching)
+REDIS_HOST=localhost
+REDIS_PORT=6379
+REDIS_PASSWORD=your_redis_password
 
-# AI Service
+# JWT Configuration - CRITICAL FOR AUTHENTICATION
+JWT_SECRET=your-super-secret-jwt-key-minimum-32-characters-long
+JWT_REFRESH_SECRET=your-super-secret-refresh-key-different-from-jwt-secret
+
+# API Keys
+EXCHANGE_RATE_API_KEY=your-exchange-rate-api-key
 COHERE_API_KEY=your-cohere-api-key
 
-# AWS (for file uploads)
-AWS_ACCESS_KEY_ID=your-access-key
-AWS_SECRET_ACCESS_KEY=your-secret-key
+# AWS Configuration (for file uploads)
+AWS_ACCESS_KEY_ID=your-aws-access-key-id
+AWS_SECRET_ACCESS_KEY=your-aws-secret-access-key
 AWS_REGION=us-east-1
-AWS_S3_BUCKET=your-bucket-name
+AWS_S3_BUCKET=finance-manager-uploads
+
+# Application Configuration
+NODE_ENV=development
+PORT=3000
+FRONTEND_URL=http://localhost:3000
+
+# Email Configuration (for notifications)
+SMTP_HOST=smtp.gmail.com
+SMTP_PORT=587
+SMTP_USER=your-email@gmail.com
+SMTP_PASS=your-app-password
+
+# Logging
+LOG_LEVEL=info
 ```
 
 ### Rate Limits
@@ -262,6 +288,7 @@ AWS_S3_BUCKET=your-bucket-name
       "transaction_date": "2024-01-15",
       "category_name": "Food & Dining",
       "account_name": "Main Checking",
+      "account_currency": "USD",
       "merchant": "Supermarket",
       "tags": ["groceries", "food"],
       "created_at": "2024-01-15T10:30:00.000Z"
@@ -273,6 +300,34 @@ AWS_S3_BUCKET=your-bucket-name
     "total": 150,
     "pages": 8
   }
+}
+```
+
+### Account Update with Currency Conversion
+```javascript
+// PUT /api/accounts/:id
+{
+  "name": "Updated Account Name",
+  "currency": "EUR",
+  "convert_balance": true  // Optional: convert existing balance to new currency
+}
+
+// Response:
+{
+  "message": "Account updated successfully",
+  "account": {
+    "id": "uuid",
+    "name": "Updated Account Name",
+    "type": "checking",
+    "balance": 85.23,  // Converted from $100 USD to €85.23 EUR
+    "currency": "EUR",
+    "is_active": true,
+    "created_at": "2024-01-01T00:00:00.000Z",
+    "updated_at": "2024-01-20T10:30:00.000Z"
+  },
+  "conversion_applied": true,
+  "original_balance": 100.00,
+  "original_currency": "USD"
 }
 ```
 
@@ -327,7 +382,8 @@ AWS_S3_BUCKET=your-bucket-name
       "monthly_savings_needed": 11719.00,
       "status": "active",
       "category": "emergency",
-      "priority": 1
+      "priority": "high",
+      "priority_display": "high"
     }
   ]
 }
@@ -349,6 +405,95 @@ AWS_S3_BUCKET=your-bucket-name
       "created_at": "2024-01-20T08:00:00.000Z"
     }
   ]
+}
+```
+
+### Currency Summary Response
+```javascript
+{
+  "currency_summary": [
+    {
+      "currency": "USD",
+      "account_count": 2,
+      "total_balance": 7500.00,
+      "avg_balance": 3750.00
+    },
+    {
+      "currency": "EUR",
+      "account_count": 1,
+      "total_balance": 1800.00,
+      "avg_balance": 1800.00
+    }
+  ]
+}
+```
+
+### Currency API Examples
+
+**Get Supported Currencies:**
+```bash
+curl -X GET http://localhost:3000/api/currency/supported
+```
+
+**Response:**
+```javascript
+{
+  "currencies": [
+    {
+      "code": "USD",
+      "name": "US Dollar",
+      "symbol": "$"
+    },
+    {
+      "code": "EUR",
+      "name": "Euro",
+      "symbol": "€"
+    },
+    {
+      "code": "GBP",
+      "name": "British Pound",
+      "symbol": "£"
+    }
+    // ... more currencies
+  ]
+}
+```
+
+**Get Exchange Rates:**
+```bash
+curl -X GET http://localhost:3000/api/currency/rates/USD
+```
+
+**Response:**
+```javascript
+{
+  "base": "USD",
+  "date": "2024-01-20",
+  "rates": {
+    "EUR": 0.85,
+    "GBP": 0.73,
+    "JPY": 110.25,
+    "CAD": 1.25
+    // ... more rates
+  }
+}
+```
+
+**Convert Currency:**
+```bash
+curl -X POST http://localhost:3000/api/currency/convert \
+  -H "Content-Type: application/json" \
+  -d '{"amount": 100, "from": "USD", "to": "EUR"}'
+```
+
+**Response:**
+```javascript
+{
+  "original_amount": 100,
+  "from_currency": "USD",
+  "to_currency": "EUR",
+  "converted_amount": 85.23,
+  "timestamp": "2024-01-20T10:30:00.000Z"
 }
 ```
 
@@ -541,47 +686,3 @@ Body: { refresh_token: REFRESH_TOKEN }
 ---
 
 **Ready to integrate!** This backend provides a complete financial management system with AI-powered features, comprehensive analytics, and a robust subscription model. All endpoints are documented in the `API_TESTING_GUIDE.md` for detailed testing instructions.
-
-
-
-the below contents used in backedn env file(only redis is mocked):
-
-# Database Configuration
-DB_HOST=finance567.cluster-c5oiceume4mj.ap-south-1.rds.amazonaws.com
-DB_PORT=5432
-DB_NAME=postgres
-DB_USER=vishwavikas
-DB_PASSWORD=vishwa555
-
-# Redis Configuration
-REDIS_HOST=localhost
-REDIS_PORT=6379
-REDIS_PASSWORD=
-
-# JWT Configuration
-JWT_SECRET=a1b2c3d4e5f6g7h8i9j0k1l2m3n4o5p6q7r8s9t0u1v2w3x4y5z6
-JWT_REFRESH_SECRET=z6y5x4w3v2u1t0s9r8q7p6o5n4m3l2k1j0i9h8g7f6e5d4c3b2a1
-
-# API Keys
-EXCHANGE_RATE_API_KEY=5e66cb38c69609aa9e3ce33c
-COHERE_API_KEY=aKPbm8ElEl3qSA8FHQ8sHPzObmo1kcH0S4oeTOWK
-
-# AWS Configuration
-AWS_ACCESS_KEY_ID=AKIARHQBNTYJTERSKV6C
-AWS_SECRET_ACCESS_KEY=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
-AWS_REGION=eu-north-1
-AWS_S3_BUCKET=finance-manager-uploads
-
-# Application Configuration
-NODE_ENV=development
-PORT=3000
-FRONTEND_URL=http://localhost:3000
-
-# Email Configuration (for notifications)
-SMTP_HOST=smtp.gmail.com
-SMTP_PORT=587
-SMTP_USER=your-email@gmail.com
-SMTP_PASS=your-app-password
-
-# Logging
-LOG_LEVEL=info
