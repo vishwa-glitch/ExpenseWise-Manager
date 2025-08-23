@@ -7,13 +7,19 @@ import {
   ScrollView,
   TouchableOpacity,
   Animated,
+  Dimensions,
 } from 'react-native';
 import { useAppDispatch } from '../../hooks/useAppDispatch';
 import { useTypedSelector } from '../../hooks/useTypedSelector';
+import { LineChart } from 'react-native-chart-kit';
 import { FadeInView } from '../common/FadeInView';
 import { LoadingSkeleton } from '../common/LoadingSkeleton';
 import { colors, typography, spacing } from '../../constants/colors';
 import { fetchSpendingTrends, fetchCategoryBreakdown } from '../../store/slices/analyticsSlice';
+import { fetchBudgets } from '../../store/slices/budgetsSlice';
+import { fetchGoals } from '../../store/slices/goalsSlice';
+import { SmartAlertCard } from './widgets/SmartAlertCard';
+import { GoalProgressCard } from './widgets/GoalProgressCard';
 
 export type TimePeriod = 'weekly' | 'monthly' | '6months' | 'yearly';
 
@@ -32,12 +38,19 @@ export const SmartInsightsSection: React.FC<SmartInsightsSectionProps> = ({
   const [selectedPeriod, setSelectedPeriod] = useState<TimePeriod>('monthly');
   const [refreshing, setRefreshing] = useState(false);
 
-  const { spendingTrends } = useTypedSelector((state) => state.analytics);
+  const { spendingTrends, error } = useTypedSelector((state) => state.analytics);
+  const { budgets, budgetStatus, isLoading: budgetsLoading, error: budgetsError } = useTypedSelector((state) => state.budgets);
+  const { goals, isLoading: goalsLoading, error: goalsError } = useTypedSelector((state) => state.goals);
 
   useEffect(() => {
     // Load data for the selected period when it changes
     handlePeriodChange(selectedPeriod);
   }, [selectedPeriod]);
+
+  useEffect(() => {
+    dispatch(fetchBudgets());
+    dispatch(fetchGoals());
+  }, [dispatch]);
 
   const handlePeriodChange = async (period: TimePeriod) => {
     setSelectedPeriod(period);
@@ -181,7 +194,35 @@ export const SmartInsightsSection: React.FC<SmartInsightsSectionProps> = ({
   const hasSpendingData = spendingData.datasets[0].data.some(value => value > 0);
 
   // Simplified rendering with basic components
+  const getHighestUsageBudget = () => {
+    if (!budgets || budgets.length === 0) return null;
+    return budgets.reduce((max, budget) => (budget.spent_amount / budget.amount > max.spent_amount / max.amount ? budget : max), budgets[0]);
+  };
+
+  const getPrimaryGoal = () => {
+    if (!goals || goals.length === 0) return null;
+    return goals[0]; 
+  };
+
+  const highestUsageBudget = getHighestUsageBudget();
+  const primaryGoal = getPrimaryGoal();
+
   const renderInsightsContent = () => {
+    if (error) {
+      return (
+        <View style={styles.errorState}>
+          <Text style={styles.errorIcon}>⚠️</Text>
+          <Text style={styles.errorTitle}>Unable to Load Insights</Text>
+          <Text style={styles.errorMessage}>
+            We couldn't fetch your spending data. Please check your connection and try again.
+          </Text>
+          <TouchableOpacity style={styles.retryButton} onPress={handleRefresh}>
+            <Text style={styles.retryButtonText}>Try Again</Text>
+          </TouchableOpacity>
+        </View>
+      );
+    }
+
     if (isLoading && !hasSpendingData) {
       return (
         <View style={styles.loadingContainer}>
@@ -210,8 +251,32 @@ export const SmartInsightsSection: React.FC<SmartInsightsSectionProps> = ({
 
     return (
       <FadeInView>
+        <View style={styles.widgetsContainer}>
+          <SmartAlertCard 
+            isLoading={budgetsLoading}
+            error={budgetsError}
+            {...(highestUsageBudget && budgetStatus && {
+              title: `${highestUsageBudget.name} Budget`,
+              percentageUsed: Math.round((highestUsageBudget.spent_amount / highestUsageBudget.amount) * 100),
+              currentAmount: highestUsageBudget.spent_amount,
+              totalAmount: highestUsageBudget.amount,
+              daysLeft: budgetStatus.daysLeft,
+            })}
+          />
+          <GoalProgressCard 
+            isLoading={goalsLoading}
+            error={goalsError}
+            {...(primaryGoal && {
+              title: primaryGoal.name,
+              percentage: Math.round((primaryGoal.current_amount / primaryGoal.target_amount) * 100),
+              currentAmount: primaryGoal.current_amount,
+              totalAmount: primaryGoal.target_amount,
+            })}
+          />
+        </View>
+
         <View style={styles.periodSelector}>
-          <Text style={styles.periodLabel}>Period: {selectedPeriod}</Text>
+          <Text style={styles.periodLabel}>Select Period:</Text>
           <View style={styles.periodButtons}>
             {(['weekly', 'monthly', '6months', 'yearly'] as TimePeriod[]).map((period) => (
               <TouchableOpacity
@@ -239,11 +304,32 @@ export const SmartInsightsSection: React.FC<SmartInsightsSectionProps> = ({
             <Text style={styles.chartSubtitle}>
               Total spending for {selectedPeriod} period
             </Text>
-            <View style={styles.chartPlaceholder}>
-              <Text style={styles.chartPlaceholderText}>
-                Chart data: {spendingData.datasets[0].data.join(', ')}
-              </Text>
-            </View>
+            <LineChart
+              data={spendingData}
+              width={Dimensions.get('window').width - (spacing.md * 2) - (spacing.lg * 2)}
+              height={220}
+              chartConfig={{
+                backgroundColor: colors.surface,
+                backgroundGradientFrom: colors.surface,
+                backgroundGradientTo: colors.surface,
+                decimalPlaces: 0,
+                color: (opacity = 1) => `rgba(7, 107, 55, ${opacity})`,
+                labelColor: (opacity = 1) => `rgba(0, 0, 0, ${opacity})`,
+                style: {
+                  borderRadius: 16,
+                },
+                propsForDots: {
+                  r: '6',
+                  strokeWidth: '2',
+                  stroke: colors.primary,
+                },
+              }}
+              bezier
+              style={{
+                marginVertical: 8,
+                borderRadius: 16,
+              }}
+            />
           </View>
         )}
       </FadeInView>
@@ -272,6 +358,10 @@ export const SmartInsightsSection: React.FC<SmartInsightsSectionProps> = ({
 };
 
 const styles = StyleSheet.create({
+  widgetsContainer: {
+    marginBottom: spacing.lg,
+    gap: spacing.md,
+  },
   section: {
     marginBottom: spacing.md,
   },
@@ -328,7 +418,7 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   periodButtonTextActive: {
-    color: colors.white,
+    color: colors.background,
   },
   chartContainer: {
     backgroundColor: colors.card,
@@ -398,6 +488,33 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     lineHeight: 22,
     marginBottom: spacing.lg,
+  },
+  errorState: {
+    alignItems: 'center',
+    paddingVertical: spacing.xl,
+    backgroundColor: colors.surface,
+    borderRadius: 12,
+    marginHorizontal: spacing.md,
+    borderColor: colors.error,
+    borderWidth: 1,
+  },
+  errorIcon: {
+    fontSize: 48,
+    marginBottom: spacing.md,
+  },
+  errorTitle: {
+    ...typography.h3,
+    color: colors.error,
+    marginBottom: spacing.sm,
+    textAlign: 'center',
+  },
+  errorMessage: {
+    ...typography.body,
+    color: colors.textSecondary,
+    textAlign: 'center',
+    lineHeight: 22,
+    marginBottom: spacing.lg,
+    paddingHorizontal: spacing.md,
   },
   retryButton: {
     backgroundColor: colors.primary,

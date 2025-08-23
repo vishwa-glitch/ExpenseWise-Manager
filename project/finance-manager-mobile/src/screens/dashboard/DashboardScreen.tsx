@@ -35,6 +35,8 @@ import { ErrorBoundary } from '../../components/common/ErrorBoundary';
 import { TimePeriod } from '../../components/common/TimePeriodSelector';
 import { colors, typography, spacing } from '../../constants/colors';
 import { formatCurrency } from '../../utils/currency';
+import { SmartAlertCard } from '../../components/dashboard/widgets/SmartAlertCard';
+import { GoalProgressCard } from '../../components/dashboard/widgets/GoalProgressCard';
 
 interface DashboardScreenProps {
   navigation: any;
@@ -424,6 +426,13 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
           </View>
         </View>
 
+        {/* Widgets Section */}
+        <View style={styles.widgetsSection}>
+          <SmartAlertCard onPress={() => navigation.navigate('Budgets')} onDetailsPress={() => navigation.navigate('Budgets')} />
+          <View style={{ height: spacing.md }} />
+          <GoalProgressCard onPress={() => navigation.navigate('Goals')} />
+        </View>
+
         {/* Budget Status */}
         <BudgetStatusSection 
           onPress={() => navigation.navigate('More', { screen: 'Budgets' })}
@@ -646,6 +655,10 @@ const styles = StyleSheet.create({
   dateText: {
     ...typography.caption,
     color: colors.textSecondary,
+  },
+  widgetsSection: {
+    paddingHorizontal: spacing.md,
+    marginBottom: spacing.md,
   },
   balanceCard: {
     backgroundColor: colors.card,

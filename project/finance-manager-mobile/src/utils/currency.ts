@@ -8,7 +8,11 @@ interface Account {
   transaction_count?: number; // Optional as it's not always present
 }
 
-export const formatCurrency = (amount: number, currency: string): string => {
+export const formatCurrency = (
+  amount: number,
+  currency: string,
+  options?: Intl.NumberFormatOptions
+): string => {
   // Handle cases where currency might be null, undefined, or an empty string
   if (!currency) {
     // Fallback to a default non-currency format
@@ -16,14 +20,20 @@ export const formatCurrency = (amount: number, currency: string): string => {
       style: 'decimal',
       minimumFractionDigits: 2,
       maximumFractionDigits: 2,
+      ...options,
     }).format(amount);
   }
 
   try {
-    return new Intl.NumberFormat(undefined, {
+    const formatted = new Intl.NumberFormat(undefined, {
       style: 'currency',
       currency: currency,
+      currencyDisplay: 'symbol',
+      ...options,
     }).format(amount);
+
+    // Remove currency code like 'US' from the beginning of the string
+    return formatted.replace(/^[A-Z]{2,3}/, '');
   } catch (error) {
     // Handle invalid currency codes that might still be passed
     console.warn(`Invalid currency code '${currency}' provided to formatCurrency. Formatting as decimal.`);
@@ -31,6 +41,7 @@ export const formatCurrency = (amount: number, currency: string): string => {
       style: 'decimal',
       minimumFractionDigits: 2,
       maximumFractionDigits: 2,
+      ...options,
     }).format(amount);
   }
 };

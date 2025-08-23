@@ -10,20 +10,35 @@ import {
   ScrollView,
 } from 'react-native';
 import { useAppDispatch } from '../../hooks/useAppDispatch';
-import { useTypedSelector } from '../../hooks/useTypedSelector';
+import { useTypedSelector, RootState } from '../../hooks/useTypedSelector';
 import { fetchTransactionCalendar } from '../../store/slices/transactionsSlice';
 import { LoadingSpinner } from '../../components/common/LoadingSpinner';
 import { CustomButton } from '../../components/common/CustomButton';
 import { colors, typography, spacing } from '../../constants/colors';
 import { formatCurrency } from '../../utils/currency';
+import { StackNavigationProp } from '@react-navigation/stack';
+
+// Define your stack navigator's params list
+// This is a basic example; you should replace it with your actual navigator's params
+type RootStackParamList = {
+  TransactionsMain: { 
+    screen: string;
+    params: { 
+      filterDate?: string;
+      startDate?: string;
+      endDate?: string;
+    };
+  };
+  // Add other screens here
+};
 
 interface TransactionCalendarScreenProps {
-  navigation: any;
+  navigation: StackNavigationProp<RootStackParamList, 'TransactionsMain'>;
 }
 
 const TransactionCalendarScreen: React.FC<TransactionCalendarScreenProps> = ({ navigation }) => {
   const dispatch = useAppDispatch();
-  const [currentDate, setCurrentDate] = useState(new Date());
+  const [currentDate, setCurrentDate] = useState<Date>(new Date());
   const [isLoading, setIsLoading] = useState(false);
   
   // Date filter states
@@ -32,9 +47,9 @@ const TransactionCalendarScreen: React.FC<TransactionCalendarScreenProps> = ({ n
   const [selectedEndDate, setSelectedEndDate] = useState('');
   const [isDateRangeActive, setIsDateRangeActive] = useState(false);
 
-  const { calendarData } = useTypedSelector((state) => state.transactions);
-  const { isAuthenticated } = useTypedSelector((state) => state.auth);
-  const { displayCurrency } = useTypedSelector((state) => state.user);
+  const { calendarData } = useTypedSelector((state: RootState) => state.transactions);
+  const { isAuthenticated } = useTypedSelector((state: RootState) => state.auth);
+  const { displayCurrency } = useTypedSelector((state: RootState) => state.user);
 
   useEffect(() => {
     if (isAuthenticated) {
@@ -560,28 +575,32 @@ const TransactionCalendarScreen: React.FC<TransactionCalendarScreenProps> = ({ n
       <View style={styles.summaryContainer}>
         <View style={styles.summaryItem}>
           <Text style={styles.summaryLabel}>Income</Text>
-          <Text style={[styles.summaryAmount, { color: colors.income }]}>
+          <Text style={[styles.summaryAmount, { color: colors.income }]} numberOfLines={1} adjustsFontSizeToFit>
             +{formatAmount(summary.totalIncome)}
           </Text>
         </View>
         <View style={styles.summaryItem}>
           <Text style={styles.summaryLabel}>Expenses</Text>
-          <Text style={[styles.summaryAmount, { color: colors.expense }]}>
+          <Text style={[styles.summaryAmount, { color: colors.expense }]} numberOfLines={1} adjustsFontSizeToFit>
             -{formatAmount(summary.totalExpenses)}
           </Text>
         </View>
         <View style={styles.summaryItem}>
           <Text style={styles.summaryLabel}>Net</Text>
-          <Text style={[
-            styles.summaryAmount,
-            { color: summary.netAmount >= 0 ? colors.income : colors.expense }
-          ]}>
+          <Text 
+            style={[
+              styles.summaryAmount,
+              { color: summary.netAmount >= 0 ? colors.income : colors.expense }
+            ]}
+            numberOfLines={1} 
+            adjustsFontSizeToFit
+          >
             {summary.netAmount >= 0 ? '+' : ''}{formatAmount(summary.netAmount)}
           </Text>
         </View>
         <View style={styles.summaryItem}>
           <Text style={styles.summaryLabel}>Transactions</Text>
-          <Text style={styles.summaryAmount}>
+          <Text style={styles.summaryAmount} numberOfLines={1} adjustsFontSizeToFit>
             {summary.transactionCount}
           </Text>
         </View>
@@ -800,7 +819,7 @@ const styles = StyleSheet.create({
   },
   summaryContainer: {
     flexDirection: 'row',
-    justifyContent: 'space-around',
+    justifyContent: 'space-between',
     backgroundColor: colors.card,
     marginBottom: spacing.sm,
     borderRadius: 8,
@@ -815,7 +834,9 @@ const styles = StyleSheet.create({
     elevation: 3,
   },
   summaryItem: {
+    flex: 1,
     alignItems: 'center',
+    paddingHorizontal: spacing.xs,
   },
   summaryAmount: {
     ...typography.h3,

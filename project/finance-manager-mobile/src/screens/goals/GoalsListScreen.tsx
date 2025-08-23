@@ -18,18 +18,27 @@ import { GoalCard } from '../../components/common/GoalCard';
 import { LoadingSpinner } from '../../components/common/LoadingSpinner';
 import { colors, typography, spacing } from '../../constants/colors';
 import { SUBSCRIPTION_TIERS } from '../../config/api';
+import { RootState } from '../../store';
 
 interface GoalsListScreenProps {
   navigation: any;
+}
+
+interface Goal {
+  id: number;
+  title: string;
+  status: string;
+  current_amount: number;
+  target_amount: number;
 }
 
 const GoalsListScreen: React.FC<GoalsListScreenProps> = ({ navigation }) => {
   const dispatch = useAppDispatch();
   const [refreshing, setRefreshing] = useState(false);
 
-  const { goals, isLoading } = useTypedSelector((state) => state.goals);
-  const { profile } = useTypedSelector((state) => state.user);
-  const { isAuthenticated } = useTypedSelector((state) => state.auth);
+  const { goals, isLoading } = useTypedSelector((state: RootState) => state.goals);
+  const { profile } = useTypedSelector((state: RootState) => state.user);
+  const { isAuthenticated } = useTypedSelector((state: RootState) => state.auth);
 
   useEffect(() => {
     if (isAuthenticated) {
@@ -66,11 +75,11 @@ const GoalsListScreen: React.FC<GoalsListScreenProps> = ({ navigation }) => {
   };
 
   const getActiveGoals = () => {
-    return goals.filter(goal => goal.status === 'active');
+    return goals.filter((goal: Goal) => goal.status === 'active');
   };
 
   const getCompletedGoals = () => {
-    return goals.filter(goal => goal.status === 'completed');
+    return goals.filter((goal: Goal) => goal.status === 'completed');
   };
 
   const canAddGoal = () => {
@@ -138,11 +147,11 @@ const GoalsListScreen: React.FC<GoalsListScreenProps> = ({ navigation }) => {
   };
 
   const calculateTotalSavings = () => {
-    return goals.reduce((total, goal) => total + goal.current_amount, 0);
+    return goals.reduce((total: number, goal: any) => total + goal.current_amount, 0);
   };
 
   const calculateTotalTarget = () => {
-    return goals.reduce((total, goal) => total + goal.target_amount, 0);
+    return goals.reduce((total: number, goal: any) => total + goal.target_amount, 0);
   };
 
   const renderGoalItem = ({ item }: { item: any }) => (
@@ -296,22 +305,13 @@ const GoalsListScreen: React.FC<GoalsListScreenProps> = ({ navigation }) => {
     </View>
   );
 
+
   if (!isAuthenticated || (isLoading && goals.length === 0)) {
     return <LoadingSpinner />;
   }
 
   return (
     <SafeAreaView style={styles.container}>
-      <View style={styles.header}>
-        <Text style={styles.screenTitle}>Goals</Text>
-        <TouchableOpacity
-          style={styles.menuButton}
-          onPress={() => navigation.openDrawer()}
-        >
-          <Text style={styles.menuIcon}>☰</Text>
-        </TouchableOpacity>
-      </View>
-
       <FlatList
         data={goals}
         renderItem={renderGoalItem}
@@ -343,22 +343,6 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.background,
-  },
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.md,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
-  },
-  screenTitle: {
-    ...typography.h2,
-    color: colors.text,
-  },
-  menuButton: {
-    padding: spacing.sm,
   },
   menuIcon: {
     fontSize: 24,

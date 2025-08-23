@@ -762,8 +762,21 @@ class ApiService {
 
   // Analytics methods
   async getSpendingTrends(months = 6) {
-    const response = await this.api.get(API_ENDPOINTS.ANALYTICS.SPENDING_TRENDS(months));
-    return response.data;
+    try {
+      const response = await this.api.get(API_ENDPOINTS.ANALYTICS.SPENDING_TRENDS(months));
+      return response.data;
+    } catch (error: any) {
+      console.error(`❌ Error fetching spending trends for months=${months}:`, {
+        message: error.message,
+        status: error.response?.status,
+        data: error.response?.data,
+        url: error.config?.url,
+      });
+      console.log(`📊 Spending trends API not available for months=${months}, using fallback data`);
+      // Determine period based on months for more accurate mock data
+      const period = months === 1 ? 'monthly' : months === 6 ? '6months' : 'yearly';
+      return this.generateMockSpendingTrends(period);
+    }
   }
 
   async getCategoryBreakdown(startDate: string, endDate: string) {

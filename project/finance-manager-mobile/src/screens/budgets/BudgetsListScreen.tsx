@@ -16,9 +16,9 @@ import { fetchUserProfile } from '../../store/slices/userSlice';
 import { showPremiumModal } from '../../store/slices/uiSlice';
 import { BudgetCard } from '../../components/common/BudgetCard';
 import { LoadingSpinner } from '../../components/common/LoadingSpinner';
-import { CustomButton } from '../../components/common/CustomButton';
 import { colors, typography, spacing } from '../../constants/colors';
 import { SUBSCRIPTION_TIERS } from '../../config/api';
+import { RootState } from '../../store';
 
 interface BudgetsListScreenProps {
   navigation: any;
@@ -28,9 +28,13 @@ const BudgetsListScreen: React.FC<BudgetsListScreenProps> = ({ navigation }) => 
   const dispatch = useAppDispatch();
   const [refreshing, setRefreshing] = useState(false);
 
-  const { budgets, isLoading } = useTypedSelector((state) => state.budgets);
-  const { profile } = useTypedSelector((state) => state.user);
-  const { isAuthenticated } = useTypedSelector((state) => state.auth);
+  const budgetsSelector = (state: RootState) => state.budgets;
+  const userSelector = (state: RootState) => state.user;
+  const authSelector = (state: RootState) => state.auth;
+
+  const { budgets, isLoading } = useTypedSelector(budgetsSelector);
+  const { profile } = useTypedSelector(userSelector);
+  const { isAuthenticated } = useTypedSelector(authSelector);
 
   useEffect(() => {
     if (isAuthenticated) {
@@ -40,12 +44,12 @@ const BudgetsListScreen: React.FC<BudgetsListScreenProps> = ({ navigation }) => 
 
   const loadData = async () => {
     if (!isAuthenticated) {
-      console.log('🚫 Skipping budgets data load - user not authenticated');
+      console.log(' Skipping budgets data load - user not authenticated');
       return;
     }
 
     try {
-      console.log('📊 Loading budgets data for authenticated user');
+      console.log(' Loading budgets data for authenticated user');
       await Promise.all([
         dispatch(fetchBudgets()),
         dispatch(fetchUserProfile()),
@@ -57,7 +61,7 @@ const BudgetsListScreen: React.FC<BudgetsListScreenProps> = ({ navigation }) => 
 
   const onRefresh = async () => {
     if (!isAuthenticated) {
-      console.log('🚫 Skipping refresh - user not authenticated');
+      console.log(' Skipping refresh - user not authenticated');
       return;
     }
 
@@ -67,11 +71,11 @@ const BudgetsListScreen: React.FC<BudgetsListScreenProps> = ({ navigation }) => 
   };
 
   const getActiveBudgets = () => {
-    return budgets.filter(budget => budget.is_active);
+    return budgets.filter((budget: any) => budget.is_active);
   };
 
   const getInactiveBudgets = () => {
-    return budgets.filter(budget => !budget.is_active);
+    return budgets.filter((budget: any) => !budget.is_active);
   };
 
   const canCreateBudget = () => {
@@ -132,11 +136,11 @@ const BudgetsListScreen: React.FC<BudgetsListScreenProps> = ({ navigation }) => 
   };
 
   const calculateTotalBudgetAmount = () => {
-    return getActiveBudgets().reduce((total, budget) => total + budget.amount, 0);
+    return getActiveBudgets().reduce((total: number, budget: any) => total + budget.amount, 0);
   };
 
   const calculateTotalSpent = () => {
-    return getActiveBudgets().reduce((total, budget) => total + (budget.spent || 0), 0);
+    return getActiveBudgets().reduce((total: number, budget: any) => total + (budget.spent || 0), 0);
   };
 
   const renderBudgetItem = ({ item }: { item: any }) => (
@@ -227,17 +231,6 @@ const BudgetsListScreen: React.FC<BudgetsListScreenProps> = ({ navigation }) => 
 
   return (
     <SafeAreaView style={styles.container}>
-      <View style={styles.headerBar}>
-        <TouchableOpacity
-          style={styles.backButton}
-          onPress={() => navigation.goBack()}
-        >
-          <Text style={styles.backIcon}>←</Text>
-        </TouchableOpacity>
-        <Text style={styles.screenTitle}>Budgets</Text>
-        <View style={styles.placeholder} />
-      </View>
-
       <FlatList
         data={budgets}
         renderItem={renderBudgetItem}
@@ -266,29 +259,6 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.background,
-  },
-  headerBar: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.md,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
-  },
-  backButton: {
-    padding: spacing.sm,
-  },
-  backIcon: {
-    fontSize: 24,
-    color: colors.text,
-  },
-  screenTitle: {
-    ...typography.h2,
-    color: colors.text,
-  },
-  placeholder: {
-    width: 40,
   },
   listContent: {
     flexGrow: 1,
