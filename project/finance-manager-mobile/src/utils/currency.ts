@@ -13,6 +13,11 @@ export const formatCurrency = (
   currency: string,
   options?: Intl.NumberFormatOptions
 ): string => {
+  // Handle cases where amount might be undefined, null, or NaN
+  if (amount === undefined || amount === null || isNaN(amount)) {
+    amount = 0;
+  }
+  
   // Handle cases where currency might be null, undefined, or an empty string
   if (!currency) {
     // Fallback to a default non-currency format

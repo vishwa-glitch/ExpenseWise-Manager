@@ -27,6 +27,9 @@ export const API_ENDPOINTS = {
     SUBSCRIPTION_STATUS: "/user/subscription-status",
     UPGRADE_PREMIUM: "/user/upgrade-premium",
     CANCEL_PREMIUM: "/user/cancel-premium",
+    EXPORT_ELIGIBILITY: "/user/export-eligibility",
+    REWARD_AD_COMPLETED: "/user/reward-ad-completed",
+    USAGE: "/user/usage",
   },
 
   // Account Management
@@ -52,13 +55,16 @@ export const API_ENDPOINTS = {
     UPDATE: (id: string) => `/transactions/${id}`,
     DELETE: (id: string) => `/transactions/${id}`,
     BULK_IMPORT: "/transactions/bulk-import",
-    EXPORT: (format = "excel", startDate?: string, endDate?: string) => {
+    EXPORT: (format = "excel", startDate?: string, endDate?: string, unlockToken?: string) => {
       let url = `/transactions/export?format=${format}`;
       if (startDate) {
         url += `&start_date=${startDate}`;
       }
       if (endDate) {
         url += `&end_date=${endDate}`;
+      }
+      if (unlockToken) {
+        url += `&unlock_token=${unlockToken}`;
       }
       return url;
     },
@@ -167,42 +173,4 @@ export const API_ENDPOINTS = {
   HEALTH: "/health",
 };
 
-export const SUBSCRIPTION_TIERS = {
-  FREE: {
-    accounts: 3,
-    custom_categories: 5,
-    monthly_uploads: 1,
-    active_goals: 1,
-    export_history_months: 1, // Free users can only export 1 month of data
-    features: [
-      "basic_transactions",
-      "simple_budgets",
-      "basic_reports",
-      "basic_statement_import",
-      "manual_goals",
-      "limited_export", // 1 month export history
-    ],
-  },
-  PREMIUM: {
-    accounts: -1, // unlimited
-    custom_categories: -1,
-    monthly_uploads: -1,
-    active_goals: -1,
-    export_history_months: -1, // Premium users have unlimited export history
-    features: [
-      "unlimited_accounts",
-      "unlimited_categories",
-      "unlimited_statement_imports",
-      "unlimited_goals",
-      "ai_goal_setting",
-      "advanced_analytics",
-      "predictive_alerts",
-      "account_sharing",
-      "excel_export",
-      "unlimited_export_history", // Unlimited export history
-      "custom_date_range_export", // Custom date range export
-      "priority_support",
-      "advanced_ai_categorization",
-    ],
-  },
-};
+

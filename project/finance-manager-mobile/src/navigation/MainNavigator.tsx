@@ -1,5 +1,5 @@
 import React from 'react';
-import { createDrawerNavigator } from '@react-navigation/drawer';
+
 import { createMaterialTopTabNavigator } from '@react-navigation/material-top-tabs';
 import { createStackNavigator } from '@react-navigation/stack';
 import { View, Text, TouchableOpacity, StyleSheet, Dimensions } from 'react-native';
@@ -15,10 +15,10 @@ import MoreNavigator from './MoreNavigator';
 import StatementImportScreen from '../screens/statements/StatementImportScreen';
 import NotificationCenterScreen from '../screens/notifications/NotificationCenterScreen';
 import RecommendationsHistoryScreen from '../screens/recommendations/RecommendationsHistoryScreen';
-import PremiumUpgradeScreen from '../screens/premium/PremiumUpgradeScreen';
+
 import SettingsScreen from '../screens/settings/SettingsScreen';
 import ProfileNavigator from './ProfileNavigator';
-import AccountSharesScreen from '../screens/premium/AccountSharesScreen';
+import AccountSharesScreen from '../screens/accounts/AccountSharingScreen';
 import HelpSupportScreen from '../screens/help/HelpSupportScreen';
 
 // Import account screens for direct navigation
@@ -27,7 +27,10 @@ import AccountDetailScreen from '../screens/accounts/AccountDetailScreen';
 import AddEditAccountScreen from '../screens/accounts/AddEditAccountScreen';
 import AccountSharingScreen from '../screens/accounts/AccountSharingScreen';
 
-const Drawer = createDrawerNavigator();
+// Import global components
+
+
+
 const Tab = createMaterialTopTabNavigator();
 const Stack = createStackNavigator();
 
@@ -160,85 +163,28 @@ const TabNavigator: React.FC = () => {
   );
 };
 
-// Main Navigator with Drawer
+// Main Navigator (removed drawer navigation)
 const MainNavigator: React.FC = () => {
   return (
-    <Drawer.Navigator
-      screenOptions={{
-        headerShown: false,
-        drawerStyle: {
-          backgroundColor: colors.background,
-          width: 280,
-        },
-        drawerActiveTintColor: colors.primary,
-        drawerInactiveTintColor: colors.textSecondary,
-      }}
-    >
-      <Drawer.Screen
-        name="Home"
-        component={TabNavigator}
-        options={{
-          drawerLabel: 'Home',
-          drawerIcon: () => <Text style={{ fontSize: 20 }}>🏠</Text>,
+    <>
+      <Stack.Navigator
+        screenOptions={{
+          headerShown: false,
         }}
-      />
-      <Drawer.Screen
-        name="Accounts"
-        component={AccountStackNavigator}
-        options={{
-          drawerLabel: 'Accounts',
-          drawerIcon: () => <Text style={{ fontSize: 20 }}>🏦</Text>,
-        }}
-      />
-      <Drawer.Screen
-        name="RecommendationsHistory"
-        component={RecommendationsHistoryScreen}
-        options={{
-          drawerLabel: 'Recommendations',
-          drawerIcon: () => <Text style={{ fontSize: 20 }}>💡</Text>,
-        }}
-      />
-      <Drawer.Screen
-        name="PremiumUpgrade"
-        component={PremiumUpgradeScreen}
-        options={{
-          drawerLabel: 'Premium Upgrade',
-          drawerIcon: () => <Text style={{ fontSize: 20 }}>⭐</Text>,
-        }}
-      />
-      <Drawer.Screen
-        name="Settings"
-        component={SettingsScreen}
-        options={{
-          drawerLabel: 'Settings',
-          drawerIcon: () => <Text style={{ fontSize: 20 }}>⚙️</Text>,
-        }}
-      />
-      <Drawer.Screen
-        name="Profile"
-        component={ProfileNavigator}
-        options={{
-          drawerLabel: 'Profile',
-          drawerIcon: () => <Text style={{ fontSize: 20 }}>👤</Text>,
-        }}
-      />
-      <Drawer.Screen
-        name="AccountShares"
-        component={AccountSharesScreen}
-        options={{
-          drawerLabel: 'Account Shares',
-          drawerIcon: () => <Text style={{ fontSize: 20 }}>🤝</Text>,
-        }}
-      />
-      <Drawer.Screen
-        name="HelpSupport"
-        component={HelpSupportScreen}
-        options={{
-          drawerLabel: 'Help & Support',
-          drawerIcon: () => <Text style={{ fontSize: 20 }}>❓</Text>,
-        }}
-      />
-    </Drawer.Navigator>
+      >
+        <Stack.Screen name="Home" component={TabNavigator} />
+        <Stack.Screen name="Accounts" component={AccountStackNavigator} />
+        <Stack.Screen name="RecommendationsHistory" component={RecommendationsHistoryScreen} />
+
+        <Stack.Screen name="Settings" component={SettingsScreen} />
+        <Stack.Screen name="Profile" component={ProfileNavigator} />
+        <Stack.Screen name="AccountShares" component={AccountSharesScreen} />
+        <Stack.Screen name="HelpSupport" component={HelpSupportScreen} />
+      </Stack.Navigator>
+      
+      {/* Global Premium Modal */}
+      
+    </>
   );
 };
 

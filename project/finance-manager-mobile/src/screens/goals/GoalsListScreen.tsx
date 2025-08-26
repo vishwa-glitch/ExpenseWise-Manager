@@ -13,12 +13,13 @@ import { useAppDispatch } from '../../hooks/useAppDispatch';
 import { useTypedSelector } from '../../hooks/useTypedSelector';
 import { fetchGoals, deleteGoal } from '../../store/slices/goalsSlice';
 import { fetchUserProfile } from '../../store/slices/userSlice';
-import { showPremiumModal } from '../../store/slices/uiSlice';
-import { GoalCard } from '../../components/common/GoalCard';
-import { LoadingSpinner } from '../../components/common/LoadingSpinner';
+
+import { GoalCard, LoadingSpinner } from '../../components/common';
 import { colors, typography, spacing } from '../../constants/colors';
-import { SUBSCRIPTION_TIERS } from '../../config/api';
+
+
 import { RootState } from '../../store';
+import { formatCurrency } from '../../utils/currency';
 
 interface GoalsListScreenProps {
   navigation: any;
@@ -39,6 +40,7 @@ const GoalsListScreen: React.FC<GoalsListScreenProps> = ({ navigation }) => {
   const { goals, isLoading } = useTypedSelector((state: RootState) => state.goals);
   const { profile } = useTypedSelector((state: RootState) => state.user);
   const { isAuthenticated } = useTypedSelector((state: RootState) => state.auth);
+  const { displayCurrency } = useTypedSelector((state) => state.user);
 
   useEffect(() => {
     if (isAuthenticated) {
@@ -48,12 +50,12 @@ const GoalsListScreen: React.FC<GoalsListScreenProps> = ({ navigation }) => {
 
   const loadData = async () => {
     if (!isAuthenticated) {
-      console.log('🚫 Skipping goals data load - user not authenticated');
+      console.log(' Skipping goals data load - user not authenticated');
       return;
     }
 
     try {
-      console.log('🎯 Loading goals data for authenticated user');
+      console.log(' Loading goals data for authenticated user');
       await Promise.all([
         dispatch(fetchGoals()),
         dispatch(fetchUserProfile()),
@@ -65,7 +67,7 @@ const GoalsListScreen: React.FC<GoalsListScreenProps> = ({ navigation }) => {
 
   const onRefresh = async () => {
     if (!isAuthenticated) {
-      console.log('🚫 Skipping refresh - user not authenticated');
+      console.log(' Skipping refresh - user not authenticated');
       return;
     }
 
@@ -75,49 +77,16 @@ const GoalsListScreen: React.FC<GoalsListScreenProps> = ({ navigation }) => {
   };
 
   const getActiveGoals = () => {
-    return goals.filter((goal: Goal) => goal.status === 'active');
+    return goals.filter((goal: any) => goal.status === 'active');
   };
 
   const getCompletedGoals = () => {
-    return goals.filter((goal: Goal) => goal.status === 'completed');
+    return goals.filter((goal: any) => goal.status === 'completed');
   };
 
-  const canAddGoal = () => {
-    if (!profile) return false;
-    
-    const isFreeTier = profile.subscription_tier === 'free';
-    const activeGoalLimit = SUBSCRIPTION_TIERS.FREE.active_goals;
-    const activeGoalsCount = getActiveGoals().length;
-    
-    return !isFreeTier || activeGoalsCount < activeGoalLimit;
-  };
 
-  const handleAddGoal = () => {
-    if (canAddGoal()) {
-      navigation.navigate('AddManualGoal');
-    } else {
-      Alert.alert(
-        'Goal Limit Reached',
-        `Free tier allows up to ${SUBSCRIPTION_TIERS.FREE.active_goals} active goal. Upgrade to Premium for unlimited goals.`,
-        [
-          { text: 'Cancel', style: 'cancel' },
-          {
-            text: 'Upgrade',
-            onPress: () => dispatch(showPremiumModal()),
-          },
-        ]
-      );
-    }
-  };
 
-  const handleAIGoalSetting = () => {
-    // AI Goal Setting temporarily disabled
-    Alert.alert(
-      'Feature Coming Soon',
-      'AI-powered goal setting will be available in a future update.',
-      [{ text: 'OK' }]
-    );
-  };
+
 
   const handleGoalPress = (goal: any) => {
     navigation.navigate('GoalDetail', { goalId: goal.id });
@@ -147,11 +116,15 @@ const GoalsListScreen: React.FC<GoalsListScreenProps> = ({ navigation }) => {
   };
 
   const calculateTotalSavings = () => {
-    return goals.reduce((total: number, goal: any) => total + goal.current_amount, 0);
+    return getActiveGoals().reduce((total: number, goal: any) => total + (goal.current_amount || 0), 0);
   };
 
   const calculateTotalTarget = () => {
-    return goals.reduce((total: number, goal: any) => total + goal.target_amount, 0);
+    return getActiveGoals().reduce((total: number, goal: any) => total + (goal.target_amount || 0), 0);
+  };
+
+  const formatCurrencyAmount = (amount: number) => {
+    return formatCurrency(amount, displayCurrency);
   };
 
   const renderGoalItem = ({ item }: { item: any }) => (
@@ -163,89 +136,42 @@ const GoalsListScreen: React.FC<GoalsListScreenProps> = ({ navigation }) => {
 
   const renderHeader = () => (
     <View style={styles.headerContent}>
-      {/* Enhanced Summary Cards with Progress */}
+      {/* Summary Cards - 2x2 Grid */}
       <View style={styles.summaryContainer}>
         <View style={styles.summaryCard}>
-          <View style={styles.summaryIconContainer}>
-            <Text style={styles.summaryIcon}>🎯</Text>
-          </View>
+          <Text style={styles.summaryIcon}>🎯</Text>
           <Text style={styles.summaryLabel}>Active Goals</Text>
           <Text style={styles.summaryValue}>
             {getActiveGoals().length}
-            {profile?.subscription_tier === 'free' ? ` / ${SUBSCRIPTION_TIERS.FREE.active_goals}` : ''}
           </Text>
-          {profile?.subscription_tier === 'free' && (
-            <View style={styles.progressBar}>
-              <View 
-                style={[
-                  styles.progressFill, 
-                  { width: `${(getActiveGoals().length / SUBSCRIPTION_TIERS.FREE.active_goals) * 100}%` }
-                ]} 
-              />
-            </View>
-          )}
         </View>
         
         <View style={styles.summaryCard}>
-          <View style={styles.summaryIconContainer}>
-            <Text style={styles.summaryIcon}>💰</Text>
-          </View>
+          <Text style={styles.summaryIcon}>💰</Text>
           <Text style={styles.summaryLabel}>Total Saved</Text>
           <Text style={[styles.summaryValue, { color: colors.income }]}>
-            ₹{calculateTotalSavings().toLocaleString('en-IN')}
-          </Text>
-          <Text style={styles.summarySubtext}>
-            of ₹{calculateTotalTarget().toLocaleString('en-IN')} target
+            {formatCurrencyAmount(calculateTotalSavings())}
           </Text>
         </View>
         
         <View style={styles.summaryCard}>
-          <View style={styles.summaryIconContainer}>
-            <Text style={styles.summaryIcon}>🏆</Text>
-          </View>
+          <Text style={styles.summaryIcon}>🏆</Text>
           <Text style={styles.summaryLabel}>Completed</Text>
           <Text style={styles.summaryValue}>
             {getCompletedGoals().length}
           </Text>
-          <Text style={styles.summarySubtext}>
-            {goals.length > 0 ? `${((getCompletedGoals().length / goals.length) * 100).toFixed(0)}% success rate` : 'No goals yet'}
-          </Text>
         </View>
-      </View>
 
-      {/* Enhanced Quick Actions */}
-      <View style={styles.quickActions}>
-        <TouchableOpacity
-          style={[styles.actionButton, styles.primaryAction]}
-          onPress={handleAddGoal}
-        >
-          <View style={styles.actionIconContainer}>
-            <Text style={styles.actionIcon}>➕</Text>
-          </View>
-          <Text style={styles.actionText}>Add Goal</Text>
-          <Text style={styles.actionSubtext}>Create manually</Text>
-        </TouchableOpacity>
-        
-        <TouchableOpacity
-          style={[styles.actionButton, styles.secondaryAction]}
+        <TouchableOpacity 
+          style={styles.summaryCard}
           onPress={() => navigation.navigate('GoalAnalytics')}
+          activeOpacity={0.8}
         >
-          <View style={styles.actionIconContainer}>
-            <Text style={styles.actionIcon}>📊</Text>
-          </View>
-          <Text style={styles.actionText}>Analytics</Text>
-          <Text style={styles.actionSubtext}>View insights</Text>
-        </TouchableOpacity>
-        
-        <TouchableOpacity
-          style={[styles.actionButton, styles.aiAction]}
-          onPress={handleAIGoalSetting}
-        >
-          <View style={styles.actionIconContainer}>
-            <Text style={styles.actionIcon}>🤖</Text>
-          </View>
-          <Text style={styles.actionText}>AI Assistant</Text>
-          <Text style={styles.actionSubtext}>Coming soon</Text>
+          <Text style={styles.summaryIcon}>📊</Text>
+          <Text style={styles.summaryLabel}>Analytics</Text>
+          <Text style={[styles.summaryValue, { color: colors.primary }]}>
+            View
+          </Text>
         </TouchableOpacity>
       </View>
 
@@ -288,20 +214,7 @@ const GoalsListScreen: React.FC<GoalsListScreenProps> = ({ navigation }) => {
         </View>
       </View>
       
-      <TouchableOpacity
-        style={styles.createFirstGoalButton}
-        onPress={handleAddGoal}
-      >
-        <Text style={styles.createFirstGoalText}>Create Your First Goal</Text>
-      </TouchableOpacity>
-      
-      {/* AI Option */}
-      <TouchableOpacity
-        style={styles.aiSuggestionButton}
-        onPress={handleAIGoalSetting}
-      >
-        <Text style={styles.aiSuggestionText}>🤖 Get AI Suggestions (Coming Soon)</Text>
-      </TouchableOpacity>
+
     </View>
   );
 
@@ -322,21 +235,10 @@ const GoalsListScreen: React.FC<GoalsListScreenProps> = ({ navigation }) => {
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
         }
         contentContainerStyle={styles.listContent}
-        showsVerticalScrollIndicator={false}
-      />
-
-      {/* Floating Action Button */}
-      <TouchableOpacity
-        style={[
-          styles.fab,
-          !canAddGoal() && styles.fabDisabled,
-        ]}
-        onPress={handleAddGoal}
-      >
-        <Text style={styles.fabIcon}>+</Text>
-      </TouchableOpacity>
-    </SafeAreaView>
-  );
+                 showsVerticalScrollIndicator={false}
+       />
+     </SafeAreaView>
+   );
 };
 
 const styles = StyleSheet.create({
@@ -357,36 +259,30 @@ const styles = StyleSheet.create({
   },
   summaryContainer: {
     flexDirection: 'row',
+    flexWrap: 'wrap',
     justifyContent: 'space-between',
     marginBottom: spacing.lg,
+    paddingHorizontal: spacing.sm, // Add some padding to center the smaller cards
   },
   summaryCard: {
-    flex: 1,
+    width: '43.7%', // Increased from 40.8% by 7%
     backgroundColor: colors.card,
-    borderRadius: 16,
-    padding: spacing.md,
+    borderRadius: 12,
+    padding: spacing.sm, // Reduced padding to make cards more compact
     alignItems: 'center',
-    marginHorizontal: spacing.xs,
+    marginBottom: spacing.md,
     shadowColor: '#000',
     shadowOffset: {
       width: 0,
-      height: 4,
+      height: 2,
     },
-    shadowOpacity: 0.15,
-    shadowRadius: 8,
-    elevation: 8,
-  },
-  summaryIconContainer: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: colors.primary + '20',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: spacing.sm,
+    shadowOpacity: 0.1,
+    shadowRadius: 3.84,
+    elevation: 5,
   },
   summaryIcon: {
-    fontSize: 20,
+    fontSize: 20, // Same as budgets screen
+    marginBottom: spacing.xs, // Reduced margin
   },
   summaryLabel: {
     ...typography.caption,
@@ -394,92 +290,16 @@ const styles = StyleSheet.create({
     marginBottom: spacing.xs,
     fontWeight: '600',
     textAlign: 'center',
+    fontSize: 11, // Slightly smaller font like budgets screen
   },
   summaryValue: {
     ...typography.body,
     color: colors.text,
     fontWeight: 'bold',
     textAlign: 'center',
-    marginBottom: spacing.xs,
+    fontSize: 14, // Slightly smaller font like budgets screen
   },
-  summarySubtext: {
-    ...typography.small,
-    color: colors.textSecondary,
-    textAlign: 'center',
-    fontSize: 10,
-  },
-  progressBar: {
-    width: '100%',
-    height: 4,
-    backgroundColor: colors.border,
-    borderRadius: 2,
-    marginTop: spacing.xs,
-  },
-  progressFill: {
-    height: '100%',
-    backgroundColor: colors.primary,
-    borderRadius: 2,
-  },
-  quickActions: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: spacing.lg,
-  },
-  actionButton: {
-    flex: 1,
-    backgroundColor: colors.card,
-    borderRadius: 16,
-    padding: spacing.md,
-    alignItems: 'center',
-    marginHorizontal: spacing.xs,
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 4,
-    },
-    shadowOpacity: 0.15,
-    shadowRadius: 8,
-    elevation: 8,
-  },
-  primaryAction: {
-    backgroundColor: colors.primary + '10',
-    borderWidth: 2,
-    borderColor: colors.primary + '30',
-  },
-  secondaryAction: {
-    backgroundColor: colors.card,
-  },
-  aiAction: {
-    backgroundColor: colors.accent + '10',
-    borderWidth: 2,
-    borderColor: colors.accent + '30',
-    opacity: 0.7,
-  },
-  actionIconContainer: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: colors.primary + '20',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: spacing.sm,
-  },
-  actionIcon: {
-    fontSize: 18,
-  },
-  actionText: {
-    ...typography.small,
-    color: colors.text,
-    textAlign: 'center',
-    fontWeight: '600',
-    marginBottom: spacing.xs,
-  },
-  actionSubtext: {
-    ...typography.small,
-    color: colors.textSecondary,
-    textAlign: 'center',
-    fontSize: 10,
-  },
+
   sectionHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',

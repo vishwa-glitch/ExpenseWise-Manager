@@ -1,203 +1,1536 @@
-# 📋 Backend Configuration for Mobile App Integration
+# 🚀 Fintech Backend API Reference for Frontend Development
 
-## 🔗 API Base URL
+## 📋 Quick Start Configuration
 
-### Development Environment
-```
-Base URL: http://localhost:3000
-API Prefix: /api
-Full API Base: http://localhost:3000/api
-```
-
-### Production Environment
-```
-Base URL: [TO BE DEPLOYED]
-API Prefix: /api
-Full API Base: [TO BE DEPLOYED]/api
-```
-
-### Required Headers
+### 🔗 API Base URLs
 ```javascript
-{
-  "Content-Type": "application/json",
-  "Authorization": "Bearer YOUR_ACCESS_TOKEN" // For protected routes
+// Development
+const API_BASE_URL = 'http://localhost:3000/api';
+
+// Production (when deployed)
+const API_BASE_URL = 'https://your-domain.com/api';
+```
+
+### 🔑 Authentication Headers
+```javascript
+// For protected endpoints
+const headers = {
+  'Content-Type': 'application/json',
+  'Authorization': `Bearer ${accessToken}`
+};
+
+// For file uploads
+const uploadHeaders = {
+  'Authorization': `Bearer ${accessToken}`
+  // Don't set Content-Type for FormData
+};
+```
+
+### 👤 Test User Credentials
+```javascript
+const testUser = {
+  email: "test@example.com",
+  password: "testpassword123",
+  first_name: "John",
+  last_name: "Doe",
+  preferred_currency: "USD",
+  subscription_tier: "premium"
+};
+```
+
+## 🎯 Core Data Models
+
+### User Model
+```typescript
+interface User {
+  id: string;
+  email: string;
+  first_name: string;
+  last_name?: string;
+  preferred_currency: string; // 3-letter code (USD, EUR, INR, etc.)
+  subscription_tier: 'free' | 'premium';
+  subscription_expires_at?: string;
+  created_at: string;
+  stats: {
+    account_count: number;
+    transaction_count: number;
+    custom_category_count: number;
+    active_goal_count: number;
+  };
 }
 ```
 
-## 👤 Sample User Credentials
-
-### Free Tier User
-```javascript
-{
-  "email": "test@example.com",
-  "password": "testpassword123",
-  "subscription_tier": "premium", // Note: Seeded as premium for testing
-  "features": ["basic_transactions", "simple_budgets", "basic_reports"]
+### Account Model
+```typescript
+interface Account {
+  id: string;
+  user_id: string;
+  name: string;
+  type: 'checking' | 'savings' | 'credit' | 'investment' | 'cash';
+  balance: number;
+  currency: string; // 3-letter code
+  is_active: boolean;
+  created_at: string;
 }
 ```
 
-### Premium User (Same as above - for testing purposes)
-```javascript
-{
-  "email": "test@example.com", 
-  "password": "testpassword123",
-  "subscription_tier": "premium",
-  "features": ["unlimited_accounts", "ai_categorization", "advanced_analytics", "account_sharing"]
+### Transaction Model
+```typescript
+interface Transaction {
+  id: string;
+  user_id: string;
+  account_id: string;
+  category_id?: string;
+  amount: number;
+  type: 'income' | 'expense' | 'transfer';
+  description: string;
+  transaction_date: string; // YYYY-MM-DD
+  created_at: string;
+  tags?: string[];
+  merchant?: string;
+  location?: string;
+  receipt_url?: string;
+  category_name?: string;
+  category_color?: string;
+  account_name?: string;
 }
 ```
 
-**Note**: Run `npm run db:seed` to create this test user with sample data.
+### Category Model
+```typescript
+interface Category {
+  id: string;
+  user_id: string;
+  name: string;
+  parent_id?: string;
+  color: string; // Hex color
+  icon: string;
+  is_default: boolean;
+  is_active: boolean;
+  created_at: string;
+  subcategories?: Category[];
+}
+```
 
-## 📡 Complete API Endpoints List
+### Budget Model
+```typescript
+interface Budget {
+  id: string;
+  user_id: string;
+  category_id: string;
+  amount: number;
+  period: 'weekly' | 'monthly' | 'yearly';
+  start_date: string;
+  end_date: string;
+  alert_threshold: number; // 0.0 to 1.0
+  is_active: boolean;
+  created_at: string;
+  category_name?: string;
+  category_color?: string;
+  spent_amount?: number;
+  remaining_amount?: number;
+  progress_percentage?: number;
+  is_over_budget?: boolean;
+}
+```
 
-### 🔐 Authentication
-- `POST /api/auth/register` - User registration
-- `POST /api/auth/login` - User authentication
-- `POST /api/auth/refresh` - Refresh access token
-- `POST /api/auth/logout` - User logout
+### Bill Reminder Model
+```typescript
+interface BillReminder {
+  id: string;
+  user_id: string;
+  title: string;
+  amount?: number;
+  due_date: string;
+  frequency: 'once' | 'weekly' | 'monthly' | 'yearly';
+  category_id?: string;
+  is_paid: boolean;
+  reminder_days_before: number;
+  created_at: string;
+  category_name?: string;
+  category_color?: string;
+  days_until_due?: number;
+  urgency?: 'overdue' | 'due_today' | 'urgent' | 'soon' | 'upcoming';
+}
+```
 
-### 👤 User Management
-- `GET /api/user/profile` - Get user profile and stats
-- `PUT /api/user/profile` - Update user profile
-- `GET /api/user/subscription-status` - Get subscription details and limits
-- `POST /api/user/upgrade-premium` - Upgrade to premium (mock)
-- `POST /api/user/cancel-premium` - Cancel premium subscription
+### Currency Model
+```typescript
+interface Currency {
+  code: string; // 3-letter code (USD, EUR, INR)
+  name: string; // Full name (US Dollar, Euro, Indian Rupee)
+  symbol: string; // Symbol ($, €, ₹)
+}
 
-### 🏦 Account Management
-- `GET /api/accounts` - List all user accounts
-- `GET /api/accounts/:id` - Get specific account details
-- `POST /api/accounts` - Create new account
-- `PUT /api/accounts/:id` - Update account (supports currency conversion)
-- `DELETE /api/accounts/:id` - Delete/deactivate account
-- `GET /api/accounts/:id/balance-history?days=30` - Get balance history
-- `GET /api/accounts/:id/summary?period=month` - Get account summary
-- `GET /api/accounts/currency-summary` - Get account totals grouped by currency
+interface ExchangeRates {
+  base: string;
+  date: string;
+  rates: Record<string, number>;
+}
+```
 
-### 💰 Transaction Management
-- `GET /api/transactions?page=1&limit=20` - List transactions (paginated)
-- `GET /api/transactions/calendar/:year/:month` - Calendar view
-- `POST /api/transactions` - Create transaction
-- `PUT /api/transactions/:id` - Update transaction
-- `DELETE /api/transactions/:id` - Delete transaction
-- `POST /api/transactions/bulk-import` - Bulk import transactions
-- `GET /api/transactions/export?format=excel` - Export transactions
+## 🔐 Authentication API
 
-### 💱 Currency Management
-- `GET /api/currency/supported` - Get list of supported currencies
-- `GET /api/currency/rates/:baseCurrency` - Get exchange rates for base currency
-- `POST /api/currency/convert` - Convert amount between currencies
+### Register User
+```javascript
+// POST /api/auth/register
+const registerUser = async (userData) => {
+  const response = await fetch(`${API_BASE_URL}/auth/register`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      email: "user@example.com",
+      password: "password123",
+      first_name: "John",
+      last_name: "Doe" // Optional
+    })
+  });
+  return response.json();
+};
 
-### 🏷️ Category Management
-- `GET /api/categories` - List all categories
-- `GET /api/categories/hierarchy` - Get category hierarchy
-- `POST /api/categories` - Create category
-- `PUT /api/categories/:id` - Update category
-- `DELETE /api/categories/:id` - Delete category
+// Response
+{
+  "success": true,
+  "message": "User created successfully",
+  "user": {
+    "id": "uuid",
+    "email": "user@example.com",
+    "first_name": "John",
+    "last_name": "Doe",
+    "subscription_tier": "free"
+  },
+  "tokens": {
+    "access_token": "jwt_token",
+    "refresh_token": "refresh_token",
+    "token_type": "Bearer",
+    "expires_in": 900
+  }
+}
+```
 
-### 📊 Budget Management
-- `GET /api/budgets` - List all budgets with progress
-- `GET /api/budgets/:id` - Get budget details
-- `POST /api/budgets` - Create budget
-- `PUT /api/budgets/:id` - Update budget
-- `DELETE /api/budgets/:id` - Delete budget
+### Login User
+```javascript
+// POST /api/auth/login
+const loginUser = async (credentials) => {
+  const response = await fetch(`${API_BASE_URL}/auth/login`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      email: "test@example.com",
+      password: "testpassword123"
+    })
+  });
+  return response.json();
+};
 
-### 📅 Bill Reminders
-- `GET /api/bills` - List all bill reminders
-- `GET /api/bills/upcoming?days=30` - Get upcoming bills
-- `POST /api/bills` - Create bill reminder
-- `PUT /api/bills/:id` - Update bill reminder
-- `POST /api/bills/:id/mark-paid` - Mark bill as paid
-- `DELETE /api/bills/:id` - Delete bill reminder
+// Response: Same as register
+```
 
-### 🎯 Goals (NEW)
-- `GET /api/goals` - List all goals
-- `GET /api/goals/:id` - Get goal details with progress
-- `POST /api/goals` - Create manual goal
-- `PUT /api/goals/:id` - Update goal
-- `DELETE /api/goals/:id` - Delete goal
-- `POST /api/goals/:id/contribute` - Add contribution to goal
-- `GET /api/goals/:id/progress` - Get detailed progress analytics
+### Refresh Token
+```javascript
+// POST /api/auth/refresh
+const refreshToken = async (refreshToken) => {
+  const response = await fetch(`${API_BASE_URL}/auth/refresh`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ refresh_token: refreshToken })
+  });
+  return response.json();
+};
+```
 
-### 🤖 AI Goals (Premium)
-- `POST /api/goals/ai/start-session` - Start AI goal session
-- `POST /api/goals/ai/chat` - Continue AI conversation
-- `GET /api/goals/ai/session/:sessionId` - Get session status
-- `POST /api/goals/ai/finalize` - Create goal from AI session
-- `DELETE /api/goals/ai/session/:sessionId` - Cancel AI session
+## 👤 User Management API
 
-### 💡 Recommendations (NEW)
-- `GET /api/recommendations` - Get active recommendations
-- `GET /api/recommendations/history` - Get recommendation history
-- `POST /api/recommendations/:id/dismiss` - Dismiss recommendation
-- `POST /api/recommendations/:id/act` - Mark as acted upon
-- `POST /api/recommendations/:id/feedback` - Provide feedback
-- `GET /api/recommendations/generate` - Force generate new recommendations
+### Get User Profile
+```javascript
+// GET /api/user/profile
+const getUserProfile = async (accessToken) => {
+  const response = await fetch(`${API_BASE_URL}/user/profile`, {
+    headers: { 'Authorization': `Bearer ${accessToken}` }
+  });
+  return response.json();
+};
 
-### 🔔 Notifications (NEW)
-- `GET /api/notifications` - Get all notifications
-- `GET /api/notifications/unread` - Get unread notifications
-- `POST /api/notifications/:id/read` - Mark as read
-- `POST /api/notifications/:id/click` - Track click
-- `POST /api/notifications/mark-all-read` - Mark all as read
-- `GET /api/notifications/preferences` - Get notification preferences
-- `PUT /api/notifications/preferences` - Update preferences
+// Response
+{
+  "user": {
+    "id": "uuid",
+    "email": "test@example.com",
+    "first_name": "John",
+    "last_name": "Doe",
+    "preferred_currency": "USD",
+    "subscription_tier": "premium",
+    "subscription_expires_at": null,
+    "created_at": "2024-01-01T00:00:00.000Z",
+    "stats": {
+      "account_count": 3,
+      "transaction_count": 45,
+      "custom_category_count": 2,
+      "active_goal_count": 1
+    }
+  }
+}
+```
 
-### 📈 Analytics
-- `GET /api/analytics/spending-trends?months=6` - Monthly spending trends
-- `GET /api/analytics/category-breakdown?start_date=2024-01-01&end_date=2024-12-31` - Category analysis
-- `GET /api/analytics/predictive-alerts` - AI-powered alerts (Premium)
+### Update User Profile
+```javascript
+// PUT /api/user/profile
+const updateProfile = async (accessToken, updates) => {
+  const response = await fetch(`${API_BASE_URL}/user/profile`, {
+    method: 'PUT',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${accessToken}`
+    },
+    body: JSON.stringify({
+      first_name: "Jane",
+      last_name: "Smith",
+      preferred_currency: "EUR"
+    })
+  });
+  return response.json();
+};
+```
 
-### 🌟 Premium Features
-- `GET /api/premium/account-shares` - List account shares
-- `POST /api/premium/account-shares` - Share account
-- `PUT /api/premium/account-shares/:id` - Update share permissions
-- `DELETE /api/premium/account-shares/:id` - Remove share
-- `GET /api/premium/analytics-dashboard` - Advanced analytics
+### Change User Currency (Bulk Conversion)
+```javascript
+// POST /api/user/change-currency
+const changeCurrency = async (accessToken, newCurrency, convertData = true) => {
+  const response = await fetch(`${API_BASE_URL}/user/change-currency`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${accessToken}`
+    },
+    body: JSON.stringify({
+      new_currency: newCurrency, // "INR", "EUR", "GBP", etc.
+      convert_existing_data: convertData
+    })
+  });
+  return response.json();
+};
 
-### 📄 Statement Import
-- `GET /api/statements/formats` - Supported file formats
-- `POST /api/statements/upload` - Upload statement file
-- `GET /api/statements/upload/:id/status` - Check processing status
-- `GET /api/statements/upload/:id/preview` - Preview transactions
-- `POST /api/statements/upload/:id/import` - Import transactions
-- `GET /api/statements/history` - Upload history
+// Response
+{
+  "success": true,
+  "message": "Currency successfully changed to INR",
+  "previous_currency": "USD",
+  "new_currency": "INR",
+  "data_converted": true,
+  "conversion_summary": {
+    "accounts_converted": 3,
+    "budgets_converted": 2,
+    "transactions_converted": 45,
+    "bill_reminders_converted": 1,
+    "total_errors": 0,
+    "errors": []
+  }
+}
+```
 
-### 📊 Insights (NEW)
-- `GET /api/insights/dashboard` - Real-time dashboard insights
-- `GET /api/insights/weekly-report` - Weekly financial report
-- `GET /api/insights/monthly-report` - Monthly analysis (Premium)
+## 🏦 Account Management API
 
-### 🔧 System
-- `GET /health` - Health check
+### Get All Accounts
+```javascript
+// GET /api/accounts
+const getAccounts = async (accessToken) => {
+  const response = await fetch(`${API_BASE_URL}/accounts`, {
+    headers: { 'Authorization': `Bearer ${accessToken}` }
+  });
+  return response.json();
+};
 
-## 🔑 API Keys & Configuration
+// Response
+{
+  "accounts": [
+    {
+      "id": "uuid",
+      "user_id": "uuid",
+      "name": "Main Checking",
+      "type": "checking",
+      "balance": 2500.00,
+      "currency": "USD",
+      "is_active": true,
+      "created_at": "2024-01-01T00:00:00.000Z"
+    },
+    {
+      "id": "uuid",
+      "name": "Savings Account",
+      "type": "savings",
+      "balance": 10000.00,
+      "currency": "USD",
+      "is_active": true,
+      "created_at": "2024-01-01T00:00:00.000Z"
+    }
+  ]
+}
+```
 
-### Environment Variables Required
-```bash
-# Database Configuration
-DB_HOST=localhost
-DB_PORT=5432
-DB_NAME=finance-db
-DB_USER=postgres
-DB_PASSWORD=your_password
+### Create Account
+```javascript
+// POST /api/accounts
+const createAccount = async (accessToken, accountData) => {
+  const response = await fetch(`${API_BASE_URL}/accounts`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${accessToken}`
+    },
+    body: JSON.stringify({
+      name: "New Savings",
+      type: "savings", // checking, savings, credit, investment, cash
+      balance: 1000.00,
+      currency: "USD"
+    })
+  });
+  return response.json();
+};
+```
 
-# Redis Configuration (for caching)
-REDIS_HOST=localhost
-REDIS_PORT=6379
-REDIS_PASSWORD=your_redis_password
+### Update Account (with Currency Conversion)
+```javascript
+// PUT /api/accounts/:id
+const updateAccount = async (accessToken, accountId, updates) => {
+  const response = await fetch(`${API_BASE_URL}/accounts/${accountId}`, {
+    method: 'PUT',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${accessToken}`
+    },
+    body: JSON.stringify({
+      name: "Updated Account Name",
+      currency: "EUR",
+      convert_balance: true // Convert balance to new currency
+    })
+  });
+  return response.json();
+};
+```
 
-# JWT Configuration - CRITICAL FOR AUTHENTICATION
-JWT_SECRET=your-super-secret-jwt-key-minimum-32-characters-long
-JWT_REFRESH_SECRET=your-super-secret-refresh-key-different-from-jwt-secret
+## 💰 Transaction Management API
 
-# API Keys
-EXCHANGE_RATE_API_KEY=your-exchange-rate-api-key
-COHERE_API_KEY=your-cohere-api-key
+### Get Transactions (Paginated)
+```javascript
+// GET /api/transactions?page=1&limit=20&account_id=uuid&category_id=uuid&type=expense
+const getTransactions = async (accessToken, filters = {}) => {
+  const params = new URLSearchParams({
+    page: filters.page || 1,
+    limit: filters.limit || 20,
+    ...(filters.account_id && { account_id: filters.account_id }),
+    ...(filters.category_id && { category_id: filters.category_id }),
+    ...(filters.type && { type: filters.type }),
+    ...(filters.start_date && { start_date: filters.start_date }),
+    ...(filters.end_date && { end_date: filters.end_date })
+  });
 
-# AWS Configuration (for file uploads)
-AWS_ACCESS_KEY_ID=your-aws-access-key-id
-AWS_SECRET_ACCESS_KEY=your-aws-secret-access-key
-AWS_REGION=us-east-1
+  const response = await fetch(`${API_BASE_URL}/transactions?${params}`, {
+    headers: { 'Authorization': `Bearer ${accessToken}` }
+  });
+  return response.json();
+};
+
+// Response
+{
+  "transactions": [
+    {
+      "id": "uuid",
+      "user_id": "uuid",
+      "account_id": "uuid",
+      "category_id": "uuid",
+      "amount": 45.67,
+      "type": "expense",
+      "description": "Grocery shopping",
+      "transaction_date": "2024-01-15",
+      "created_at": "2024-01-15T10:30:00.000Z",
+      "tags": ["food", "essentials"],
+      "merchant": "Walmart",
+      "category_name": "Food & Dining",
+      "category_color": "#FF6B6B",
+      "account_name": "Main Checking"
+    }
+  ],
+  "pagination": {
+    "page": 1,
+    "limit": 20,
+    "total": 45,
+    "pages": 3
+  }
+}
+```
+
+### Create Transaction
+```javascript
+// POST /api/transactions
+const createTransaction = async (accessToken, transactionData) => {
+  const response = await fetch(`${API_BASE_URL}/transactions`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${accessToken}`
+    },
+    body: JSON.stringify({
+      account_id: "uuid",
+      category_id: "uuid", // Optional
+      amount: 50.00,
+      type: "expense", // income, expense, transfer
+      description: "Coffee shop",
+      transaction_date: "2024-01-20",
+      tags: ["coffee", "daily"], // Optional
+      merchant: "Starbucks", // Optional
+      location: "Downtown" // Optional
+    })
+  });
+  return response.json();
+};
+```
+
+### Get Calendar View
+```javascript
+// GET /api/transactions/calendar/2024/01
+const getTransactionCalendar = async (accessToken, year, month) => {
+  const response = await fetch(`${API_BASE_URL}/transactions/calendar/${year}/${month}`, {
+    headers: { 'Authorization': `Bearer ${accessToken}` }
+  });
+  return response.json();
+};
+
+// Response
+{
+  "calendar": {
+    "2024-01-15": [
+      {
+        "id": "uuid",
+        "amount": 45.67,
+        "type": "expense",
+        "description": "Grocery shopping",
+        "category_name": "Food & Dining",
+        "category_color": "#FF6B6B"
+      }
+    ],
+    "2024-01-20": [
+      // More transactions...
+    ]
+  },
+  "summary": {
+    "total_income": 3000.00,
+    "total_expenses": 1250.50,
+    "net_amount": 1749.50,
+    "transaction_count": 25
+  }
+}
+```
+## 💱 Currency Management API
+
+### Get Supported Currencies
+```javascript
+// GET /api/currency/supported
+const getSupportedCurrencies = async () => {
+  const response = await fetch(`${API_BASE_URL}/currency/supported`);
+  return response.json();
+};
+
+// Response
+{
+  "currencies": [
+    {
+      "code": "USD",
+      "name": "US Dollar",
+      "symbol": "$"
+    },
+    {
+      "code": "EUR",
+      "name": "Euro",
+      "symbol": "€"
+    },
+    {
+      "code": "INR",
+      "name": "Indian Rupee",
+      "symbol": "₹"
+    }
+    // ... more currencies
+  ]
+}
+```
+
+### Get Exchange Rates
+```javascript
+// GET /api/currency/rates/USD
+const getExchangeRates = async (baseCurrency = 'USD') => {
+  const response = await fetch(`${API_BASE_URL}/currency/rates/${baseCurrency}`);
+  return response.json();
+};
+
+// Response
+{
+  "base": "USD",
+  "date": "2024-01-20",
+  "rates": {
+    "EUR": 0.85,
+    "GBP": 0.73,
+    "INR": 86.25,
+    "JPY": 110.25,
+    "CAD": 1.25
+    // ... more rates
+  }
+}
+```
+
+### Convert Currency
+```javascript
+// POST /api/currency/convert
+const convertCurrency = async (amount, fromCurrency, toCurrency) => {
+  const response = await fetch(`${API_BASE_URL}/currency/convert`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      amount: amount,
+      from: fromCurrency,
+      to: toCurrency
+    })
+  });
+  return response.json();
+};
+
+// Response
+{
+  "original_amount": 100,
+  "from_currency": "USD",
+  "to_currency": "INR",
+  "converted_amount": 8625.00,
+  "timestamp": "2024-01-20T10:30:00.000Z"
+}
+```
+
+## 🏷️ Category Management API
+
+### Get All Categories
+```javascript
+// GET /api/categories
+const getCategories = async (accessToken) => {
+  const response = await fetch(`${API_BASE_URL}/categories`, {
+    headers: { 'Authorization': `Bearer ${accessToken}` }
+  });
+  return response.json();
+};
+
+// Response
+{
+  "categories": [
+    {
+      "id": "uuid",
+      "user_id": "uuid",
+      "name": "Food & Dining",
+      "parent_id": null,
+      "color": "#FF6B6B",
+      "icon": "utensils",
+      "is_default": true,
+      "is_active": true,
+      "created_at": "2024-01-01T00:00:00.000Z",
+      "subcategories": [
+        {
+          "id": "uuid",
+          "name": "Restaurants",
+          "parent_id": "parent_uuid",
+          "color": "#FF8E8E",
+          "icon": "restaurant"
+        }
+      ]
+    }
+  ]
+}
+```
+
+### Create Category
+```javascript
+// POST /api/categories
+const createCategory = async (accessToken, categoryData) => {
+  const response = await fetch(`${API_BASE_URL}/categories`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${accessToken}`
+    },
+    body: JSON.stringify({
+      name: "Custom Category",
+      color: "#4ECDC4",
+      icon: "star",
+      parent_id: null // Optional, for subcategories
+    })
+  });
+  return response.json();
+};
+```
+
+## 📊 Budget Management API
+
+### Get All Budgets
+```javascript
+// GET /api/budgets
+const getBudgets = async (accessToken) => {
+  const response = await fetch(`${API_BASE_URL}/budgets`, {
+    headers: { 'Authorization': `Bearer ${accessToken}` }
+  });
+  return response.json();
+};
+
+// Response
+{
+  "budgets": [
+    {
+      "id": "uuid",
+      "user_id": "uuid",
+      "category_id": "uuid",
+      "amount": 500.00,
+      "period": "monthly",
+      "start_date": "2024-01-01",
+      "end_date": "2024-01-31",
+      "alert_threshold": 0.8,
+      "is_active": true,
+      "created_at": "2024-01-01T00:00:00.000Z",
+      "category_name": "Food & Dining",
+      "category_color": "#FF6B6B",
+      "spent_amount": 320.50,
+      "remaining_amount": 179.50,
+      "progress_percentage": 64.1,
+      "is_over_budget": false
+    }
+  ]
+}
+```
+
+### Create Budget
+```javascript
+// POST /api/budgets
+const createBudget = async (accessToken, budgetData) => {
+  const response = await fetch(`${API_BASE_URL}/budgets`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${accessToken}`
+    },
+    body: JSON.stringify({
+      category_id: "uuid",
+      amount: 600.00,
+      period: "monthly", // weekly, monthly, yearly
+      start_date: "2024-02-01",
+      end_date: "2024-02-29",
+      alert_threshold: 0.8 // 80%
+    })
+  });
+  return response.json();
+};
+```
+
+## 📅 Bill Reminders API
+
+### Get All Bill Reminders
+```javascript
+// GET /api/bills?include_paid=false&upcoming_only=true
+const getBillReminders = async (accessToken, filters = {}) => {
+  const params = new URLSearchParams({
+    include_paid: filters.include_paid || 'false',
+    upcoming_only: filters.upcoming_only || 'false'
+  });
+
+  const response = await fetch(`${API_BASE_URL}/bills?${params}`, {
+    headers: { 'Authorization': `Bearer ${accessToken}` }
+  });
+  return response.json();
+};
+
+// Response
+{
+  "bills": [
+    {
+      "id": "uuid",
+      "user_id": "uuid",
+      "title": "Rent Payment",
+      "amount": 1200.00,
+      "due_date": "2024-02-01",
+      "frequency": "monthly",
+      "category_id": "uuid",
+      "is_paid": false,
+      "reminder_days_before": 3,
+      "created_at": "2024-01-01T00:00:00.000Z",
+      "category_name": "Housing",
+      "category_color": "#45B7D1",
+      "days_until_due": 5,
+      "urgency": "soon"
+    }
+  ]
+}
+```
+
+### Create Bill Reminder
+```javascript
+// POST /api/bills
+const createBillReminder = async (accessToken, billData) => {
+  const response = await fetch(`${API_BASE_URL}/bills`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${accessToken}`
+    },
+    body: JSON.stringify({
+      title: "Electric Bill",
+      amount: 150.00,
+      due_date: "2024-02-15",
+      frequency: "monthly", // once, weekly, monthly, yearly
+      category_id: "uuid", // Optional
+      reminder_days_before: 5
+    })
+  });
+  return response.json();
+};
+```
+
+### Mark Bill as Paid
+```javascript
+// POST /api/bills/:id/mark-paid
+const markBillPaid = async (accessToken, billId, accountId) => {
+  const response = await fetch(`${API_BASE_URL}/bills/${billId}/mark-paid`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${accessToken}`
+    },
+    body: JSON.stringify({
+      account_id: accountId, // Optional: creates transaction
+      create_transaction: true
+    })
+  });
+  return response.json();
+};
+```
+
+## 📈 Analytics API
+
+### Get Spending Trends
+```javascript
+// GET /api/analytics/spending-trends?months=6
+const getSpendingTrends = async (accessToken, months = 6) => {
+  const response = await fetch(`${API_BASE_URL}/analytics/spending-trends?months=${months}`, {
+    headers: { 'Authorization': `Bearer ${accessToken}` }
+  });
+  return response.json();
+};
+
+// Response
+{
+  "trends": [
+    {
+      "month": "2024-01",
+      "total_income": 5000.00,
+      "total_expenses": 3200.50,
+      "net_amount": 1799.50,
+      "transaction_count": 45,
+      "top_categories": [
+        {
+          "category_name": "Food & Dining",
+          "amount": 650.00,
+          "percentage": 20.3
+        }
+      ]
+    }
+  ],
+  "summary": {
+    "average_monthly_income": 4800.00,
+    "average_monthly_expenses": 3100.00,
+    "trend_direction": "increasing", // increasing, decreasing, stable
+    "savings_rate": 35.4
+  }
+}
+```
+
+### Get Category Breakdown
+```javascript
+// GET /api/analytics/category-breakdown?start_date=2024-01-01&end_date=2024-01-31
+const getCategoryBreakdown = async (accessToken, startDate, endDate) => {
+  const params = new URLSearchParams({
+    start_date: startDate,
+    end_date: endDate
+  });
+
+  const response = await fetch(`${API_BASE_URL}/analytics/category-breakdown?${params}`, {
+    headers: { 'Authorization': `Bearer ${accessToken}` }
+  });
+  return response.json();
+};
+
+// Response
+{
+  "breakdown": [
+    {
+      "category_id": "uuid",
+      "category_name": "Food & Dining",
+      "category_color": "#FF6B6B",
+      "total_amount": 650.00,
+      "transaction_count": 15,
+      "percentage": 20.3,
+      "average_per_transaction": 43.33,
+      "subcategories": [
+        {
+          "name": "Restaurants",
+          "amount": 400.00,
+          "percentage": 61.5
+        }
+      ]
+    }
+  ],
+  "total_expenses": 3200.50,
+  "period": {
+    "start_date": "2024-01-01",
+    "end_date": "2024-01-31",
+    "days": 31
+  }
+}
+```
+
+## 📄 File Upload API (Statement Import)
+
+### Upload Statement File
+```javascript
+// POST /api/statements/upload
+const uploadStatement = async (accessToken, file) => {
+  const formData = new FormData();
+  formData.append('statement', file);
+
+  const response = await fetch(`${API_BASE_URL}/statements/upload`, {
+    method: 'POST',
+    headers: { 'Authorization': `Bearer ${accessToken}` },
+    body: formData
+  });
+  return response.json();
+};
+
+// Response
+{
+  "success": true,
+  "upload_id": "uuid",
+  "filename": "statement.csv",
+  "file_type": "csv",
+  "status": "processing",
+  "message": "File uploaded successfully and processing started"
+}
+```
+
+### Check Processing Status
+```javascript
+// GET /api/statements/upload/:id/status
+const checkUploadStatus = async (accessToken, uploadId) => {
+  const response = await fetch(`${API_BASE_URL}/statements/upload/${uploadId}/status`, {
+    headers: { 'Authorization': `Bearer ${accessToken}` }
+  });
+  return response.json();
+};
+
+// Response
+{
+  "upload_id": "uuid",
+  "status": "completed", // processing, completed, failed
+  "progress": 100,
+  "transactions_found": 25,
+  "transactions_processed": 25,
+  "errors": []
+}
+```
+
+## 📊 Data Export API
+
+### Export Transactions (Excel, CSV, PDF)
+```javascript
+// GET /api/transactions/export?format=excel&start_date=2024-01-01&end_date=2024-01-31
+const exportTransactions = async (accessToken, format = 'excel', filters = {}) => {
+  const params = new URLSearchParams({
+    format: format, // excel, csv, pdf
+    ...(filters.start_date && { start_date: filters.start_date }),
+    ...(filters.end_date && { end_date: filters.end_date }),
+    ...(filters.account_id && { account_id: filters.account_id }),
+    ...(filters.category_id && { category_id: filters.category_id }),
+    ...(filters.type && { type: filters.type })
+  });
+
+  const response = await fetch(`${API_BASE_URL}/transactions/export?${params}`, {
+    headers: { 'Authorization': `Bearer ${accessToken}` }
+  });
+  
+  // For file downloads, handle the blob response
+  if (format === 'pdf' || format === 'excel' || format === 'csv') {
+    const blob = await response.blob();
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    
+    // Extract filename from Content-Disposition header
+    const contentDisposition = response.headers.get('Content-Disposition');
+    let filename = `transactions_${new Date().toISOString().split('T')[0]}`;
+    
+    if (contentDisposition) {
+      const filenameMatch = contentDisposition.match(/filename="([^"]+)"/);
+      if (filenameMatch) {
+        filename = filenameMatch[1];
+      }
+    }
+    
+    // Fallback to correct extension if header parsing fails
+    if (!filename.includes('.')) {
+      const extensions = {
+        'excel': 'xlsx',
+        'csv': 'csv',
+        'pdf': 'pdf'
+      };
+      const extension = extensions[format] || format;
+      filename = `${filename}.${extension}`;
+    }
+    
+    a.download = filename;
+    a.click();
+    window.URL.revokeObjectURL(url);
+  }
+  
+  return response;
+};
+
+// Response Headers for File Downloads
+// Excel: Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet
+// Excel: Content-Disposition: attachment; filename="transactions_2024-01-20.xlsx"
+// CSV: Content-Type: text/csv
+// CSV: Content-Disposition: attachment; filename="transactions_2024-01-20.csv"
+// PDF: Content-Type: application/pdf
+// PDF: Content-Disposition: attachment; filename="transactions_2024-01-20.pdf"
+
+// Excel Export Features:
+// ✅ Proper .xlsx extension
+// ✅ Formatted headers with styling
+// ✅ Auto-sized columns
+// ✅ Numbers stored as numeric types (not text)
+// ✅ Proper date formatting (mm/dd/yyyy)
+// ✅ Conditional formatting for amounts (red for expenses, green for income)
+// ✅ Currency formatting with dollar signs
+// ✅ Alternating row colors for readability
+// ✅ Professional borders and styling
+// ✅ Multiple sheets (Transactions, Summary, Charts)
+```
+
+## 📋 PDF Reports API (Premium Feature)
+
+### Get Available PDF Report Types
+```javascript
+// GET /api/reports/types
+const getAvailableReportTypes = async (accessToken) => {
+  const response = await fetch(`${API_BASE_URL}/reports/types`, {
+    headers: { 'Authorization': `Bearer ${accessToken}` }
+  });
+  return response.json();
+};
+
+// Response
+{
+  "report_types": [
+    {
+      "id": "comprehensive",
+      "name": "Comprehensive Financial Report",
+      "description": "Complete financial overview with all three report templates",
+      "includes": ["transaction_statement", "monthly_report", "portfolio_summary"]
+    },
+    {
+      "id": "transaction_statement",
+      "name": "Transaction Statement (Bank-Style)",
+      "description": "Detailed transaction list with running balance and summary",
+      "includes": ["transactions", "running_balance", "summary"]
+    },
+    {
+      "id": "monthly_report",
+      "name": "Monthly Financial Report (Executive Summary)",
+      "description": "Monthly overview with trends, top categories, and budget performance",
+      "includes": ["overview", "trends", "top_categories", "budget_performance", "upcoming_bills"]
+    },
+    {
+      "id": "portfolio_summary",
+      "name": "Account Portfolio Summary",
+      "description": "Account overview with net worth, asset allocation, and trends",
+      "includes": ["account_overview", "net_worth", "asset_allocation", "currency_breakdown", "trends"]
+    }
+  ]
+}
+```
+
+### Export PDF Reports
+```javascript
+// GET /api/reports/export?type=comprehensive&start_date=2024-01-01&end_date=2024-01-31
+const exportPDFReport = async (accessToken, reportType = 'comprehensive', filters = {}) => {
+  const params = new URLSearchParams({
+    type: reportType, // comprehensive, transaction_statement, monthly_report, portfolio_summary
+    ...(filters.start_date && { start_date: filters.start_date }),
+    ...(filters.end_date && { end_date: filters.end_date }),
+    ...(filters.account_id && { account_id: filters.account_id })
+  });
+
+  const response = await fetch(`${API_BASE_URL}/reports/export?${params}`, {
+    headers: { 'Authorization': `Bearer ${accessToken}` }
+  });
+  
+  // Handle PDF blob response
+  const blob = await response.blob();
+  const url = window.URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `financial_report_${reportType}_${new Date().toISOString().split('T')[0]}.pdf`;
+  a.click();
+  window.URL.revokeObjectURL(url);
+  
+  return response;
+};
+
+// Response Headers
+// Content-Type: application/pdf
+// Content-Disposition: attachment; filename="financial_report_comprehensive_2024-01-20.pdf"
+```
+
+### PDF Report Templates Overview
+
+#### 1. Transaction Statement (Bank-Style)
+- **Header**: Company logo, period, account information
+- **Transaction Table**: Date, description, category, amount, running balance
+- **Summary**: Total income, expenses, net change, opening/closing balance
+- **Features**: Professional bank-style formatting with running balance calculation
+
+#### 2. Monthly Financial Report (Executive Summary)
+- **Overview Section**: Income, expenses, savings with trend indicators
+- **Top Spending Categories**: Top 5 categories with amounts and percentages
+- **Budget Performance**: Budget vs actual with status icons
+- **Upcoming Bills**: Due dates and amounts
+- **Features**: Executive summary format with visual indicators
+
+#### 3. Account Portfolio Summary
+- **Account Overview**: Account details with balances and changes
+- **Net Worth**: Total net worth with change indicators
+- **Asset Allocation**: Breakdown by account type
+- **Currency Breakdown**: Multi-currency portfolio overview
+- **Net Worth Trend**: 6-month trend with growth rate
+- **Features**: Portfolio management style with trend analysis
+
+## 🔧 System Health API
+
+### Health Check
+```javascript
+// GET /health
+const checkHealth = async () => {
+  const response = await fetch(`${API_BASE_URL.replace('/api', '')}/health`);
+  return response.json();
+};
+
+// Response
+{
+  "status": "healthy",
+  "timestamp": "2024-01-20T10:30:00.000Z",
+  "uptime": 3600,
+  "version": "1.0.0"
+}
+```
+
+## ⚠️ Error Handling
+
+### Standard Error Response Format
+```javascript
+// Error Response Structure
+{
+  "error": "Validation failed",
+  "details": [
+    "First name is required",
+    "Email must be valid"
+  ],
+  "code": "VALIDATION_ERROR",
+  "timestamp": "2024-01-20T10:30:00.000Z"
+}
+```
+
+### Common HTTP Status Codes
+```javascript
+const handleApiResponse = async (response) => {
+  if (!response.ok) {
+    const error = await response.json();
+
+    switch (response.status) {
+      case 400:
+        throw new Error(`Bad Request: ${error.error}`);
+      case 401:
+        // Token expired or invalid
+        throw new Error('Authentication required');
+      case 403:
+        throw new Error('Access forbidden');
+      case 404:
+        throw new Error('Resource not found');
+      case 409:
+        throw new Error(`Conflict: ${error.error}`);
+      case 429:
+        throw new Error('Rate limit exceeded');
+      case 500:
+        throw new Error('Server error');
+      default:
+        throw new Error(`HTTP ${response.status}: ${error.error}`);
+    }
+  }
+
+  return response.json();
+};
+```
+
+## 🔄 Pagination Helper
+
+### Pagination Utility
+```javascript
+const PaginationHelper = {
+  // Build pagination params
+  buildParams: (page = 1, limit = 20, filters = {}) => {
+    return new URLSearchParams({
+      page: page.toString(),
+      limit: limit.toString(),
+      ...filters
+    });
+  },
+
+  // Parse pagination response
+  parsePagination: (response) => {
+    return {
+      data: response.transactions || response.accounts || response.data,
+      pagination: response.pagination,
+      hasNextPage: response.pagination.page < response.pagination.pages,
+      hasPrevPage: response.pagination.page > 1
+    };
+  }
+};
+
+// Usage example
+const getTransactionsPage = async (accessToken, page = 1, filters = {}) => {
+  const params = PaginationHelper.buildParams(page, 20, filters);
+  const response = await fetch(`${API_BASE_URL}/transactions?${params}`, {
+    headers: { 'Authorization': `Bearer ${accessToken}` }
+  });
+
+  const data = await handleApiResponse(response);
+  return PaginationHelper.parsePagination(data);
+};
+```
+
+## 🚀 Frontend Integration Examples
+
+### React/React Native API Service
+```javascript
+// apiService.js
+class FinanceApiService {
+  constructor(baseUrl = 'http://localhost:3000/api') {
+    this.baseUrl = baseUrl;
+    this.accessToken = null;
+    this.refreshToken = null;
+  }
+
+  setTokens(accessToken, refreshToken) {
+    this.accessToken = accessToken;
+    this.refreshToken = refreshToken;
+  }
+
+  async request(endpoint, options = {}) {
+    const url = `${this.baseUrl}${endpoint}`;
+    const config = {
+      headers: {
+        'Content-Type': 'application/json',
+        ...(this.accessToken && { 'Authorization': `Bearer ${this.accessToken}` }),
+        ...options.headers
+      },
+      ...options
+    };
+
+    try {
+      const response = await fetch(url, config);
+
+      if (response.status === 401 && this.refreshToken) {
+        // Try to refresh token
+        await this.refreshAccessToken();
+        // Retry original request
+        config.headers['Authorization'] = `Bearer ${this.accessToken}`;
+        return fetch(url, config);
+      }
+
+      return handleApiResponse(response);
+    } catch (error) {
+      console.error('API Request failed:', error);
+      throw error;
+    }
+  }
+
+  async refreshAccessToken() {
+    const response = await fetch(`${this.baseUrl}/auth/refresh`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ refresh_token: this.refreshToken })
+    });
+
+    const data = await response.json();
+    this.setTokens(data.access_token, data.refresh_token);
+    return data;
+  }
+
+  // Authentication methods
+  async login(email, password) {
+    return this.request('/auth/login', {
+      method: 'POST',
+      body: JSON.stringify({ email, password })
+    });
+  }
+
+  async register(userData) {
+    return this.request('/auth/register', {
+      method: 'POST',
+      body: JSON.stringify(userData)
+    });
+  }
+
+  // User methods
+  async getProfile() {
+    return this.request('/user/profile');
+  }
+
+  async updateProfile(updates) {
+    return this.request('/user/profile', {
+      method: 'PUT',
+      body: JSON.stringify(updates)
+    });
+  }
+
+  async changeCurrency(newCurrency, convertData = true) {
+    return this.request('/user/change-currency', {
+      method: 'POST',
+      body: JSON.stringify({
+        new_currency: newCurrency,
+        convert_existing_data: convertData
+      })
+    });
+  }
+
+  // Account methods
+  async getAccounts() {
+    return this.request('/accounts');
+  }
+
+  async createAccount(accountData) {
+    return this.request('/accounts', {
+      method: 'POST',
+      body: JSON.stringify(accountData)
+    });
+  }
+
+  // Transaction methods
+  async getTransactions(filters = {}) {
+    const params = new URLSearchParams(filters);
+    return this.request(`/transactions?${params}`);
+  }
+
+  async createTransaction(transactionData) {
+    return this.request('/transactions', {
+      method: 'POST',
+      body: JSON.stringify(transactionData)
+    });
+  }
+
+  // Export methods
+  async exportTransactions(format = 'excel', filters = {}) {
+    const params = new URLSearchParams({
+      format: format,
+      ...filters
+    });
+    
+    // For file downloads, use blob response type
+    const responseType = format === 'excel' || format === 'pdf' || format === 'csv' ? 'blob' : 'json';
+    
+    return this.request(`/transactions/export?${params}`, {
+      headers: {}, // Remove Content-Type for file downloads
+      responseType: responseType
+    });
+  }
+
+  // PDF Reports methods (Premium)
+  async getAvailableReportTypes() {
+    return this.request('/reports/types');
+  }
+
+  async exportPDFReport(reportType = 'comprehensive', filters = {}) {
+    const params = new URLSearchParams({
+      type: reportType,
+      ...filters
+    });
+    return this.request(`/reports/export?${params}`, {
+      headers: {} // Remove Content-Type for file downloads
+    });
+  }
+
+  // Currency methods
+  async getSupportedCurrencies() {
+    return this.request('/currency/supported');
+  }
+
+  async getExchangeRates(baseCurrency) {
+    return this.request(`/currency/rates/${baseCurrency}`);
+  }
+
+  async convertCurrency(amount, from, to) {
+    return this.request('/currency/convert', {
+      method: 'POST',
+      body: JSON.stringify({ amount, from, to })
+    });
+  }
+}
+
+// Export singleton instance
+export const apiService = new FinanceApiService();
+```
+
+### React Hook for API Integration
+```javascript
+// useFinanceApi.js
+import { useState, useEffect } from 'react';
+import { apiService } from './apiService';
+
+export const useFinanceApi = () => {
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
+
+  const makeRequest = async (requestFn) => {
+    setLoading(true);
+    setError(null);
+
+    try {
+      const result = await requestFn();
+      setLoading(false);
+      return result;
+    } catch (err) {
+      setError(err.message);
+      setLoading(false);
+      throw err;
+    }
+  };
+
+  return { loading, error, makeRequest };
+};
+
+// Usage in component
+const TransactionList = () => {
+  const [transactions, setTransactions] = useState([]);
+  const { loading, error, makeRequest } = useFinanceApi();
+
+  useEffect(() => {
+    const loadTransactions = async () => {
+      try {
+        const data = await makeRequest(() => apiService.getTransactions());
+        setTransactions(data.transactions);
+      } catch (err) {
+        console.error('Failed to load transactions:', err);
+      }
+    };
+
+    loadTransactions();
+  }, []);
+
+  if (loading) return <div>Loading...</div>;
+  if (error) return <div>Error: {error}</div>;
+
+  return (
+    <div>
+      {transactions.map(transaction => (
+        <div key={transaction.id}>
+          {transaction.description}: {transaction.amount}
+        </div>
+      ))}
+    </div>
+  );
+};
+```
+
+### React Native AsyncStorage Integration
+```javascript
+// authStorage.js
+import AsyncStorage from '@react-native-async-storage/async-storage';
+
+export const AuthStorage = {
+  async saveTokens(accessToken, refreshToken) {
+    try {
+      await AsyncStorage.multiSet([
+        ['access_token', accessToken],
+        ['refresh_token', refreshToken]
+      ]);
+    } catch (error) {
+      console.error('Failed to save tokens:', error);
+    }
+  },
+
+  async getTokens() {
+    try {
+      const tokens = await AsyncStorage.multiGet(['access_token', 'refresh_token']);
+      return {
+        accessToken: tokens[0][1],
+        refreshToken: tokens[1][1]
+      };
+    } catch (error) {
+      console.error('Failed to get tokens:', error);
+      return { accessToken: null, refreshToken: null };
+    }
+  },
+
+  async clearTokens() {
+    try {
+      await AsyncStorage.multiRemove(['access_token', 'refresh_token']);
+    } catch (error) {
+      console.error('Failed to clear tokens:', error);
+    }
+  }
+};
+```
+
+## 🎯 Quick Start Checklist for Frontend Developers
+
+### 1. Setup API Service
+- [ ] Copy the `FinanceApiService` class
+- [ ] Configure base URL for your environment
+- [ ] Implement token storage (localStorage/AsyncStorage)
+
+### 2. Authentication Flow
+- [ ] Implement login/register forms
+- [ ] Store tokens securely after successful auth
+- [ ] Handle token refresh automatically
+- [ ] Implement logout functionality
+
+### 3. Core Features to Implement
+- [ ] User profile management with currency selection
+- [ ] Account list and creation
+- [ ] Transaction list with pagination
+- [ ] Category management
+- [ ] Budget tracking
+- [ ] Bill reminders
+- [ ] Data export (CSV, Excel, PDF)
+- [ ] PDF reports (Premium feature)
+
+### 4. Advanced Features
+- [ ] Currency conversion with real-time rates
+- [ ] File upload for statement import
+- [ ] Analytics dashboard
+- [ ] Push notifications
+
+### 5. Error Handling
+- [ ] Implement global error handler
+- [ ] Show user-friendly error messages
+- [ ] Handle network connectivity issues
+- [ ] Implement retry mechanisms
+
+---
+
+## 📞 Support & Documentation
+
+- **API Base URL**: `http://localhost:3000/api`
+- **Test User**: `test@example.com` / `testpassword123`
+- **Postman Collection**: Available in `API_TESTING_GUIDE.md`
+- **Database Seeding**: Run `npm run db:seed` for test data
+
+**Happy Coding! 🚀**
 AWS_S3_BUCKET=finance-manager-uploads
 
 # Application Configuration
@@ -557,15 +1890,17 @@ curl -X POST http://localhost:3000/api/auth/login \
 ```javascript
 {
   "accounts": 3,           // Maximum accounts
-  "custom_categories": 5,  // Maximum custom categories  
+  "custom_categories": 3,  // Maximum custom categories  
   "monthly_uploads": 1,    // Statement uploads per month
-  "active_goals": 1,       // Maximum active goals
+  "active_goals": 2,       // Maximum active goals
+  "monthly_exports": -1,   // Export functionality per month (TEMPORARILY UNLIMITED)
   "features": [
     "basic_transactions",
     "simple_budgets", 
     "basic_reports",
     "basic_statement_import",
-    "manual_goals"
+    "manual_goals",
+    "csv_export"
   ]
 }
 ```
@@ -577,16 +1912,20 @@ curl -X POST http://localhost:3000/api/auth/login \
   "custom_categories": -1, // Unlimited
   "monthly_uploads": -1,   // Unlimited
   "active_goals": -1,      // Unlimited
+  "monthly_exports": -1,   // Unlimited
   "features": [
     "unlimited_accounts",
     "unlimited_categories",
     "unlimited_statement_imports",
     "unlimited_goals",
+    "unlimited_exports",
     "ai_goal_setting",
     "advanced_analytics",
     "predictive_alerts",
     "account_sharing",
     "excel_export",
+    "pdf_export",
+    "professional_pdf_reports",
     "priority_support",
     "advanced_ai_categorization"
   ]
@@ -686,3 +2025,390 @@ Body: { refresh_token: REFRESH_TOKEN }
 ---
 
 **Ready to integrate!** This backend provides a complete financial management system with AI-powered features, comprehensive analytics, and a robust subscription model. All endpoints are documented in the `API_TESTING_GUIDE.md` for detailed testing instructions.
+
+### Export Functionality
+- `GET /api/transactions/export` - Export transactions (Excel, CSV, PDF)
+- `GET /api/reports/types` - Get available PDF report types
+- `GET /api/reports/export` - Export professional PDF reports
+
+### Reward Ads System (New)
+- `GET /api/user/export-eligibility` - Check export eligibility with ad options
+- `POST /api/user/reward-ad-completed` - Process reward ad completion
+- `GET /api/user/usage` - Get comprehensive usage statistics (updated)
+
+## 🎬 Reward Ads System
+
+### Overview
+The reward ads system allows free tier users to unlock premium features by watching short advertisements. This system is designed to provide value to users while encouraging premium upgrades.
+
+### Supported Features
+- **Export Functionality**: Unlock exports by watching ads
+- **File Uploads**: Unlock additional uploads by watching ads  
+- **Goal Creation**: Unlock additional goals by watching ads
+
+### Daily Limits
+- **Global Daily Limit**: 10 ads per day across all features
+- **Per-Feature Limit**: 3 ads per day per feature type
+- **Reset Time**: Daily at midnight (local timezone)
+
+### API Endpoints
+
+#### Check Export Eligibility
+```javascript
+// GET /api/user/export-eligibility
+const checkExportEligibility = async (accessToken) => {
+  const response = await fetch(`${API_BASE_URL}/user/export-eligibility`, {
+    headers: { 'Authorization': `Bearer ${accessToken}` }
+  });
+  return response.json();
+};
+
+// Response Examples
+{
+  "can_export": false,
+  "reason": "over_limit_ad_available",
+  "options": [
+    {
+      "type": "watch_ad",
+      "title": "Watch Ad for Free Export",
+      "description": "Watch a short ad to unlock 1 export (3 remaining today)",
+      "reward": "export_unlock"
+    },
+    {
+      "type": "upgrade",
+      "title": "Upgrade to Premium",
+      "description": "Get unlimited exports + all premium features",
+      "price": "$9.99/month"
+    }
+  ]
+}
+```
+
+#### Process Reward Ad Completion
+```javascript
+// POST /api/user/reward-ad-completed
+const processRewardAd = async (accessToken, featureType, adData) => {
+  const response = await fetch(`${API_BASE_URL}/user/reward-ad-completed`, {
+    method: 'POST',
+    headers: { 
+      'Authorization': `Bearer ${accessToken}`,
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({
+      feature_type: featureType, // 'export', 'upload', 'goal'
+      ad_network: 'admob',
+      ad_unit_id: 'your_ad_unit_id',
+      reward_amount: 1,
+      reward_type: 'export_unlock'
+    })
+  });
+  return response.json();
+};
+
+// Response
+{
+  "success": true,
+  "message": "Ad reward granted successfully",
+  "unlock_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+  "expires_in": 600,
+  "feature_unlocked": "export",
+  "ad_transaction_id": "uuid-here"
+}
+```
+
+#### Export with Ad Unlock Token
+```javascript
+// GET /api/transactions/export?unlock_token=TOKEN
+const exportWithAdUnlock = async (accessToken, unlockToken, format = 'excel') => {
+  const response = await fetch(
+    `${API_BASE_URL}/transactions/export?format=${format}&unlock_token=${unlockToken}`, 
+    {
+      headers: { 'Authorization': `Bearer ${accessToken}` }
+    }
+  );
+  
+  // Handle file download
+  const blob = await response.blob();
+  const url = window.URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `transactions_${new Date().toISOString().split('T')[0]}.${format}`;
+  a.click();
+  window.URL.revokeObjectURL(url);
+};
+```
+
+#### Get Usage Statistics (Updated)
+```javascript
+// GET /api/user/usage
+const getUsageStats = async (accessToken) => {
+  const response = await fetch(`${API_BASE_URL}/user/usage`, {
+    headers: { 'Authorization': `Bearer ${accessToken}` }
+  });
+  return response.json();
+};
+
+// Response
+{
+  "subscription_tier": "free",
+  "monthly_usage": {
+    "export": { "currentUsage": 0, "limit": 0, "unlimited": false },
+    "upload": { "currentUsage": 1, "limit": 1, "unlimited": false },
+    "ai_categorization": { "currentUsage": 5, "limit": 10, "unlimited": false }
+  },
+  "daily_usage": {
+    "export": {
+      "free_used": 0,
+      "ad_used": 1,
+      "total_used": 1,
+      "ad_limit": 3,
+      "ad_remaining": 2
+    },
+    "upload": {
+      "free_used": 1,
+      "ad_used": 0,
+      "total_used": 1,
+      "ad_limit": 3,
+      "ad_remaining": 3
+    },
+    "goal": {
+      "free_used": 0,
+      "ad_used": 0,
+      "total_used": 0,
+      "ad_limit": 3,
+      "ad_remaining": 3
+    }
+  }
+}
+```
+
+### Frontend Integration Flow
+
+#### 1. Check Eligibility Before Export
+```javascript
+// Before attempting export, check eligibility
+const eligibility = await checkExportEligibility(accessToken);
+
+if (eligibility.can_export) {
+  // Proceed with normal export
+  await exportTransactions(accessToken, 'excel');
+} else {
+  // Show options to user
+  showExportOptions(eligibility.options);
+}
+```
+
+#### 2. Handle Ad Watching Flow
+```javascript
+async function handleWatchAd() {
+  try {
+    // Show ad (integrate with AdMob SDK)
+    const adResult = await showRewardedAd();
+    
+    if (adResult.completed) {
+      // Process ad completion on backend
+      const rewardResult = await processRewardAd(accessToken, 'export', {
+        ad_unit_id: adResult.adUnitId,
+        reward_amount: adResult.rewardAmount
+      });
+      
+      // Use unlock token for export
+      await exportWithAdUnlock(accessToken, rewardResult.unlock_token, 'excel');
+      
+      // Show success message
+      showSuccessMessage('Export unlocked! Your file is downloading.');
+    }
+  } catch (error) {
+    showErrorMessage('Failed to process ad reward. Please try again.');
+  }
+}
+```
+
+#### 3. Show Export Options Modal
+```javascript
+function showExportOptions(options) {
+  const modal = document.createElement('div');
+  modal.innerHTML = `
+    <div class="export-options-modal">
+      <h3>Export Limit Reached</h3>
+      <p>You've reached your free export limit. Choose an option:</p>
+      ${options.map(option => `
+        <div class="option ${option.type}">
+          <h4>${option.title}</h4>
+          <p>${option.description}</p>
+          <button onclick="handleOption('${option.type}')">
+            ${option.type === 'watch_ad' ? 'Watch Ad' : 'Upgrade'}
+          </button>
+        </div>
+      `).join('')}
+    </div>
+  `;
+  
+  document.body.appendChild(modal);
+}
+
+function handleOption(optionType) {
+  if (optionType === 'watch_ad') {
+    handleWatchAd();
+  } else if (optionType === 'upgrade') {
+    window.location.href = '/upgrade-premium';
+  }
+}
+```
+
+### Error Handling
+
+#### Ad Limit Reached
+```javascript
+// 429 Too Many Requests
+{
+  "error": "Daily ad limit reached"
+}
+```
+
+#### Invalid Unlock Token
+```javascript
+// 401 Unauthorized
+{
+  "error": "Invalid unlock token"
+}
+```
+
+#### Export Limit Exceeded
+```javascript
+// 403 Forbidden
+{
+  "error": "Export limit exceeded",
+  "code": "EXPORT_LIMIT_EXCEEDED",
+  "options": [
+    {
+      "type": "upgrade",
+      "title": "Upgrade to Premium",
+      "description": "Get unlimited exports + all premium features",
+      "price": "$9.99/month"
+    }
+  ]
+}
+```
+
+### Security Features
+
+#### Token Security
+- **Short Expiration**: Unlock tokens expire in 10 minutes
+- **Single Use**: Each token can only be used once
+- **User Binding**: Tokens are bound to specific user and feature
+- **JWT Signing**: Tokens are signed with server secret
+
+#### Anti-Abuse Measures
+- **Daily Limits**: Strict daily limits per user and feature
+- **IP Tracking**: Ad transactions include IP address for fraud detection
+- **Device Info**: Store device information for suspicious activity detection
+- **Rate Limiting**: Prevent rapid ad completion requests
+
+#### Database Constraints
+- **Unique Constraints**: Prevent duplicate ad transactions
+- **Foreign Keys**: Ensure data integrity
+- **Check Constraints**: Validate feature types and limits
+
+### Testing
+
+#### Run Test Suite
+```bash
+# Test reward ads functionality
+node scripts/test-reward-ads.js
+```
+
+#### Manual Testing
+```bash
+# Check export eligibility
+curl -X GET "http://localhost:3000/api/user/export-eligibility" \
+  -H "Authorization: Bearer YOUR_TOKEN"
+
+# Process reward ad
+curl -X POST "http://localhost:3000/api/user/reward-ad-completed" \
+  -H "Authorization: Bearer YOUR_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"feature_type": "export", "ad_network": "admob"}'
+
+# Export with unlock token
+curl -X GET "http://localhost:3000/api/transactions/export?format=excel&unlock_token=TOKEN" \
+  -H "Authorization: Bearer YOUR_TOKEN"
+```
+
+### Configuration
+
+#### Environment Variables
+```bash
+# JWT Secret for unlock tokens
+JWT_SECRET=your-super-secret-jwt-key
+
+# Ad Network Configuration
+ADMOB_APP_ID=ca-app-pub-xxxxxxxxxxxxxxxx~yyyyyyyyyy
+ADMOB_REWARDED_AD_UNIT_ID=ca-app-pub-xxxxxxxxxxxxxxxx/zzzzzzzzzz
+```
+
+#### Database Tables
+```sql
+-- Reward ad transactions
+CREATE TABLE reward_ad_transactions (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id UUID REFERENCES users(id) ON DELETE CASCADE,
+    feature_type VARCHAR(50) NOT NULL CHECK (feature_type IN ('export', 'upload', 'goal')),
+    ad_network VARCHAR(20) DEFAULT 'admob',
+    reward_granted BOOLEAN DEFAULT FALSE,
+    used_at TIMESTAMP,
+    watched_at TIMESTAMP DEFAULT NOW(),
+    expires_at TIMESTAMP,
+    ip_address INET,
+    device_info JSONB,
+    created_at TIMESTAMP DEFAULT NOW()
+);
+
+-- Daily usage limits
+CREATE TABLE user_daily_limits (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id UUID REFERENCES users(id) ON DELETE CASCADE,
+    date DATE DEFAULT CURRENT_DATE,
+    exports_used INTEGER DEFAULT 0,
+    exports_from_ads INTEGER DEFAULT 0,
+    uploads_used INTEGER DEFAULT 0,
+    uploads_from_ads INTEGER DEFAULT 0,
+    goals_used INTEGER DEFAULT 0,
+    goals_from_ads INTEGER DEFAULT 0,
+    created_at TIMESTAMP DEFAULT NOW(),
+    updated_at TIMESTAMP DEFAULT NOW(),
+    UNIQUE(user_id, date)
+);
+```
+
+### Migration Notes
+
+#### Breaking Changes
+- **Export Limits**: Free tier exports now require ads or premium upgrade
+- **API Response**: Export endpoints now return options when limit exceeded
+- **Usage Tracking**: Daily usage tracking added alongside monthly tracking
+
+#### Backward Compatibility
+- **Premium Users**: No changes to premium user experience
+- **Existing Exports**: Previously exported files remain accessible
+- **API Structure**: Core API structure remains the same
+
+#### Database Migration
+The new tables will be created automatically when the application starts. No manual migration required.
+
+### Performance Considerations
+
+#### Database Optimization
+- **Indexes**: Optimized indexes on user_id, date, and feature_type
+- **Partitioning**: Consider partitioning user_daily_limits by date for large scale
+- **Cleanup**: Implement cleanup job for expired ad transactions
+
+#### Caching Strategy
+- **Eligibility Cache**: Cache export eligibility for 5 minutes
+- **Usage Stats Cache**: Cache usage statistics for 1 minute
+- **Redis Integration**: Use Redis for distributed caching
+
+#### Monitoring
+- **Ad Completion Rate**: Track successful ad completions
+- **Conversion Rate**: Monitor ad-to-premium conversion
+- **Error Rates**: Monitor failed ad processing attempts

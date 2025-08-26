@@ -43,6 +43,8 @@ const RegisterScreen: React.FC<RegisterScreenProps> = ({ navigation }) => {
 
   const [showPasswordRequirements, setShowPasswordRequirements] = useState(false);
 
+
+
   const validateEmail = (email: string) => {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     return emailRegex.test(email);
@@ -79,11 +81,8 @@ const RegisterScreen: React.FC<RegisterScreenProps> = ({ navigation }) => {
       hasError = true;
     }
 
-    // Last Name validation
-    if (!formData.lastName.trim()) {
-      newErrors.lastName = 'Last name is required';
-      hasError = true;
-    }
+    // Last Name validation (optional)
+    // No validation needed as last name is optional
 
     // Email validation
     if (!formData.email.trim()) {
@@ -127,7 +126,7 @@ const RegisterScreen: React.FC<RegisterScreenProps> = ({ navigation }) => {
         email: formData.email.trim(),
         password: formData.password,
         first_name: formData.firstName.trim(),
-        last_name: formData.lastName.trim(),
+        last_name: formData.lastName.trim() || undefined, // Make last name optional
       })).unwrap();
     } catch (err: any) {
       console.error('Registration error:', err);
@@ -222,6 +221,8 @@ const RegisterScreen: React.FC<RegisterScreenProps> = ({ navigation }) => {
       </Text>
     </View>
   );
+
+
 
   return (
     <SafeAreaView style={styles.container}>
@@ -319,6 +320,8 @@ const RegisterScreen: React.FC<RegisterScreenProps> = ({ navigation }) => {
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
+
+
     </SafeAreaView>
   );
 };

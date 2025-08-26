@@ -362,126 +362,242 @@ const WeeklyFinancialHealthSectionContent: React.FC<WeeklyFinancialHealthSection
 
   return (
     <FadeInView duration={300} delay={100}>
-      <TouchableOpacity 
-        style={styles.container}
-        onPress={onPress}
-        activeOpacity={0.8}
-        accessibilityRole="button"
-        accessibilityLabel={generateWeeklyHealthLabel(healthData)}
-        accessibilityHint="Tap to view detailed weekly financial report"
-      >
-      <View style={styles.header}>
-        <Text style={styles.title}>Your Weekly Financial Health</Text>
-      </View>
+      {onPress ? (
+        <TouchableOpacity 
+          style={styles.container}
+          onPress={onPress}
+          activeOpacity={0.8}
+          accessibilityRole="button"
+          accessibilityLabel={generateWeeklyHealthLabel(healthData)}
+          accessibilityHint="Tap to view detailed weekly financial report"
+        >
+          <View style={styles.header}>
+            <Text style={styles.title}>Your Weekly Financial Health</Text>
+          </View>
 
-      <View style={styles.scoreSection}>
-        <Text style={styles.scoreLabel}>Overall Score:</Text>
-        <Text style={[styles.score, { color: getScoreColor(healthData.overallScore) }]}>
-          {healthData.overallScore}/{healthData.maxScore}
-        </Text>
-        <Text style={styles.stars}>
-          {getStarRating(healthData.overallScore, healthData.maxScore)}
-        </Text>
-      </View>
+          <View style={styles.scoreSection}>
+            <Text style={styles.scoreLabel}>Overall Score:</Text>
+            <Text style={[styles.score, { color: getScoreColor(healthData.overallScore) }]}>
+              {healthData.overallScore}/{healthData.maxScore}
+            </Text>
+            <Text style={styles.stars}>
+              {getStarRating(healthData.overallScore, healthData.maxScore)}
+            </Text>
+          </View>
 
-      <View style={styles.itemsSection}>
-        {healthData.achievements.map((item, index) => (
-          <View key={`achievement-${index}`} style={styles.item}>
-            <Text style={styles.itemIcon}>{getItemIcon(item.type)}</Text>
-            <Text 
-              style={styles.itemText}
-              numberOfLines={2}
-              ellipsizeMode="tail"
-            >
-              {item.text}
-            </Text>
+          <View style={styles.itemsSection}>
+            {healthData.achievements.map((item, index) => (
+              <View key={`achievement-${index}`} style={styles.item}>
+                <Text style={styles.itemIcon}>{getItemIcon(item.type)}</Text>
+                <Text 
+                  style={styles.itemText}
+                  numberOfLines={2}
+                  ellipsizeMode="tail"
+                >
+                  {item.text}
+                </Text>
+              </View>
+            ))}
+            
+            {healthData.warnings.map((item, index) => (
+              <View key={`warning-${index}`} style={styles.item}>
+                <Text style={styles.itemIcon}>{getItemIcon(item.type)}</Text>
+                <Text 
+                  style={styles.itemText}
+                  numberOfLines={2}
+                  ellipsizeMode="tail"
+                >
+                  {item.text}
+                </Text>
+              </View>
+            ))}
+            
+            {healthData.issues.map((item, index) => (
+              <View key={`issue-${index}`} style={styles.item}>
+                <Text style={styles.itemIcon}>{getItemIcon(item.type)}</Text>
+                <Text 
+                  style={styles.itemText}
+                  numberOfLines={2}
+                  ellipsizeMode="tail"
+                >
+                  {item.text}
+                </Text>
+              </View>
+            ))}
           </View>
-        ))}
-        
-        {healthData.warnings.map((item, index) => (
-          <View key={`warning-${index}`} style={styles.item}>
-            <Text style={styles.itemIcon}>{getItemIcon(item.type)}</Text>
-            <Text 
-              style={styles.itemText}
-              numberOfLines={2}
-              ellipsizeMode="tail"
-            >
-              {item.text}
-            </Text>
-          </View>
-        ))}
-        
-        {healthData.issues.map((item, index) => (
-          <View key={`issue-${index}`} style={styles.item}>
-            <Text style={styles.itemIcon}>{getItemIcon(item.type)}</Text>
-            <Text 
-              style={styles.itemText}
-              numberOfLines={2}
-              ellipsizeMode="tail"
-            >
-              {item.text}
-            </Text>
-          </View>
-        ))}
-      </View>
 
-      <View style={styles.statsSection}>
-        <View style={styles.statsGrid}>
-          <View style={styles.statItem}>
-            <Text style={styles.statLabel}>This Week:</Text>
-            <Text style={styles.statValue}>
-              {formatCurrency(healthData.weeklyStats.thisWeek, displayCurrency)}
+          <View style={styles.statsSection}>
+            <View style={styles.statsGrid}>
+              <View style={styles.statItem}>
+                <Text style={styles.statLabel}>This Week:</Text>
+                <Text style={styles.statValue}>
+                  {formatCurrency(healthData.weeklyStats.thisWeek, displayCurrency)}
+                </Text>
+              </View>
+              
+              <View style={styles.statItem}>
+                <Text style={styles.statLabel}>Budget:</Text>
+                <Text style={[
+                  styles.statValue,
+                  { color: healthData.weeklyStats.overBudget > 0 ? colors.error : colors.textSecondary }
+                ]}>
+                  {formatCurrency(healthData.weeklyStats.budget, displayCurrency)} 
+                  {healthData.weeklyStats.overBudget > 0 && 
+                    ` (${getCurrencySymbol(displayCurrency)}${healthData.weeklyStats.overBudget} over)`
+                  }
+                </Text>
+              </View>
+              
+              <View style={styles.statItem}>
+                <Text style={styles.statLabel}>Last Week:</Text>
+                <Text style={styles.statValue}>
+                  {formatCurrency(healthData.weeklyStats.lastWeek, displayCurrency)} 
+                  <Text style={[
+                    styles.changeText,
+                    { color: lastWeekChange > 0 ? colors.error : colors.income }
+                  ]}>
+                    ({lastWeekChange > 0 ? '+' : ''}{lastWeekChange}%)
+                  </Text>
+                </Text>
+              </View>
+              
+              <View style={styles.statItem}>
+                <Text style={styles.statLabel}>Monthly Avg:</Text>
+                <Text style={styles.statValue}>
+                  {formatCurrency(healthData.weeklyStats.monthlyAvg, displayCurrency)} 
+                  <Text style={[
+                    styles.changeText,
+                    { color: monthlyAvgChange > 0 ? colors.error : colors.income }
+                  ]}>
+                    ({monthlyAvgChange > 0 ? '+' : ''}{monthlyAvgChange}%)
+                  </Text>
+                </Text>
+              </View>
+            </View>
+          </View>
+
+          <View style={styles.goalSection}>
+            <Text style={styles.goalIcon}>💡</Text>
+            <Text style={styles.goalText}>
+              Next Week Goal: Keep under {formatCurrency(healthData.nextWeekGoal, displayCurrency)}
             </Text>
           </View>
-          
-          <View style={styles.statItem}>
-            <Text style={styles.statLabel}>Budget:</Text>
-            <Text style={[
-              styles.statValue,
-              { color: healthData.weeklyStats.overBudget > 0 ? colors.error : colors.textSecondary }
-            ]}>
-              {formatCurrency(healthData.weeklyStats.budget, displayCurrency)} 
-              {healthData.weeklyStats.overBudget > 0 && 
-                ` (${getCurrencySymbol(displayCurrency)}${healthData.weeklyStats.overBudget} over)`
-              }
+        </TouchableOpacity>
+      ) : (
+        <View style={styles.container}>
+          <View style={styles.header}>
+            <Text style={styles.title}>Your Weekly Financial Health</Text>
+          </View>
+
+          <View style={styles.scoreSection}>
+            <Text style={styles.scoreLabel}>Overall Score:</Text>
+            <Text style={[styles.score, { color: getScoreColor(healthData.overallScore) }]}>
+              {healthData.overallScore}/{healthData.maxScore}
+            </Text>
+            <Text style={styles.stars}>
+              {getStarRating(healthData.overallScore, healthData.maxScore)}
             </Text>
           </View>
-          
-          <View style={styles.statItem}>
-            <Text style={styles.statLabel}>Last Week:</Text>
-            <Text style={styles.statValue}>
-              {formatCurrency(healthData.weeklyStats.lastWeek, displayCurrency)} 
-              <Text style={[
-                styles.changeText,
-                { color: lastWeekChange > 0 ? colors.error : colors.income }
-              ]}>
-                ({lastWeekChange > 0 ? '+' : ''}{lastWeekChange}%)
-              </Text>
-            </Text>
+
+          <View style={styles.itemsSection}>
+            {healthData.achievements.map((item, index) => (
+              <View key={`achievement-${index}`} style={styles.item}>
+                <Text style={styles.itemIcon}>{getItemIcon(item.type)}</Text>
+                <Text 
+                  style={styles.itemText}
+                  numberOfLines={2}
+                  ellipsizeMode="tail"
+                >
+                  {item.text}
+                </Text>
+              </View>
+            ))}
+            
+            {healthData.warnings.map((item, index) => (
+              <View key={`warning-${index}`} style={styles.item}>
+                <Text style={styles.itemIcon}>{getItemIcon(item.type)}</Text>
+                <Text 
+                  style={styles.itemText}
+                  numberOfLines={2}
+                  ellipsizeMode="tail"
+                >
+                  {item.text}
+                </Text>
+              </View>
+            ))}
+            
+            {healthData.issues.map((item, index) => (
+              <View key={`issue-${index}`} style={styles.item}>
+                <Text style={styles.itemIcon}>{getItemIcon(item.type)}</Text>
+                <Text 
+                  style={styles.itemText}
+                  numberOfLines={2}
+                  ellipsizeMode="tail"
+                >
+                  {item.text}
+                </Text>
+              </View>
+            ))}
           </View>
-          
-          <View style={styles.statItem}>
-            <Text style={styles.statLabel}>Monthly Avg:</Text>
-            <Text style={styles.statValue}>
-              {formatCurrency(healthData.weeklyStats.monthlyAvg, displayCurrency)} 
-              <Text style={[
-                styles.changeText,
-                { color: monthlyAvgChange > 0 ? colors.error : colors.income }
-              ]}>
-                ({monthlyAvgChange > 0 ? '+' : ''}{monthlyAvgChange}%)
-              </Text>
+
+          <View style={styles.statsSection}>
+            <View style={styles.statsGrid}>
+              <View style={styles.statItem}>
+                <Text style={styles.statLabel}>This Week:</Text>
+                <Text style={styles.statValue}>
+                  {formatCurrency(healthData.weeklyStats.thisWeek, displayCurrency)}
+                </Text>
+              </View>
+              
+              <View style={styles.statItem}>
+                <Text style={styles.statLabel}>Budget:</Text>
+                <Text style={[
+                  styles.statValue,
+                  { color: healthData.weeklyStats.overBudget > 0 ? colors.error : colors.textSecondary }
+                ]}>
+                  {formatCurrency(healthData.weeklyStats.budget, displayCurrency)} 
+                  {healthData.weeklyStats.overBudget > 0 && 
+                    ` (${getCurrencySymbol(displayCurrency)}${healthData.weeklyStats.overBudget} over)`
+                  }
+                </Text>
+              </View>
+              
+              <View style={styles.statItem}>
+                <Text style={styles.statLabel}>Last Week:</Text>
+                <Text style={styles.statValue}>
+                  {formatCurrency(healthData.weeklyStats.lastWeek, displayCurrency)} 
+                  <Text style={[
+                    styles.changeText,
+                    { color: lastWeekChange > 0 ? colors.error : colors.income }
+                  ]}>
+                    ({lastWeekChange > 0 ? '+' : ''}{lastWeekChange}%)
+                  </Text>
+                </Text>
+              </View>
+              
+              <View style={styles.statItem}>
+                <Text style={styles.statLabel}>Monthly Avg:</Text>
+                <Text style={styles.statValue}>
+                  {formatCurrency(healthData.weeklyStats.monthlyAvg, displayCurrency)} 
+                  <Text style={[
+                    styles.changeText,
+                    { color: monthlyAvgChange > 0 ? colors.error : colors.income }
+                  ]}>
+                    ({monthlyAvgChange > 0 ? '+' : ''}{monthlyAvgChange}%)
+                  </Text>
+                </Text>
+              </View>
+            </View>
+          </View>
+
+          <View style={styles.goalSection}>
+            <Text style={styles.goalIcon}>💡</Text>
+            <Text style={styles.goalText}>
+              Next Week Goal: Keep under {formatCurrency(healthData.nextWeekGoal, displayCurrency)}
             </Text>
           </View>
         </View>
-      </View>
-
-      <View style={styles.goalSection}>
-        <Text style={styles.goalIcon}>💡</Text>
-        <Text style={styles.goalText}>
-          Next Week Goal: Keep under {formatCurrency(healthData.nextWeekGoal, displayCurrency)}
-        </Text>
-      </View>
-      </TouchableOpacity>
+      )}
     </FadeInView>
   );
 };

@@ -14,6 +14,7 @@ import { createGoal, updateGoal } from '../../store/slices/goalsSlice';
 import { CustomTextInput } from '../../components/common/CustomTextInput';
 import { CustomButton } from '../../components/common/CustomButton';
 import { colors, typography, spacing } from '../../constants/colors';
+
 import { getCurrencySymbol, getDefaultCurrency } from '../../utils/currency';
 
 interface AddManualGoalScreenProps {
@@ -26,6 +27,10 @@ const AddManualGoalScreen: React.FC<AddManualGoalScreenProps> = ({ navigation, r
   const { goalId, goal } = route.params || {};
   const isEditing = !!goalId;
 
+  // Get user profile and stats for limit checking
+  const userProfile = useTypedSelector(getUserProfile);
+  const userStats = useTypedSelector(getUserStats);
+
   const { preferredCurrency } = useTypedSelector((state) => state.user);
 
   const [formData, setFormData] = useState({
@@ -35,7 +40,7 @@ const AddManualGoalScreen: React.FC<AddManualGoalScreenProps> = ({ navigation, r
     target_date: '',
     category: 'other',
     description: '',
-    priority: '3',
+    priority: 'medium',
     currency: preferredCurrency || 'USD',
     status: 'active',
   });
@@ -61,11 +66,9 @@ const AddManualGoalScreen: React.FC<AddManualGoalScreenProps> = ({ navigation, r
   ];
 
   const priorityOptions = [
-    { value: '1', label: 'Highest', icon: '🔴' },
-    { value: '2', label: 'High', icon: '🟠' },
-    { value: '3', label: 'Medium', icon: '🟡' },
-    { value: '4', label: 'Low', icon: '🟢' },
-    { value: '5', label: 'Lowest', icon: '🔵' },
+    { value: 'high', label: 'High', icon: '🔴' },
+    { value: 'medium', label: 'Medium', icon: '🟡' },
+    { value: 'low', label: 'Low', icon: '🟢' },
   ];
 
   useEffect(() => {
@@ -77,7 +80,7 @@ const AddManualGoalScreen: React.FC<AddManualGoalScreenProps> = ({ navigation, r
         target_date: goal.target_date || '',
         category: goal.category || 'other',
         description: goal.description || '',
-        priority: goal.priority?.toString() || '3',
+        priority: goal.priority || 'medium',
         currency: goal.currency || preferredCurrency || 'USD',
         status: goal.status || 'active',
       });
@@ -147,20 +150,33 @@ const AddManualGoalScreen: React.FC<AddManualGoalScreenProps> = ({ navigation, r
   const handleSave = async () => {
     if (!validateForm()) return;
 
+    // Check goal creation limit for new goals only
+    if (!isEditing) {
+      const limitExceeded = checkGoalCreationLimit(
+        userStats.active_goal_count,
+        userProfile,
+        navigation
+      );
+      
+      if (limitExceeded) {
+        return; // Stop execution if limit exceeded
+      }
+    }
+
     setIsLoading(true);
 
     try {
-      const goalData = {
-        title: formData.title.trim(),
-        target_amount: parseFloat(formData.target_amount),
-        current_amount: formData.current_amount.trim() ? parseFloat(formData.current_amount) : 0,
-        target_date: formData.target_date,
-        category: formData.category,
-        description: formData.description.trim() || undefined,
-        priority: parseInt(formData.priority),
-        currency: formData.currency,
-        status: formData.status,
-      };
+             const goalData = {
+         title: formData.title.trim(),
+         target_amount: parseFloat(formData.target_amount),
+         current_amount: formData.current_amount.trim() ? parseFloat(formData.current_amount) : 0,
+         target_date: formData.target_date,
+         category: formData.category,
+         description: formData.description.trim() || undefined,
+         priority: formData.priority, // Keep as string: 'high', 'medium', 'low'
+         currency: formData.currency,
+         status: formData.status,
+       };
 
       if (isEditing) {
         await dispatch(updateGoal({ id: goalId, data: goalData })).unwrap();

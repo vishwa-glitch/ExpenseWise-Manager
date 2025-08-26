@@ -110,9 +110,25 @@ export const fetchSpendingTrends = createAsyncThunk(
 
 export const fetchCategoryBreakdown = createAsyncThunk(
   'analytics/fetchCategoryBreakdown',
-  async ({ startDate, endDate }: { startDate: string; endDate: string }) => {
-    const response = await apiService.getCategoryBreakdown(startDate, endDate);
-    return response;
+  async ({ startDate, endDate }: { startDate: string; endDate: string }, { rejectWithValue }) => {
+    try {
+      const response = await apiService.getCategoryBreakdown(startDate, endDate);
+      return response;
+    } catch (error: any) {
+      // Handle 404 errors gracefully for category breakdown
+      if (error.response?.status === 404) {
+        console.log('📊 Category breakdown endpoint not available (404) - returning null');
+        return rejectWithValue('Category breakdown not available');
+      }
+      
+      // Handle authentication errors gracefully
+      if (error.response?.status === 401) {
+        console.log('📊 Category breakdown requires authentication - returning null');
+        return rejectWithValue('Authentication required');
+      }
+      
+      return rejectWithValue(error.message);
+    }
   }
 );
 
@@ -125,21 +141,8 @@ export const fetchDashboardInsights = createAsyncThunk(
     } catch (error: any) {
       // Handle 404 errors gracefully for dashboard insights
       if (error.response?.status === 404) {
-        console.log('📊 Dashboard insights endpoint not available (404) - using fallback data');
-        return {
-          overview: {
-            monthly_income: 0,
-            monthly_expenses: 0,
-            monthly_savings: 0,
-            savings_rate: 0,
-            active_recommendations: 0,
-            active_goals: 0,
-            active_budgets: 0,
-          },
-          spending_trend: null,
-          top_categories: [],
-          upcoming_bills: [],
-        };
+        console.log('📊 Dashboard insights endpoint not available (404) - returning null');
+        return null;
       }
       return rejectWithValue(error.message);
     }
@@ -172,8 +175,8 @@ export const fetchSpendingTrendsByPeriod = createAsyncThunk(
       return { period, data: response };
     } catch (error: any) {
       if (error.response?.status === 404) {
-        console.log(`📊 Spending trends for ${period} not available (404) - using fallback data`);
-        return { period, data: null };
+        console.log(`📊 Spending trends for ${period} not available (404) - returning null`);
+        return rejectWithValue('Spending trends not available');
       }
       return rejectWithValue(error.message);
     }
@@ -196,65 +199,7 @@ export const fetchCategoryBreakdownByPeriod = createAsyncThunk(
   }
 );
 
-// Helper function to generate fallback weekly health data from dashboard insights
-const generateWeeklyHealthFromDashboard = (dashboardInsights: any): WeeklyHealthData => {
-  const overview = dashboardInsights?.overview || {};
-  const monthlyExpenses = overview.monthly_expenses || 0;
-  const weeklySpending = Math.round(monthlyExpenses / 4);
-  const monthlyBudget = monthlyExpenses * 1.2; // Assume 20% buffer
-  const weeklyBudget = Math.round(monthlyBudget / 4);
-  
-  // Generate basic health score based on spending vs budget
-  const spendingRatio = weeklyBudget > 0 ? weeklySpending / weeklyBudget : 0;
-  const overallScore = Math.max(0, Math.min(100, Math.round((1 - Math.max(0, spendingRatio - 1)) * 100)));
-  
-  const achievements: HealthItem[] = [];
-  const warnings: HealthItem[] = [];
-  const issues: HealthItem[] = [];
-  
-  if (spendingRatio <= 0.8) {
-    achievements.push({
-      type: 'success',
-      text: 'Staying within budget this week',
-      amount: weeklyBudget - weeklySpending,
-    });
-  } else if (spendingRatio <= 1.0) {
-    warnings.push({
-      type: 'warning',
-      text: 'Close to budget limit',
-      amount: weeklyBudget - weeklySpending,
-    });
-  } else {
-    issues.push({
-      type: 'error',
-      text: 'Over budget this week',
-      amount: weeklySpending - weeklyBudget,
-    });
-  }
-  
-  return {
-    overallScore,
-    maxScore: 100,
-    achievements,
-    warnings,
-    issues,
-    weeklyStats: {
-      thisWeek: weeklySpending,
-      budget: weeklyBudget,
-      lastWeek: Math.round(weeklySpending * (0.9 + Math.random() * 0.2)),
-      monthlyAvg: weeklySpending,
-      overBudget: Math.max(0, weeklySpending - weeklyBudget),
-      changeFromLastWeek: Math.round((Math.random() - 0.5) * 20),
-      changeFromMonthlyAvg: 0,
-    },
-    nextWeekGoal: Math.round(weeklyBudget * 0.9),
-    dataAvailability: {
-      hasTransactions: monthlyExpenses > 0,
-      hasBudgets: overview.active_budgets > 0,
-      hasGoals: overview.active_goals > 0,
-    },
-  };
-};
+
 
 export const fetchWeeklyHealth = createAsyncThunk(
   'analytics/fetchWeeklyHealth',
@@ -294,16 +239,8 @@ export const fetchWeeklyHealth = createAsyncThunk(
       return null;
     } catch (error: any) {
       if (error.response?.status === 404) {
-        console.log('📊 Weekly health report endpoint not available (404) - will use dashboard insights fallback');
-        
-        // Try to get dashboard insights as fallback
-        try {
-          const dashboardResponse = await apiService.getDashboardInsights();
-          return generateWeeklyHealthFromDashboard(dashboardResponse);
-        } catch (dashboardError: any) {
-          console.log('📊 Dashboard insights also not available - using minimal fallback data');
-          return generateWeeklyHealthFromDashboard({});
-        }
+        console.log('📊 Weekly health report endpoint not available (404) - returning null');
+        return null;
       }
       return rejectWithValue(error.message);
     }
@@ -368,28 +305,8 @@ const analyticsSlice = createSlice({
       .addCase(fetchDashboardInsights.rejected, (state, action) => {
         state.isLoading = false;
         state.error = action.payload as string || 'Failed to fetch dashboard insights';
-        // Set fallback data on error
-        state.dashboardInsights = {
-          overview: {
-            monthly_income: 0,
-            monthly_expenses: 0,
-            monthly_savings: 0,
-            savings_rate: 0,
-            active_recommendations: 0,
-            active_goals: 0,
-            active_budgets: 0,
-          },
-          spending_trend: {
-            change_percentage: 0,
-            trend_direction: 'stable',
-          },
-          top_categories: [
-            { name: 'Food & Dining', amount: 15000 },
-            { name: 'Transportation', amount: 8000 },
-            { name: 'Shopping', amount: 5000 },
-          ],
-          upcoming_bills: [],
-        };
+        // Set to null instead of mock data
+        state.dashboardInsights = null;
       })
       // Fetch weekly report
       .addCase(fetchWeeklyReport.fulfilled, (state, action) => {

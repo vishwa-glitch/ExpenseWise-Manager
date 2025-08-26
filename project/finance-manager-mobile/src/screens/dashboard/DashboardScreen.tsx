@@ -12,31 +12,26 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAppDispatch } from '../../hooks/useAppDispatch';
 import { useTypedSelector } from '../../hooks/useTypedSelector';
-import { fetchDashboardInsights } from '../../store/slices/analyticsSlice';
 import { fetchAccounts } from '../../store/slices/accountsSlice';
 import { fetchTransactions } from '../../store/slices/transactionsSlice';
 import { fetchGoals } from '../../store/slices/goalsSlice';
 import { fetchRecommendations } from '../../store/slices/recommendationsSlice';
 import { fetchBudgets } from '../../store/slices/budgetsSlice';
+import { fetchDashboardInsights } from '../../store/slices/analyticsSlice';
 import { TransactionItem } from '../../components/common/TransactionItem';
 import { GoalCard } from '../../components/common/GoalCard';
 import { RecommendationCard } from '../../components/common/RecommendationCard';
 import { SectionHeader } from '../../components/common/SectionHeader';
-import { PieChart } from '../../components/charts/PieChart';
-import { LineChart } from '../../components/charts/LineChart';
 import { LoadingSpinner } from '../../components/common/LoadingSpinner';
 import { CustomButton } from '../../components/common/CustomButton';
-import { SmartInsightsSection } from '../../components/dashboard/SmartInsightsSection';
-import { CategoryBreakdownSection } from '../../components/dashboard/CategoryBreakdownSection';
-import { BudgetStatusSection } from '../../components/dashboard/BudgetStatusSection';
-import { WeeklyFinancialHealthSection } from '../../components/dashboard/WeeklyFinancialHealthSection';
 import CurrencySummary from '../../components/dashboard/CurrencySummary';
 import { ErrorBoundary } from '../../components/common/ErrorBoundary';
-import { TimePeriod } from '../../components/common/TimePeriodSelector';
 import { colors, typography, spacing } from '../../constants/colors';
 import { formatCurrency } from '../../utils/currency';
 import { SmartAlertCard } from '../../components/dashboard/widgets/SmartAlertCard';
 import { GoalProgressCard } from '../../components/dashboard/widgets/GoalProgressCard';
+import { CategoryBreakdownSection } from '../../components/dashboard/CategoryBreakdownSection';
+
 
 interface DashboardScreenProps {
   navigation: any;
@@ -52,10 +47,16 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
   const { user, isAuthenticated } = useTypedSelector((state) => state.auth);
   const { accounts } = useTypedSelector((state) => state.accounts);
   const { transactions } = useTypedSelector((state) => state.transactions);
-  const { goals } = useTypedSelector((state) => state.goals);
+  const { goals, isLoading: goalsLoading } = useTypedSelector((state) => state.goals);
+  const { budgets, budgetStatus, isLoading: budgetsLoading } = useTypedSelector((state) => state.budgets);
   const { recommendations } = useTypedSelector((state) => state.recommendations);
-  const { dashboardInsights, isLoading } = useTypedSelector((state) => state.analytics);
   const { displayCurrency } = useTypedSelector((state) => state.user);
+  const { dashboardInsights, isLoading: analyticsLoading } = useTypedSelector((state) => state.analytics);
+
+  // Debug logging for currency
+  useEffect(() => {
+    console.log('💰 Dashboard - Current display currency:', displayCurrency);
+  }, [displayCurrency]);
 
   useEffect(() => {
     // Only load dashboard data when user is authenticated
@@ -74,12 +75,12 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
     try {
       console.log('📊 Loading dashboard data for authenticated user');
       await Promise.all([
-        dispatch(fetchDashboardInsights()),
         dispatch(fetchAccounts()),
         dispatch(fetchTransactions({ limit: 10 })),
         dispatch(fetchGoals()),
         dispatch(fetchRecommendations()),
         dispatch(fetchBudgets()),
+        dispatch(fetchDashboardInsights()),
       ]);
     } catch (error) {
       console.error('Error loading dashboard data:', error);
@@ -141,6 +142,88 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
     }
   };
 
+  const getMostRelevantBudgetAlert = () => {
+    try {
+      if (!budgets || !Array.isArray(budgets) || budgets.length === 0) {
+        return null;
+      }
+
+      // Find the budget with the highest percentage used (most urgent)
+      const budgetWithHighestUsage = budgets
+        .filter(budget => budget && budget.is_active === true)
+        .map(budget => {
+          const percentageUsed = budget.spent_amount && budget.amount 
+            ? (budget.spent_amount / budget.amount) * 100 
+            : 0;
+          return { ...budget, percentageUsed };
+        })
+        .sort((a, b) => b.percentageUsed - a.percentageUsed)[0];
+
+      if (!budgetWithHighestUsage) return null;
+
+      // Calculate days left in current month
+      const now = new Date();
+      const daysInMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
+      const daysLeft = daysInMonth - now.getDate();
+
+      return {
+        title: budgetWithHighestUsage.name || 'Budget',
+        percentageUsed: Math.round(budgetWithHighestUsage.percentageUsed),
+        currentAmount: budgetWithHighestUsage.spent_amount || 0,
+        totalAmount: budgetWithHighestUsage.amount || 0,
+        daysLeft: daysLeft,
+      };
+    } catch (error) {
+      console.error('Error getting budget alert:', error);
+      return null;
+    }
+  };
+
+  const getMostRelevantGoal = () => {
+    try {
+      if (!goals || !Array.isArray(goals) || goals.length === 0) {
+        return null;
+      }
+
+      // Find the goal with the highest priority or most progress
+      const activeGoals = goals.filter(goal => goal && goal.status === 'active');
+      if (activeGoals.length === 0) return null;
+
+      // Sort by priority (high first) then by progress percentage
+      const sortedGoals = activeGoals
+        .map(goal => ({
+          ...goal,
+          progressPercentage: goal.progress_percentage || 0,
+          priority: goal.priority || 'medium'
+        }))
+        .sort((a, b) => {
+          // Priority order: high > medium > low
+          const priorityOrder: { [key: string]: number } = { high: 3, medium: 2, low: 1 };
+          const aPriority = priorityOrder[a.priority] || 2;
+          const bPriority = priorityOrder[b.priority] || 2;
+          
+          if (aPriority !== bPriority) {
+            return bPriority - aPriority;
+          }
+          // If same priority, sort by progress percentage
+          return b.progressPercentage - a.progressPercentage;
+        });
+
+      const selectedGoal = sortedGoals[0];
+      
+      return {
+        title: selectedGoal.title || 'Financial Goal',
+        currentAmount: selectedGoal.current_amount || 0,
+        targetAmount: selectedGoal.target_amount || 0,
+        progressPercentage: selectedGoal.progressPercentage,
+        monthlyIncrement: selectedGoal.monthly_savings_needed || 0,
+      };
+    } catch (error) {
+      console.error('Error getting goal:', error);
+      return null;
+    }
+  };
+
   const getTopRecommendations = () => {
     try {
       if (!recommendations || !Array.isArray(recommendations)) {
@@ -149,57 +232,6 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
       return recommendations.slice(0, 2).filter(recommendation => recommendation);
     } catch (error) {
       return [];
-    }
-  };
-
-  const getCategoryBreakdownData = () => {
-    try {
-      if (!dashboardInsights?.top_categories || !Array.isArray(dashboardInsights.top_categories) || dashboardInsights.top_categories.length === 0) {
-        return [];
-      }
-      
-      return dashboardInsights.top_categories.map((category: any, index: number) => ({
-        name: category?.name || 'Unknown',
-        amount: category?.amount || 0,
-        color: colors.categories && Array.isArray(colors.categories) ? colors.categories[index % colors.categories.length] : '#000000',
-      })).filter((item: any) => item);
-    } catch (error) {
-      return [];
-    }
-  };
-
-  const getSpendingTrendData = () => {
-    try {
-      // Always return a valid data structure for the chart
-      if (!dashboardInsights?.spending_trend) {
-        // Return default data with a single transparent dataset to prevent chart errors
-        return {
-          labels: ['No Data'],
-          datasets: [{
-            data: [0],
-            color: (opacity = 1) => `rgba(0, 0, 0, 0)`, // Transparent
-            strokeWidth: 0,
-          }],
-        };
-      }
-      
-      return {
-        labels: dashboardInsights.spending_trend.labels,
-        datasets: [{
-          data: dashboardInsights.spending_trend.data,
-          color: (opacity = 1) => `rgba(46, 125, 87, ${opacity})`,
-          strokeWidth: 2,
-        }],
-      };
-    } catch (error) {
-      return {
-        labels: ['No Data'],
-        datasets: [{
-          data: [0],
-          color: (opacity = 1) => `rgba(0, 0, 0, 0)`,
-          strokeWidth: 0,
-        }],
-      };
     }
   };
 
@@ -237,12 +269,6 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
     // TODO: Implement recommendation action logic
   };
 
-  const handleInsightsRefresh = async (period: TimePeriod) => {
-    console.log('Refreshing insights for period:', period);
-    // This will be handled by the SmartInsightsSection component
-    // which will dispatch the appropriate actions
-  };
-
   const getCurrentDate = () => {
     try {
       const date = new Date();
@@ -264,10 +290,13 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
   const formatBalance = (amount: number) => {
     try {
       if (typeof amount !== 'number' || isNaN(amount)) {
+        console.log('💰 Formatting balance with currency:', displayCurrency, 'amount: 0');
         return formatCurrency(0, displayCurrency);
       }
+      console.log('💰 Formatting balance with currency:', displayCurrency, 'amount:', amount);
       return formatCurrency(amount, displayCurrency);
     } catch (error) {
+      console.error('❌ Error formatting balance:', error);
       return formatCurrency(0, displayCurrency);
     }
   };
@@ -306,7 +335,7 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
   };
 
   // Show loading spinner if not authenticated or if loading and no data
-  if (!isAuthenticated || (isLoading && !dashboardInsights)) {
+  if (!isAuthenticated || (goalsLoading && !goals)) {
     return <LoadingSpinner />;
   }
 
@@ -363,7 +392,8 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
               </View>
             
               {/* Trend indicator if available - Fixed: Wrapped in proper condition */}
-              {dashboardInsights?.spending_trend?.change_percentage ? (
+              {/* Removed dashboardInsights.spending_trend as it's no longer imported */}
+              {/* {dashboardInsights?.spending_trend?.change_percentage ? (
                 <View style={styles.trendContainer}>
                   <Text style={[
                     styles.trendText,
@@ -372,7 +402,7 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
                     {`${dashboardInsights.spending_trend.trend_direction === 'increasing' ? '↗' : '↘'} ${Math.round(Math.abs(dashboardInsights.spending_trend.change_percentage))}% this month`}
                   </Text>
                 </View>
-              ) : null}
+              ) : null} */}
             </View>
           </TouchableOpacity>
 
@@ -426,23 +456,6 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
           </View>
         </View>
 
-        {/* Widgets Section */}
-        <View style={styles.widgetsSection}>
-          <SmartAlertCard onPress={() => navigation.navigate('Budgets')} onDetailsPress={() => navigation.navigate('Budgets')} />
-          <View style={{ height: spacing.md }} />
-          <GoalProgressCard onPress={() => navigation.navigate('Goals')} />
-        </View>
-
-        {/* Budget Status */}
-        <BudgetStatusSection 
-          onPress={() => navigation.navigate('More', { screen: 'Budgets' })}
-        />
-
-        {/* Weekly Financial Health */}
-        <WeeklyFinancialHealthSection 
-          onPress={() => navigation.navigate('More', { screen: 'Analytics' })}
-        />
-
         {/* Recent Activity */}
         <View style={styles.section}>
           <SectionHeader 
@@ -489,127 +502,68 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
           )}
         </View>
 
-        {/* Smart Insights - Enhanced with time period controls */}
-        <ErrorBoundary>
-          <SmartInsightsSection
-            dashboardInsights={dashboardInsights}
-            isLoading={isLoading}
-            onRefresh={handleInsightsRefresh}
-          />
-        </ErrorBoundary>
-
-        {/* Category Breakdown */}
-        <ErrorBoundary>
-          <CategoryBreakdownSection
-            dashboardInsights={dashboardInsights}
-            isLoading={isLoading}
-            onRefresh={() => handleInsightsRefresh('monthly')}
-          />
-        </ErrorBoundary>
-
-        {/* Recommendations - Fixed: Added proper condition */}
-        {getTopRecommendations().length > 0 ? (
-          <View style={styles.section}>
-            <SectionHeader 
-              title="Smart Recommendations"
-              showDivider={true}
-              rightComponent={
-                <TouchableOpacity
-                  onPress={() => navigation.navigate('RecommendationsHistory')}
-                  accessibilityRole="button"
-                  accessibilityLabel="See all recommendations"
-                  accessibilityHint="Navigate to the full recommendations list"
-                >
-                  <Text style={styles.seeAllText}>See All</Text>
-                </TouchableOpacity>
-              }
+        {/* Widgets Section */}
+        <View style={styles.widgetsSection}>
+          {budgetsLoading ? (
+            <LoadingSpinner />
+          ) : getMostRelevantBudgetAlert() ? (
+            <SmartAlertCard 
+              error={null}
+              {...getMostRelevantBudgetAlert()}
+              onPress={() => navigation.navigate('Goals', { screen: 'Budget' })} 
+              onDetailsPress={() => navigation.navigate('Goals', { screen: 'Budget' })} 
             />
-            {getTopRecommendations().map((recommendation) => (
-              <RecommendationCard
-                key={recommendation.id}
-                recommendation={recommendation}
-                onDismiss={() => handleDismissRecommendation(recommendation.id)}
-                onAct={() => handleActOnRecommendation(recommendation.id)}
-              />
-            ))}
-          </View>
-        ) : null}
-
-        {/* Goals Progress - Fixed: Added proper condition */}
-        {getActiveGoals().length > 0 ? (
-          <View style={styles.section}>
-            <TouchableOpacity 
-              style={styles.goalsSummaryCard}
-              onPress={() => navigation.navigate('Goals')}
-            >
-              <View style={styles.goalsSummaryHeader}>
-                <Text style={styles.goalsSummaryTitle}>Financial Goals</Text>
-                <Text style={styles.seeAllText}>See All</Text>
-              </View>
-              
-              <View style={styles.goalsGrid}>
-                {getActiveGoals().map((goal) => (
-                  <View key={goal.id} style={styles.goalItem}>
-                    <View style={styles.goalIconContainer}>
-                      <Text style={styles.goalIcon}>
-                        {goal.category === 'emergency' ? '🚨' : 
-                         goal.category === 'vacation' ? '🏖️' : 
-                         goal.category === 'car' ? '🚗' : 
-                         goal.category === 'house' ? '🏠' : 
-                         goal.category === 'education' ? '🎓' : 
-                         goal.category === 'retirement' ? '👴' : 
-                         goal.category === 'investment' ? '📈' : '🎯'}
-                      </Text>
-                    </View>
-                    <Text style={styles.goalName} numberOfLines={1}>{goal.title || 'Untitled Goal'}</Text>
-                    <View style={styles.goalProgressBar}>
-                      <View 
-                        style={[
-                          styles.goalProgressFill, 
-                          { width: `${Math.min(goal.progress_percentage || 0, 100)}%` }
-                        ]} 
-                      />
-                    </View>
-                    <Text style={styles.goalProgressText}>
-                      {(goal.progress_percentage || 0).toFixed(0)}%
-                    </Text>
-                  </View>
-                ))}
-                
-                <TouchableOpacity 
-                  style={styles.addGoalItem}
-                  onPress={() => navigation.navigate('Goals', { screen: 'AddManualGoal' })}
-                >
-                  <View style={styles.addGoalIconContainer}>
-                    <Text style={styles.addGoalIcon}>+</Text>
-                  </View>
-                  <Text style={styles.addGoalText}>Add Goal</Text>
-                </TouchableOpacity>
-              </View>
-            </TouchableOpacity>
-          </View>
-        ) : null}
-
-        {/* Quick Actions */}
-        <View style={styles.section}>
-          <SectionHeader title="Quick Actions" showDivider={true} />
-          <View style={styles.actionButtons}>
-            <TouchableOpacity
-              style={styles.actionButton}
-              onPress={() => navigation.navigate('Goals', { screen: 'AddManualGoal' })}
-            >
-              <Text style={styles.actionIcon}>🎯</Text>
-              <Text style={styles.actionText}>Create Goal</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={styles.actionButton}
-              onPress={() => navigation.navigate('Accounts')}
-            >
-              <Text style={styles.actionIcon}>🏦</Text>
-              <Text style={styles.actionText}>View Accounts</Text>
-            </TouchableOpacity>
-          </View>
+          ) : null}
+          {budgetsLoading || getMostRelevantBudgetAlert() ? (
+            <View style={{ height: spacing.sm }} />
+          ) : null}
+          {goalsLoading ? (
+            <LoadingSpinner />
+          ) : getMostRelevantGoal() ? (
+            <GoalProgressCard 
+              error={null}
+              {...getMostRelevantGoal()}
+              onPress={() => navigation.navigate('Goals')} 
+            />
+          ) : null}
         </View>
+
+        {/* Category Breakdown Section */}
+        <CategoryBreakdownSection 
+          dashboardInsights={dashboardInsights}
+          isLoading={analyticsLoading}
+          onRefresh={onRefresh}
+        />
+
+
+
+                 {/* Recommendations - Fixed: Added proper condition */}
+         {getTopRecommendations().length > 0 ? (
+           <View style={styles.section}>
+             <SectionHeader 
+               title="Smart Recommendations"
+               showDivider={true}
+               rightComponent={
+                 <TouchableOpacity
+                   onPress={() => navigation.navigate('RecommendationsHistory')}
+                   accessibilityRole="button"
+                   accessibilityLabel="See all recommendations"
+                   accessibilityHint="Navigate to the full recommendations list"
+                 >
+                   <Text style={styles.seeAllText}>See All</Text>
+                 </TouchableOpacity>
+               }
+             />
+             {getTopRecommendations().map((recommendation) => (
+               <RecommendationCard
+                 key={recommendation.id}
+                 recommendation={recommendation}
+                 onDismiss={() => handleDismissRecommendation(recommendation.id)}
+                 onAct={() => handleActOnRecommendation(recommendation.id)}
+               />
+             ))}
+           </View>
+         ) : null}
 
         {/* Bottom Spacing */}
         <View style={styles.bottomSpacing} />
@@ -817,140 +771,6 @@ const styles = StyleSheet.create({
     color: colors.primary,
     fontWeight: '600',
   },
-  goalsSummaryCard: {
-    backgroundColor: colors.card,
-    borderRadius: 16,
-    padding: spacing.lg,
-    marginHorizontal: spacing.md,
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 4,
-    },
-    shadowOpacity: 0.15,
-    shadowRadius: 8,
-    elevation: 8,
-  },
-  goalsSummaryHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: spacing.md,
-  },
-  goalsSummaryTitle: {
-    ...typography.h3,
-    color: colors.text,
-    fontWeight: 'bold',
-  },
-  goalsGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    justifyContent: 'space-between',
-  },
-  goalItem: {
-    width: '48%',
-    backgroundColor: colors.surface,
-    borderRadius: 12,
-    padding: spacing.md,
-    marginBottom: spacing.md,
-  },
-  goalIconContainer: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: colors.primary + '20',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: spacing.sm,
-  },
-  goalIcon: {
-    fontSize: 20,
-  },
-  goalName: {
-    ...typography.body,
-    color: colors.text,
-    fontWeight: '600',
-    marginBottom: spacing.sm,
-  },
-  goalProgressBar: {
-    height: 6,
-    backgroundColor: colors.border,
-    borderRadius: 3,
-    marginBottom: spacing.xs,
-  },
-  goalProgressFill: {
-    height: '100%',
-    backgroundColor: colors.primary,
-    borderRadius: 3,
-  },
-  goalProgressText: {
-    ...typography.small,
-    color: colors.textSecondary,
-    fontWeight: '600',
-  },
-  addGoalItem: {
-    width: '48%',
-    backgroundColor: colors.surface,
-    borderRadius: 12,
-    padding: spacing.md,
-    marginBottom: spacing.md,
-    borderWidth: 2,
-    borderColor: colors.border,
-    borderStyle: 'dashed',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  addGoalIconContainer: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: colors.primary,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: spacing.sm,
-  },
-  addGoalIcon: {
-    fontSize: 24,
-    color: colors.background,
-    fontWeight: 'bold',
-  },
-  addGoalText: {
-    ...typography.body,
-    color: colors.text,
-    fontWeight: '600',
-  },
-  actionButtons: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    paddingHorizontal: spacing.md,
-  },
-  actionButton: {
-   flex: 1,
-   backgroundColor: colors.card,
-   borderRadius: 12,
-   padding: spacing.sm,
-   alignItems: 'center',
-   marginHorizontal: spacing.xs,
-   shadowColor: '#000',
-   shadowOffset: {
-     width: 0,
-     height: 2,
-   },
-   shadowOpacity: 0.1,
-   shadowRadius: 3.84,
-   elevation: 5,
- },
- actionIcon: {
-   fontSize: 20,
-   marginBottom: spacing.xs,
- },
- actionText: {
-   ...typography.small,
-   color: colors.text,
-   textAlign: 'center',
-   fontWeight: '600',
-   fontSize: 11,
- },
  emptyState: {
    backgroundColor: colors.surface,
    borderRadius: 12,

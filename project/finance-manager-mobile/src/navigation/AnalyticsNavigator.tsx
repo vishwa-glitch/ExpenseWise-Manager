@@ -2,6 +2,7 @@ import React from 'react';
 import { createStackNavigator } from '@react-navigation/stack';
 import GoalAnalyticsScreen from '../screens/goals/GoalAnalyticsScreen';
 
+
 const Stack = createStackNavigator();
 
 const AnalyticsNavigator: React.FC = () => {
@@ -11,7 +12,10 @@ const AnalyticsNavigator: React.FC = () => {
         headerShown: false,
       }}
     >
-      <Stack.Screen name="AnalyticsMain" component={GoalAnalyticsScreen} />
+      <Stack.Screen 
+        name="AnalyticsMain" 
+        component={GoalAnalyticsScreen}
+      />
     </Stack.Navigator>
   );
 };

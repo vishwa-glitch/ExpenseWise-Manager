@@ -4,40 +4,55 @@ import {
   Text,
   StyleSheet,
   SafeAreaView,
-  FlatList,
   TouchableOpacity,
-  Alert,
-  TextInput,
+  FlatList,
   ActivityIndicator,
+  KeyboardAvoidingView,
+  Platform,
+  Alert,
 } from 'react-native';
+import * as SecureStore from 'expo-secure-store';
 import { useAppDispatch } from '../../hooks/useAppDispatch';
-import { setDisplayCurrency } from '../../store/slices/userSlice';
-import { completeCurrencySelection } from '../../store/slices/authSlice';
+import { useTypedSelector } from '../../hooks/useTypedSelector';
+import { CustomTextInput } from '../../components/common/CustomTextInput';
 import { CustomButton } from '../../components/common/CustomButton';
 import { colors, typography, spacing } from '../../constants/colors';
 import { currencyService, Currency } from '../../services/currencyService';
+import { apiService } from '../../services/api';
+import { completeCurrencySelection, clearRegistrationCredentials } from '../../store/slices/authSlice';
+import { setDisplayCurrency } from '../../store/slices/userSlice';
 
 interface CurrencySelectionScreenProps {
   navigation: any;
-  route: any;
 }
 
-const CurrencySelectionScreen: React.FC<CurrencySelectionScreenProps> = ({ navigation, route }) => {
+const CurrencySelectionScreen: React.FC<CurrencySelectionScreenProps> = ({ navigation }) => {
   const dispatch = useAppDispatch();
-  const [selectedCurrency, setSelectedCurrency] = useState('USD');
-  const [isLoading, setIsLoading] = useState(false);
-  const [searchQuery, setSearchQuery] = useState('');
+  const { isAuthenticated, registrationCredentials } = useTypedSelector((state) => state.auth);
   const [currencies, setCurrencies] = useState<Currency[]>([]);
   const [isLoadingCurrencies, setIsLoadingCurrencies] = useState(true);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [selectedCurrency, setSelectedCurrency] = useState<string>('');
 
   useEffect(() => {
     const fetchCurrencies = async () => {
       try {
+        console.log('🔄 Loading supported currencies...');
         setIsLoadingCurrencies(true);
         const supportedCurrencies = await currencyService.getSupportedCurrencies();
+        console.log(`✅ Loaded ${supportedCurrencies.length} currencies`);
         setCurrencies(supportedCurrencies);
+        
+        // Set a default selection if none is selected
+        if (!selectedCurrency && supportedCurrencies.length > 0) {
+          // Try to find USD first, otherwise use the first currency
+          const usdCurrency = supportedCurrencies.find(c => c.code === 'USD');
+          const defaultCurrency = usdCurrency || supportedCurrencies[0];
+          setSelectedCurrency(defaultCurrency.code);
+          console.log(`🎯 Set default currency to: ${defaultCurrency.code}`);
+        }
       } catch (error) {
-        Alert.alert('Error', 'Could not load currencies. Please check your connection.');
+        console.error('❌ Failed to load currencies:', error);
       } finally {
         setIsLoadingCurrencies(false);
       }
@@ -47,122 +62,350 @@ const CurrencySelectionScreen: React.FC<CurrencySelectionScreenProps> = ({ navig
   }, []);
 
   const filteredCurrencies = useMemo(() => {
-    if (!searchQuery) {
+    if (!searchQuery.trim()) {
       return currencies;
     }
-    const lowercasedQuery = searchQuery.toLowerCase();
+    
+    const query = searchQuery.toLowerCase().trim();
     return currencies.filter(
       (currency) =>
-        currency.name.toLowerCase().includes(lowercasedQuery) ||
-        currency.code.toLowerCase().includes(lowercasedQuery) ||
-        currency.symbol.toLowerCase().includes(lowercasedQuery)
+        currency.name.toLowerCase().startsWith(query) ||
+        currency.code.toLowerCase().startsWith(query) ||
+        currency.symbol.toLowerCase().includes(query)
     );
   }, [currencies, searchQuery]);
 
   const handleContinue = async () => {
-    if (!selectedCurrency) {
-      Alert.alert('Selection Required', 'Please select a currency to continue.');
-      return;
-    }
-
-    setIsLoading(true);
-
     try {
-      // Store as display currency (used as default for new accounts)
-      // This is NOT saved to backend - it's just a UI preference
-      dispatch(setDisplayCurrency(selectedCurrency));
+      console.log('🎯 Setting user currency to:', selectedCurrency);
+      console.log('🔐 User authentication status:', isAuthenticated);
       
-      // Mark currency selection as complete
-      dispatch(completeCurrencySelection());
+      if (!isAuthenticated) {
+        throw new Error('User is not authenticated');
+      }
+      
+      // Check token status before proceeding
+      console.log('🔍 Checking token status before currency change...');
+      await apiService.checkTokenStatus();
+      
+      // Try multiple approaches to set the currency with retry logic
+      let currencySet = false;
+      const maxRetries = 3; // Reduced retries for better UX
+      
+      for (let attempt = 1; attempt <= maxRetries; attempt++) {
+        try {
+          console.log(`🔄 Attempt ${attempt}/${maxRetries} to set currency...`);
+          
+          // Method 1: Try the dedicated currency change endpoint
+          try {
+            console.log('📡 Trying /user/change-currency endpoint...');
+            await apiService.changeUserCurrency(selectedCurrency, false);
+            console.log('✅ Currency change successful via dedicated endpoint');
+            currencySet = true;
+            break;
+          } catch (currencyError: any) {
+            console.error(`❌ Currency change endpoint failed (attempt ${attempt}):`, currencyError);
+            
+            // If it's a 401 error, try token refresh
+            if (currencyError.response?.status === 401) {
+              console.log('🔄 Token expired, attempting refresh...');
+              try {
+                await apiService.testTokenRefresh();
+                console.log('✅ Token refreshed, retrying currency change...');
+                await apiService.changeUserCurrency(selectedCurrency, false);
+                console.log('✅ Currency change successful after token refresh');
+                currencySet = true;
+                break;
+              } catch (refreshError) {
+                console.error('❌ Token refresh failed:', refreshError);
+              }
+            }
+          }
+          
+          // Method 2: Try updating user profile with preferred_currency
+          if (!currencySet) {
+            try {
+              console.log('📡 Trying profile update with preferred_currency...');
+              await apiService.updateUserProfile({ preferred_currency: selectedCurrency });
+              console.log('✅ Currency set via profile update');
+              currencySet = true;
+              break;
+            } catch (profileError: any) {
+              console.error(`❌ Profile update failed (attempt ${attempt}):`, profileError);
+              
+              // If it's a 401 error, try token refresh
+              if (profileError.response?.status === 401) {
+                console.log('🔄 Token expired, attempting refresh...');
+                try {
+                  await apiService.testTokenRefresh();
+                  console.log('✅ Token refreshed, retrying profile update...');
+                  await apiService.updateUserProfile({ preferred_currency: selectedCurrency });
+                  console.log('✅ Currency set via profile update after token refresh');
+                  currencySet = true;
+                  break;
+                } catch (refreshError) {
+                  console.error('❌ Token refresh failed:', refreshError);
+                }
+              }
+            }
+          }
+          
+          // Method 3: Try direct API call with fresh token
+          if (!currencySet && attempt >= 2) {
+            try {
+              console.log('📡 Trying direct API call with current token...');
+              const token = await SecureStore.getItemAsync('access_token');
+              if (token) {
+                await apiService.directApiCall('/user/change-currency', 'POST', {
+                  new_currency: selectedCurrency,
+                  convert_existing_data: false,
+                }, token);
+                console.log('✅ Currency change successful via direct API call');
+                currencySet = true;
+                break;
+              }
+            } catch (directApiError) {
+              console.error('❌ Direct API call failed:', directApiError);
+            }
+          }
+          
+          // Method 3: Try re-registering the user if tokens are completely invalid
+          if (!currencySet && attempt >= 3 && registrationCredentials) {
+            try {
+              console.log('🔄 Tokens seem invalid, attempting to re-register user...');
+              console.log('📋 Using stored registration credentials');
+              
+              // Re-register with stored credentials
+              const registerResponse = await apiService.register(registrationCredentials);
+              
+              console.log('✅ Re-registration successful, retrying currency change...');
+              await apiService.changeUserCurrency(selectedCurrency, false);
+              console.log('✅ Currency change successful after re-registration');
+              currencySet = true;
+              break;
+            } catch (reRegisterError) {
+              console.error('❌ Re-registration failed:', reRegisterError);
+            }
+          }
+          
+          // Method 4: Try direct API call with fresh token after re-registration
+          if (!currencySet && attempt >= 4 && registrationCredentials) {
+            try {
+              console.log('🔄 Attempting direct API call with fresh registration...');
+              
+              // Re-register to get fresh tokens
+              const registerResponse = await apiService.register(registrationCredentials);
+              const freshToken = registerResponse.tokens.access_token;
+              
+              // Use direct API call to avoid interceptor issues
+              await apiService.directApiCall('/user/change-currency', 'POST', {
+                new_currency: selectedCurrency,
+                convert_existing_data: false,
+              }, freshToken);
+              
+              console.log('✅ Currency change successful via direct API call');
+              currencySet = true;
+              break;
+            } catch (directApiError) {
+              console.error('❌ Direct API call failed:', directApiError);
+            }
+          }
+          
+          // If all methods failed, wait before retry
+          if (!currencySet && attempt < maxRetries) {
+            const delay = Math.pow(2, attempt) * 1000; // Exponential backoff: 2s, 4s, 8s, 16s, 32s
+            console.log(`⏳ Waiting ${delay}ms before retry...`);
+            await new Promise(resolve => setTimeout(resolve, delay));
+          }
+          
+        } catch (attemptError) {
+          console.error(`❌ Attempt ${attempt} failed:`, attemptError);
+          if (attempt === maxRetries) {
+            throw attemptError;
+          }
+        }
+      }
+      
+      if (currencySet) {
+        console.log('✅ Currency successfully set, proceeding to main app');
+        proceedToMainApp();
+      } else {
+        // If all attempts failed, we'll still proceed but log a warning
+        console.warn('⚠️ Failed to set currency on backend, but proceeding to main app');
+        console.log('💡 User selected currency:', selectedCurrency, '- will be set on next successful API call');
+        
+        // Store the selected currency locally for future use
+        try {
+          await SecureStore.setItemAsync('selected_currency', selectedCurrency);
+        } catch (error) {
+          console.error('❌ Failed to store selected currency locally:', error);
+        }
+        
+        proceedToMainApp();
+      }
       
     } catch (error: any) {
-      Alert.alert('Error', error.message || 'Failed to save currency preference. Please try again.');
-    } finally {
-      setIsLoading(false);
+      console.error('❌ Failed to set currency:', error);
+      
+      // Show a warning but allow the user to proceed
+      Alert.alert(
+        'Currency Setting Issue',
+        'We had trouble setting your currency preference, but you can continue using the app. Your currency will be set automatically on your next successful connection.',
+        [
+          {
+            text: 'Continue Anyway',
+            onPress: () => {
+              console.log('✅ User chose to continue despite currency setting issue');
+              proceedToMainApp();
+            },
+          },
+          {
+            text: 'Try Again',
+            onPress: () => handleContinue(),
+          },
+        ]
+      );
     }
   };
 
-  const renderCurrencyOption = ({ item: currency }: { item: Currency }) => (
+  const proceedToMainApp = () => {
+    // Mark currency selection as complete
+    dispatch(completeCurrencySelection());
+    
+    // Update the user's display currency in Redux store
+    dispatch(setDisplayCurrency(selectedCurrency));
+    
+    // Clear registration credentials for security
+    dispatch(clearRegistrationCredentials());
+    
+    console.log('✅ Proceeding to main app with currency:', selectedCurrency);
+    
+    // Navigate to main app
+    navigation.reset({
+      index: 0,
+      routes: [{ name: 'Main' }],
+    });
+  };
+
+  const renderCurrencyItem = ({ item: currency }: { item: Currency }) => (
     <TouchableOpacity
-      key={currency.code}
       style={[
-        styles.currencyOption,
-        selectedCurrency === currency.code && styles.currencyOptionSelected,
+        styles.currencyItem,
+        selectedCurrency === currency.code && styles.currencyItemSelected,
       ]}
       onPress={() => setSelectedCurrency(currency.code)}
     >
-      <Text style={styles.currencySymbol}>{currency.symbol}</Text>
-      <Text
-        style={[
-          styles.currencyCode,
-          selectedCurrency === currency.code && styles.currencyCodeSelected,
-        ]}
-      >
-        {currency.code}
-      </Text>
-      <Text style={styles.currencyName}>{currency.name}</Text>
+      <View style={styles.currencyLeft}>
+        <Text style={styles.currencySymbol}>{currency.symbol}</Text>
+        <View style={styles.currencyInfo}>
+          <Text style={styles.currencyCode}>{currency.code}</Text>
+          <Text style={styles.currencyName}>{currency.name}</Text>
+        </View>
+      </View>
+      {selectedCurrency === currency.code && (
+        <View style={styles.selectedIndicator}>
+          <Text style={styles.selectedIcon}>✓</Text>
+        </View>
+      )}
     </TouchableOpacity>
+  );
+
+  const renderHeader = () => (
+    <View style={styles.header}>
+      <Text style={styles.logo}>💰</Text>
+      <Text style={styles.title}>Choose Your Currency</Text>
+      <Text style={styles.subtitle}>
+        Select your preferred currency for all transactions and amounts
+      </Text>
+    </View>
+  );
+
+  const renderSearchSection = () => (
+    <View style={styles.searchSection}>
+      <CustomTextInput
+        placeholder="Search currencies (e.g., Dollar, EUR, $)"
+        value={searchQuery}
+        onChangeText={setSearchQuery}
+        style={styles.searchInput}
+        leftIcon={<Text style={styles.searchIcon}>🔍</Text>}
+        autoFocus={false}
+      />
+      {searchQuery.length > 0 && (
+        <Text style={styles.searchResults}>
+          {filteredCurrencies.length} currency{filteredCurrencies.length !== 1 ? 'ies' : ''} found
+        </Text>
+      )}
+    </View>
+  );
+
+  const renderCurrencyList = () => {
+    if (isLoadingCurrencies) {
+      return (
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color={colors.primary} />
+          <Text style={styles.loadingText}>Loading currencies...</Text>
+        </View>
+      );
+    }
+
+    if (filteredCurrencies.length === 0) {
+      return (
+        <View style={styles.emptyContainer}>
+          <Text style={styles.emptyIcon}>🔍</Text>
+          <Text style={styles.emptyTitle}>No currencies found</Text>
+          <Text style={styles.emptySubtitle}>
+            Try searching with different terms
+          </Text>
+        </View>
+      );
+    }
+
+    return (
+      <FlatList
+        data={filteredCurrencies}
+        keyExtractor={(item) => item.code}
+        renderItem={renderCurrencyItem}
+        style={styles.currencyList}
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={styles.currencyListContent}
+        ListHeaderComponent={
+          <View style={styles.listHeader}>
+            {renderHeader()}
+            {renderSearchSection()}
+          </View>
+        }
+      />
+    );
+  };
+
+  const renderFooter = () => (
+    <View style={styles.footer}>
+      <View style={styles.selectedCurrencyInfo}>
+        <Text style={styles.selectedCurrencyLabel}>Selected:</Text>
+        <Text style={styles.selectedCurrencyValue}>
+          {selectedCurrency ? `${currencies.find(c => c.code === selectedCurrency)?.symbol || '$'} ${selectedCurrency}` : 'No currency selected'}
+        </Text>
+      </View>
+      <CustomButton
+        title="Continue"
+        onPress={handleContinue}
+        disabled={!selectedCurrency}
+        style={styles.continueButton}
+      />
+    </View>
   );
 
   return (
     <SafeAreaView style={styles.container}>
-      <View style={styles.header}>
-        <Text style={styles.logo}>💰</Text>
-        <Text style={styles.title}>Select Your Currency</Text>
-      </View>
-      <View style={styles.content}>
-        <TextInput
-          style={styles.searchInput}
-          placeholder="Search currency (e.g., Dollar, EUR, $)"
-          placeholderTextColor={colors.textSecondary}
-          value={searchQuery}
-          onChangeText={setSearchQuery}
-        />
-
-        {isLoadingCurrencies ? (
-          <ActivityIndicator size="large" color={colors.primary} style={styles.loader} />
-        ) : (
-          <FlatList
-            data={filteredCurrencies}
-            renderItem={renderCurrencyOption}
-            keyExtractor={(item) => item.code}
-            style={styles.currencyList}
-            showsVerticalScrollIndicator={false}
-            ListEmptyComponent={() => (
-              <Text style={styles.emptyListText}>No currencies found.</Text>
-            )}
-          />
-        )}
-
-        <View style={styles.selectedInfo}>
-          <Text style={styles.selectedLabel}>Selected Currency:</Text>
-          <View style={styles.selectedCurrency}>
-            <Text style={styles.selectedSymbol}>
-              {currencies.find(c => c.code === selectedCurrency)?.symbol}
-            </Text>
-            <Text style={styles.selectedCode}>{selectedCurrency}</Text>
-            <Text style={styles.selectedName}>
-              {currencies.find(c => c.code === selectedCurrency)?.name}
-            </Text>
-          </View>
+      <KeyboardAvoidingView
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        style={styles.keyboardAvoid}
+      >
+        <View style={styles.content}>
+          {renderCurrencyList()}
         </View>
-
-        <View style={styles.infoBox}>
-          <Text style={styles.infoIcon}>💡</Text>
-          <Text style={styles.infoText}>
-            You can change your currency preference later in the app settings.
-          </Text>
-        </View>
-      </View>
-
-      <View style={styles.footer}>
-        <CustomButton
-          title="Continue"
-          onPress={handleContinue}
-          loading={isLoading}
-          style={styles.continueButton}
-        />
-      </View>
+        {renderFooter()}
+      </KeyboardAvoidingView>
     </SafeAreaView>
   );
 };
@@ -172,81 +415,117 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: colors.background,
   },
+  keyboardAvoid: {
+    flex: 1,
+  },
+  content: {
+    flex: 1,
+  },
+  listHeader: {
+    padding: spacing.lg,
+  },
   header: {
     alignItems: 'center',
-    paddingHorizontal: spacing.lg,
-    paddingTop: spacing.xl,
-    paddingBottom: spacing.lg,
+    marginBottom: spacing.lg,
   },
   logo: {
     fontSize: 64,
-    marginBottom: spacing.lg,
+    marginBottom: spacing.md,
   },
   title: {
     ...typography.h1,
     color: colors.text,
-    marginBottom: spacing.md,
+    marginBottom: spacing.sm,
     textAlign: 'center',
   },
   subtitle: {
     ...typography.body,
     color: colors.textSecondary,
     textAlign: 'center',
-    lineHeight: 24,
+    lineHeight: 22,
   },
-  content: {
-    flex: 1,
-    paddingHorizontal: spacing.lg,
-  },
-  sectionTitle: {
-    ...typography.h3,
-    color: colors.text,
+  searchSection: {
     marginBottom: spacing.lg,
-    textAlign: 'center',
   },
   searchInput: {
-    backgroundColor: colors.surface,
-    borderRadius: 12,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.md,
-    ...typography.body,
-    color: colors.text,
-    marginBottom: spacing.lg,
-    borderWidth: 1,
-    borderColor: colors.border,
+    marginBottom: spacing.sm,
   },
-  loader: {
-    marginVertical: spacing.xl,
+  searchIcon: {
+    fontSize: 20,
+  },
+  searchResults: {
+    ...typography.caption,
+    color: colors.textSecondary,
+    textAlign: 'center',
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingVertical: spacing.xl,
+  },
+  loadingText: {
+    ...typography.body,
+    color: colors.textSecondary,
+    marginTop: spacing.md,
+  },
+  emptyContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingVertical: spacing.xl,
+  },
+  emptyIcon: {
+    fontSize: 48,
+    marginBottom: spacing.md,
+  },
+  emptyTitle: {
+    ...typography.h3,
+    color: colors.text,
+    marginBottom: spacing.sm,
+  },
+  emptySubtitle: {
+    ...typography.body,
+    color: colors.textSecondary,
+    textAlign: 'center',
   },
   currencyList: {
     flex: 1,
   },
-  emptyListText: {
-    ...typography.body,
-    color: colors.textSecondary,
-    textAlign: 'center',
-    marginTop: spacing.xl,
+  currencyListContent: {
+    paddingBottom: spacing.lg,
   },
-  currencyOption: {
+  currencyItem: {
     backgroundColor: colors.card,
     borderRadius: 12,
     padding: spacing.md,
+    marginBottom: spacing.sm,
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: spacing.md,
+    justifyContent: 'space-between',
     borderWidth: 2,
     borderColor: 'transparent',
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 1,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+    elevation: 2,
   },
-  currencyOptionSelected: {
+  currencyItemSelected: {
     backgroundColor: colors.primaryLight + '20',
     borderColor: colors.primary,
-    shadowColor: colors.primary,
-    shadowOpacity: 0.3,
-    elevation: 6,
+  },
+  currencyLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
   },
   currencySymbol: {
-    fontSize: 24,
-    width: 40,
+    fontSize: 28,
+    width: 50,
     textAlign: 'center',
     marginRight: spacing.md,
     color: colors.text,
@@ -255,73 +534,52 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   currencyCode: {
-    ...typography.h3,
+    ...typography.body,
+    fontWeight: '600',
     color: colors.text,
-    fontWeight: 'bold',
-  },
-  currencyCodeSelected: {
-    color: colors.primary,
+    marginBottom: spacing.xs,
   },
   currencyName: {
     ...typography.caption,
     color: colors.textSecondary,
   },
-  selectedInfo: {
-    backgroundColor: colors.surface,
+  selectedIndicator: {
+    width: 24,
+    height: 24,
     borderRadius: 12,
-    padding: spacing.lg,
-    marginBottom: spacing.lg,
+    backgroundColor: colors.primary,
+    justifyContent: 'center',
     alignItems: 'center',
   },
-  selectedLabel: {
-    ...typography.caption,
-    color: colors.textSecondary,
-    marginBottom: spacing.sm,
-    fontWeight: '600',
-  },
-  selectedCurrency: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  selectedSymbol: {
-    fontSize: 24,
-    marginRight: spacing.sm,
-  },
-  selectedCode: {
-    ...typography.h2,
-    color: colors.primary,
+  selectedIcon: {
+    color: colors.background,
+    fontSize: 16,
     fontWeight: 'bold',
-    marginRight: spacing.sm,
-  },
-  selectedName: {
-    ...typography.body,
-    color: colors.text,
-  },
-  infoBox: {
-    flexDirection: 'row',
-    backgroundColor: colors.info + '20',
-    borderRadius: 8,
-    padding: spacing.md,
-    alignItems: 'flex-start',
-  },
-  infoIcon: {
-    fontSize: 20,
-    marginRight: spacing.sm,
-    marginTop: spacing.xs,
-  },
-  infoText: {
-    ...typography.caption,
-    color: colors.text,
-    flex: 1,
-    lineHeight: 18,
   },
   footer: {
+    backgroundColor: colors.background,
     padding: spacing.lg,
     borderTopWidth: 1,
     borderTopColor: colors.border,
   },
+  selectedCurrencyInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: spacing.md,
+  },
+  selectedCurrencyLabel: {
+    ...typography.body,
+    color: colors.textSecondary,
+    marginRight: spacing.sm,
+  },
+  selectedCurrencyValue: {
+    ...typography.h3,
+    color: colors.primary,
+    fontWeight: '600',
+  },
   continueButton: {
-    width: '100%',
+    marginTop: spacing.sm,
   },
 });
 

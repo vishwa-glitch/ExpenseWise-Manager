@@ -40,6 +40,24 @@ export const CategoryBreakdownSection: React.FC<CategoryBreakdownSectionProps> =
   const { categoryBreakdown } = useTypedSelector((state) => state.analytics);
   const { displayCurrency } = useTypedSelector((state) => state.user);
 
+  // Fetch category breakdown data when component mounts
+  useEffect(() => {
+    const loadCategoryBreakdown = async () => {
+      try {
+        // Get current date range for the last 30 days
+        const endDate = new Date().toISOString().split('T')[0];
+        const startDate = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+        
+        await dispatch(fetchCategoryBreakdown({ startDate, endDate })).unwrap();
+      } catch (error) {
+        console.error('❌ Failed to load category breakdown:', error);
+        // Don't show error to user, just log it
+      }
+    };
+    
+    loadCategoryBreakdown();
+  }, [dispatch]);
+
   const handleRefresh = async () => {
     setRefreshing(true);
     onRefresh();
@@ -82,44 +100,50 @@ export const CategoryBreakdownSection: React.FC<CategoryBreakdownSectionProps> =
         }
       }
       
-      // Return mock data if no real data available
-      return getMockCategoryData();
+      // Check if categoryBreakdown is an object with breakdown property
+      if (categoryBreakdown && typeof categoryBreakdown === 'object' && !Array.isArray(categoryBreakdown) && (categoryBreakdown as any).breakdown) {
+        const breakdownArray = Array.isArray((categoryBreakdown as any).breakdown) ? (categoryBreakdown as any).breakdown : [];
+        const validCategories = breakdownArray.filter(
+          (category: any) => category && typeof category.amount === 'number' && category.amount > 0
+        );
+        
+        if (validCategories.length > 0) {
+          return validCategories.map((category: any, index: number) => ({
+            name: category?.name || 'Unknown',
+            amount: category?.amount || 0,
+            color: colors.categories[index % colors.categories.length],
+            legendFontColor: colors.text,
+            legendFontSize: 12,
+          }));
+        }
+      }
+      
+      // Check if dashboardInsights has categories in a different structure
+      if (dashboardInsights?.categories && Array.isArray(dashboardInsights.categories)) {
+        const validCategories = dashboardInsights.categories.filter(
+          (category: any) => category && typeof category.amount === 'number' && category.amount > 0
+        );
+        
+        if (validCategories.length > 0) {
+          return validCategories.map((category: any, index: number) => ({
+            name: category?.name || 'Unknown',
+            amount: category?.amount || 0,
+            color: colors.categories[index % colors.categories.length],
+            legendFontColor: colors.text,
+            legendFontSize: 12,
+          }));
+        }
+      }
+      
+      // Return empty array if no real data available
+      return [];
     } catch (error) {
       console.error('Error processing category breakdown data:', error);
-      return getMockCategoryData();
+      return [];
     }
   };
 
-  const getMockCategoryData = (): CategoryData[] => [
-    { 
-      name: 'Food & Dining', 
-      amount: 15000, 
-      color: colors.categories[0],
-      legendFontColor: colors.text,
-      legendFontSize: 12,
-    },
-    { 
-      name: 'Transportation', 
-      amount: 8000, 
-      color: colors.categories[1],
-      legendFontColor: colors.text,
-      legendFontSize: 12,
-    },
-    { 
-      name: 'Shopping', 
-      amount: 5000, 
-      color: colors.categories[2],
-      legendFontColor: colors.text,
-      legendFontSize: 12,
-    },
-    { 
-      name: 'Entertainment', 
-      amount: 3000, 
-      color: colors.categories[3],
-      legendFontColor: colors.text,
-      legendFontSize: 12,
-    },
-  ];
+
 
   const categoryData = getCategoryBreakdownData();
   const hasCategoryData = categoryData.length > 0;
@@ -141,9 +165,12 @@ export const CategoryBreakdownSection: React.FC<CategoryBreakdownSectionProps> =
       return (
         <View style={styles.emptyState}>
           <Text style={styles.emptyIcon}>📊</Text>
-          <Text style={styles.emptyTitle}>No Category Data</Text>
+          <Text style={styles.emptyTitle}>No Category Data Available</Text>
           <Text style={styles.emptyMessage}>
-            Add some transactions to see your spending breakdown by category.
+            Category breakdown data is not available. This could be because:{'\n'}
+            • No transactions have been added yet{'\n'}
+            • The analytics service is not available{'\n'}
+            • There are no categorized transactions in the selected period
           </Text>
           <TouchableOpacity style={styles.retryButton} onPress={handleRefresh}>
             <Text style={styles.retryButtonText}>Refresh Data</Text>

@@ -272,7 +272,7 @@ export const exportTransactions = createAsyncThunk(
       const url = window.URL.createObjectURL(blob);
       const link = document.createElement("a");
       link.href = url;
-      link.download = `transactions_export.${format}`;
+      link.download = `transactions_export.${format === 'excel' ? 'xlsx' : format}`;
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
@@ -280,7 +280,7 @@ export const exportTransactions = createAsyncThunk(
     } else {
       // Native (iOS/Android) specific code
       const blob = response;
-      const fileName = `transactions_export.${format}`;
+      const fileName = `transactions_export.${format === 'excel' ? 'xlsx' : format}`;
       const fileUri = FileSystem.cacheDirectory + fileName;
 
       // Convert Blob to base64 string

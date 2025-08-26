@@ -12,6 +12,7 @@ import { useTypedSelector } from '../../hooks/useTypedSelector';
 import { logout } from '../../store/slices/authSlice';
 import { colors, typography, spacing } from '../../constants/colors';
 
+
 interface MoreScreenProps {
   navigation: any;
 }
@@ -28,22 +29,10 @@ const MoreScreen: React.FC<MoreScreenProps> = ({ navigation }) => {
       description: 'Manage transaction categories',
     },
     {
-      title: 'Budgets',
-      icon: '📊',
-      screen: 'Budgets',
-      description: 'Set and track budgets',
-    },
-    {
-      title: 'Bills & Reminders',
-      icon: '📅',
-      screen: 'Bills', 
-      description: 'Manage recurring bills',
-    },
-    {
-      title: 'Analytics',
-      icon: '📈',
-      screen: 'Analytics', 
-      description: 'Detailed financial insights',
+      title: 'Export Data',
+      icon: '📤',
+      screen: 'Export', 
+      description: 'Export transactions to Excel, CSV, or PDF',
     },
   ];
 
@@ -72,40 +61,43 @@ const MoreScreen: React.FC<MoreScreenProps> = ({ navigation }) => {
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
         <Text style={styles.screenTitle}>More</Text>
-        <TouchableOpacity
-          style={styles.menuButton}
-          onPress={() => navigation.openDrawer()}
-        >
-          <Text style={styles.menuButtonIcon}>☰</Text>
-        </TouchableOpacity>
+        <View style={styles.menuButton} />
       </View>
 
       <ScrollView style={styles.scrollView}>
         {/* User Profile Section */}
         <View style={styles.profileSection}>
-          <View style={styles.profileInfo}>
-            <View style={styles.avatar}>
-              <Text style={styles.avatarText}>
-                {user?.first_name?.charAt(0) || 'U'}
-              </Text>
-            </View>
-            <View style={styles.userDetails}>
-              <Text style={styles.userName}>
-                {user?.first_name} {user?.last_name}
-              </Text>
-              <Text style={styles.userEmail}>{user?.email}</Text>
-              <Text style={styles.subscriptionTier}>
-                {user?.subscription_tier === 'premium' ? '⭐ Premium' : '🆓 Free'}
-              </Text>
-            </View>
-          </View>
           <TouchableOpacity
-            style={styles.editProfileButton}
+            style={styles.profileContent}
             onPress={() => navigation.navigate('Profile')}
+            activeOpacity={0.8}
           >
-            <Text style={styles.editProfileText}>View Profile</Text>
+            <View style={styles.profileInfo}>
+              <View style={styles.avatarContainer}>
+                <View style={styles.avatar}>
+                  <Text style={styles.avatarText}>
+                    {user?.first_name?.charAt(0) || 'U'}
+                  </Text>
+                </View>
+
+              </View>
+              <View style={styles.userDetails}>
+                <Text style={styles.userName} numberOfLines={1}>
+                  {user?.first_name} {user?.last_name}
+                </Text>
+                <Text style={styles.userEmail} numberOfLines={1}>
+                  {user?.email}
+                </Text>
+
+              </View>
+            </View>
+            <View style={styles.profileArrow}>
+              <Text style={styles.arrowIcon}>›</Text>
+            </View>
           </TouchableOpacity>
         </View>
+
+
 
         {/* Menu Items */}
         <View style={styles.menuSection}>
@@ -150,20 +142,23 @@ const MoreScreen: React.FC<MoreScreenProps> = ({ navigation }) => {
               <Text style={styles.quickActionIcon}>🏦</Text>
               <Text style={styles.quickActionText}>Add Account</Text>
             </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.quickActionButton}
+              onPress={() =>
+                navigation.navigate('Goals', {
+                  screen: 'CreateBudget',
+                })
+              }
+            >
+              <Text style={styles.quickActionIcon}>📊</Text>
+              <Text style={styles.quickActionText}>Create Budget</Text>
+            </TouchableOpacity>
           </View>
         </View>
 
         {/* Settings */}
         <View style={styles.settingsSection}>
           <Text style={styles.sectionTitle}>Settings</Text>
-          <TouchableOpacity
-            style={styles.settingsItem}
-            onPress={() => navigation.navigate('Settings')}
-          >
-            <Text style={styles.settingsIcon}>⚙️</Text>
-            <Text style={styles.settingsText}>App Settings</Text>
-            <Text style={styles.chevron}>›</Text>
-          </TouchableOpacity>
           <TouchableOpacity
             style={styles.settingsItem}
             onPress={() => navigation.navigate('HelpSupport')}
@@ -216,26 +211,37 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   profileSection: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
     backgroundColor: colors.card,
     margin: spacing.lg,
-    padding: spacing.lg,
-    borderRadius: 12,
+    borderRadius: 16,
     shadowColor: '#000',
     shadowOffset: {
       width: 0,
-      height: 2,
+      height: 6,
     },
-    shadowOpacity: 0.1,
-    shadowRadius: 3.84,
-    elevation: 5,
+    shadowOpacity: 0.2,
+    shadowRadius: 12,
+    elevation: 12,
+    overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: colors.primary + '20',
+    // Add a subtle gradient effect
+    position: 'relative',
+  },
+  profileContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    padding: spacing.lg,
   },
   profileInfo: {
     flexDirection: 'row',
     alignItems: 'center',
     flex: 1,
+  },
+  avatarContainer: {
+    position: 'relative',
+    marginRight: spacing.md,
   },
   avatar: {
     width: 60,
@@ -244,41 +250,89 @@ const styles = StyleSheet.create({
     backgroundColor: colors.primary,
     justifyContent: 'center',
     alignItems: 'center',
-    marginRight: spacing.md,
+    shadowColor: colors.primary,
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+    elevation: 4,
   },
   avatarText: {
     ...typography.h2,
     color: colors.background,
     fontWeight: 'bold',
+    fontSize: 24,
+  },
+  subscriptionBadge: {
+    position: 'absolute',
+    bottom: -2,
+    right: -2,
+    width: 26,
+    height: 26,
+    borderRadius: 13,
+    backgroundColor: colors.background,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 2,
+    borderColor: colors.primary,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 1,
+    },
+    shadowOpacity: 0.2,
+    shadowRadius: 2,
+    elevation: 2,
+  },
+  subscriptionBadgeText: {
+    fontSize: 14,
   },
   userDetails: {
     flex: 1,
+    marginRight: spacing.sm,
   },
   userName: {
     ...typography.h3,
     color: colors.text,
+    fontWeight: 'bold',
     marginBottom: spacing.xs,
+    fontSize: 18,
+    lineHeight: 22,
   },
   userEmail: {
     ...typography.caption,
     color: colors.textSecondary,
-    marginBottom: spacing.xs,
+    marginBottom: spacing.sm,
+    fontSize: 13,
+    lineHeight: 16,
+  },
+  subscriptionInfo: {
+    flexDirection: 'column',
+    alignItems: 'flex-start',
   },
   subscriptionTier: {
     ...typography.small,
     color: colors.primary,
+    fontWeight: '700',
+    fontSize: 14,
+    lineHeight: 18,
+    marginBottom: spacing.xs,
+  },
+  premiumStatus: {
+    ...typography.small,
+    color: colors.success,
+    fontSize: 12,
+    lineHeight: 16,
     fontWeight: '600',
   },
-  editProfileButton: {
-    backgroundColor: colors.surface,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
-    borderRadius: 8,
+  profileArrow: {
+    padding: spacing.sm,
   },
-  editProfileText: {
-    ...typography.caption,
-    color: colors.primary,
-    fontWeight: '600',
+  arrowIcon: {
+    ...typography.h3,
+    color: colors.textSecondary,
   },
   menuSection: {
     paddingHorizontal: spacing.lg,

@@ -9,7 +9,7 @@ interface BudgetCardProps {
     id: string;
     name: string;
     amount: number;
-    spent?: number;
+    spent_amount?: number;
     period: string;
     category_name?: string;
     start_date: string;
@@ -30,12 +30,12 @@ export const BudgetCard: React.FC<BudgetCardProps> = ({ budget, onPress, onEdit,
   };
 
   const getProgressPercentage = () => {
-    if (!budget.spent || budget.amount === 0) return 0;
-    return Math.min((budget.spent / budget.amount) * 100, 100);
+    if (!budget.spent_amount || budget.amount === 0) return 0;
+    return Math.min((budget.spent_amount / budget.amount) * 100, 100);
   };
 
   const getRemainingAmount = () => {
-    return budget.amount - (budget.spent || 0);
+    return budget.amount - (budget.spent_amount || 0);
   };
 
   const getProgressColor = () => {
@@ -144,7 +144,7 @@ export const BudgetCard: React.FC<BudgetCardProps> = ({ budget, onPress, onEdit,
       <View style={styles.progressSection}>
         <View style={styles.progressHeader}>
           <Text style={styles.spentAmount}>
-            Spent: {formatAmount(budget.spent || 0)}
+            Spent: {formatAmount(budget.spent_amount || 0)}
           </Text>
           <Text style={styles.totalAmount}>
             of {formatAmount(budget.amount)}

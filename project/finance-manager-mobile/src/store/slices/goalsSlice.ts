@@ -223,14 +223,29 @@ const goalsSlice = createSlice({
         state.goalPredictions = action.payload.predictions || action.payload;
       })
       // Create goal
+      .addCase(createGoal.pending, (state) => {
+        state.isLoading = true;
+        state.error = null;
+      })
       .addCase(createGoal.fulfilled, (state, action) => {
+        state.isLoading = false;
         const newGoal = action.payload.goal || action.payload;
         if (newGoal) {
           state.goals.push(newGoal);
         }
+        state.error = null;
+      })
+      .addCase(createGoal.rejected, (state, action) => {
+        state.isLoading = false;
+        state.error = action.payload as string || 'Failed to create goal';
       })
       // Update goal
+      .addCase(updateGoal.pending, (state) => {
+        state.isLoading = true;
+        state.error = null;
+      })
       .addCase(updateGoal.fulfilled, (state, action) => {
+        state.isLoading = false;
         const updatedGoal = action.payload.goal || action.payload;
         if (updatedGoal) {
           const index = state.goals.findIndex(g => g.id === updatedGoal.id);
@@ -243,13 +258,28 @@ const goalsSlice = createSlice({
             state.selectedGoal = updatedGoal;
           }
         }
+        state.error = null;
+      })
+      .addCase(updateGoal.rejected, (state, action) => {
+        state.isLoading = false;
+        state.error = action.payload as string || 'Failed to update goal';
       })
       // Delete goal
+      .addCase(deleteGoal.pending, (state) => {
+        state.isLoading = true;
+        state.error = null;
+      })
       .addCase(deleteGoal.fulfilled, (state, action) => {
+        state.isLoading = false;
         state.goals = state.goals.filter(g => g.id !== action.payload);
         if (state.selectedGoal && state.selectedGoal.id === action.payload) {
           state.selectedGoal = null;
         }
+        state.error = null;
+      })
+      .addCase(deleteGoal.rejected, (state, action) => {
+        state.isLoading = false;
+        state.error = action.payload as string || 'Failed to delete goal';
       })
       // Contribute to goal
       .addCase(contributeToGoal.fulfilled, (state, action) => {

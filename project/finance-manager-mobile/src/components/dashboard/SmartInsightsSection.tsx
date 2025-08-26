@@ -252,27 +252,31 @@ export const SmartInsightsSection: React.FC<SmartInsightsSectionProps> = ({
     return (
       <FadeInView>
         <View style={styles.widgetsContainer}>
-          <SmartAlertCard 
-            isLoading={budgetsLoading}
-            error={budgetsError}
-            {...(highestUsageBudget && budgetStatus && {
-              title: `${highestUsageBudget.name} Budget`,
-              percentageUsed: Math.round((highestUsageBudget.spent_amount / highestUsageBudget.amount) * 100),
-              currentAmount: highestUsageBudget.spent_amount,
-              totalAmount: highestUsageBudget.amount,
-              daysLeft: budgetStatus.daysLeft,
-            })}
-          />
-          <GoalProgressCard 
-            isLoading={goalsLoading}
-            error={goalsError}
-            {...(primaryGoal && {
-              title: primaryGoal.name,
-              percentage: Math.round((primaryGoal.current_amount / primaryGoal.target_amount) * 100),
-              currentAmount: primaryGoal.current_amount,
-              totalAmount: primaryGoal.target_amount,
-            })}
-          />
+          {budgetsLoading ? (
+            <SmartAlertCard isLoading={true} error={null} />
+          ) : highestUsageBudget && budgetStatus ? (
+            <SmartAlertCard 
+              isLoading={false}
+              error={budgetsError}
+              title={`${highestUsageBudget.name} Budget`}
+              percentageUsed={Math.round((highestUsageBudget.spent_amount / highestUsageBudget.amount) * 100)}
+              currentAmount={highestUsageBudget.spent_amount}
+              totalAmount={highestUsageBudget.amount}
+              daysLeft={budgetStatus.daysLeft}
+            />
+          ) : null}
+          {goalsLoading ? (
+            <GoalProgressCard isLoading={true} error={null} />
+          ) : primaryGoal ? (
+            <GoalProgressCard 
+              isLoading={false}
+              error={goalsError}
+              title={primaryGoal.name}
+              percentage={Math.round((primaryGoal.current_amount / primaryGoal.target_amount) * 100)}
+              currentAmount={primaryGoal.current_amount}
+              totalAmount={primaryGoal.target_amount}
+            />
+          ) : null}
         </View>
 
         <View style={styles.periodSelector}>
@@ -359,8 +363,8 @@ export const SmartInsightsSection: React.FC<SmartInsightsSectionProps> = ({
 
 const styles = StyleSheet.create({
   widgetsContainer: {
-    marginBottom: spacing.lg,
-    gap: spacing.md,
+    marginBottom: spacing.md,
+    gap: spacing.sm,
   },
   section: {
     marginBottom: spacing.md,

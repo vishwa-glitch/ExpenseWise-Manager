@@ -103,13 +103,13 @@ const BudgetDetailScreen: React.FC<BudgetDetailScreenProps> = ({ navigation, rou
   };
 
   const getProgressPercentage = () => {
-    if (!selectedBudget?.spent || selectedBudget.amount === 0) return 0;
-    return Math.min((selectedBudget.spent / selectedBudget.amount) * 100, 100);
+    if (!selectedBudget || selectedBudget.amount === 0) return 0;
+    return Math.min((selectedBudget.spent_amount / selectedBudget.amount) * 100, 100);
   };
 
   const getRemainingAmount = () => {
     if (!selectedBudget) return 0;
-    return selectedBudget.amount - (selectedBudget.spent || 0);
+    return selectedBudget.amount - (selectedBudget.spent_amount || 0);
   };
 
   const getProgressColor = () => {
@@ -183,7 +183,7 @@ const BudgetDetailScreen: React.FC<BudgetDetailScreenProps> = ({ navigation, rou
           <View style={styles.statItem}>
             <Text style={styles.statLabel}>Amount Spent</Text>
             <Text style={[styles.statValue, { color: colors.expense }]}>
-              {formatAmount(selectedBudget?.spent || 0)}
+              {formatAmount(selectedBudget?.spent_amount || 0)}
             </Text>
           </View>
           
@@ -426,9 +426,9 @@ const styles = StyleSheet.create({
   },
   overviewSection: {
     backgroundColor: colors.card,
-    borderRadius: 12,
-    padding: spacing.lg,
-    margin: spacing.lg,
+    borderRadius: 10, // Reduced from 12
+    padding: spacing.md, // Reduced from spacing.lg
+    margin: spacing.md, // Reduced from spacing.lg
     shadowColor: '#000',
     shadowOffset: {
       width: 0,
@@ -441,7 +441,7 @@ const styles = StyleSheet.create({
   sectionTitle: {
     ...typography.h3,
     color: colors.text,
-    marginBottom: spacing.lg,
+    marginBottom: spacing.md, // Reduced from spacing.lg
     fontWeight: 'bold',
   },
   overviewContent: {
@@ -470,10 +470,10 @@ const styles = StyleSheet.create({
   },
   detailsSection: {
     backgroundColor: colors.card,
-    borderRadius: 12,
-    padding: spacing.lg,
-    marginHorizontal: spacing.lg,
-    marginBottom: spacing.lg,
+    borderRadius: 10, // Reduced from 12
+    padding: spacing.md, // Reduced from spacing.lg
+    marginHorizontal: spacing.md, // Reduced from spacing.lg
+    marginBottom: spacing.md, // Reduced from spacing.lg
     shadowColor: '#000',
     shadowOffset: {
       width: 0,
@@ -513,8 +513,8 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
   },
   transactionsSection: {
-    paddingHorizontal: spacing.lg,
-    marginBottom: spacing.lg,
+    paddingHorizontal: spacing.md, // Reduced from spacing.lg
+    marginBottom: spacing.md, // Reduced from spacing.lg
   },
   sectionHeader: {
     flexDirection: 'row',
@@ -548,8 +548,8 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   actionsSection: {
-    paddingHorizontal: spacing.lg,
-    marginBottom: spacing.lg,
+    paddingHorizontal: spacing.md, // Reduced from spacing.lg
+    marginBottom: spacing.md, // Reduced from spacing.lg
   },
   actionButtons: {
     flexDirection: 'row',

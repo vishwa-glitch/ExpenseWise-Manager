@@ -44,12 +44,7 @@ const AccountSharingScreen: React.FC<AccountSharingScreenProps> = ({ navigation,
             <Text style={styles.featureItem}>• Activity tracking</Text>
           </View>
 
-          <TouchableOpacity
-            style={styles.upgradeButton}
-            onPress={() => navigation.navigate('PremiumUpgrade')}
-          >
-            <Text style={styles.upgradeButtonText}>Upgrade to Premium</Text>
-          </TouchableOpacity>
+          <Text style={styles.availableText}>Feature Available</Text>
         </View>
       </View>
     </SafeAreaView>
@@ -141,6 +136,12 @@ const styles = StyleSheet.create({
     ...typography.body,
     color: colors.background,
     fontWeight: '600',
+    textAlign: 'center',
+  },
+  availableText: {
+    ...typography.body,
+    color: colors.success,
+    fontWeight: 'bold',
     textAlign: 'center',
   },
 });

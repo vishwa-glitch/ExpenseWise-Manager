@@ -10,7 +10,7 @@ import {
 } from 'react-native';
 import { useAppDispatch } from '../../hooks/useAppDispatch';
 import { useTypedSelector } from '../../hooks/useTypedSelector';
-import { updateUserProfile } from '../../store/slices/userSlice';
+import { updateUserProfile, fetchUserProfile } from '../../store/slices/userSlice';
 import { CustomTextInput } from '../../components/common/CustomTextInput';
 import { CustomButton } from '../../components/common/CustomButton';
 import { LoadingSpinner } from '../../components/common/LoadingSpinner';
@@ -43,7 +43,7 @@ const EditProfileScreen: React.FC<EditProfileScreenProps> = ({ navigation }) => 
   const [isSaving, setIsSaving] = useState(false);
 
   useEffect(() => {
-    // Initialize form with current user data
+    // Initialize form with current user data from backend
     if (profile || user) {
       const userData = profile || user;
       setFormData({
@@ -82,14 +82,7 @@ const EditProfileScreen: React.FC<EditProfileScreenProps> = ({ navigation }) => 
       hasError = true;
     }
 
-    // Email validation
-    if (!formData.email.trim()) {
-      newErrors.email = 'Email is required';
-      hasError = true;
-    } else if (!validateEmail(formData.email)) {
-      newErrors.email = 'Please enter a valid email';
-      hasError = true;
-    }
+    // Email validation - removed since email is not editable
 
     // Phone validation (optional but if provided, should be valid)
     if (formData.phone.trim() && formData.phone.length < 10) {
@@ -110,11 +103,14 @@ const EditProfileScreen: React.FC<EditProfileScreenProps> = ({ navigation }) => 
       const updateData = {
         first_name: formData.first_name.trim(),
         last_name: formData.last_name.trim(),
-        email: formData.email.trim(),
         phone: formData.phone.trim() || undefined,
       };
 
+      // Update profile via backend API
       await dispatch(updateUserProfile(updateData)).unwrap();
+      
+      // Refresh profile data to get updated information
+      await dispatch(fetchUserProfile());
       
       Alert.alert(
         'Success',
@@ -184,15 +180,14 @@ const EditProfileScreen: React.FC<EditProfileScreenProps> = ({ navigation }) => 
             />
           </View>
 
-          <CustomTextInput
-            label="Email Address *"
-            value={formData.email}
-            onChangeText={(value) => updateFormData('email', value)}
-            placeholder="Enter email address"
-            keyboardType="email-address"
-            error={errors.email}
-            leftIcon={<Text style={styles.inputIcon}>📧</Text>}
-          />
+          <View style={styles.emailContainer}>
+            <Text style={styles.emailLabel}>Email Address</Text>
+            <View style={styles.emailDisplay}>
+              <Text style={styles.emailIcon}>📧</Text>
+              <Text style={styles.emailText}>{formData.email}</Text>
+            </View>
+            <Text style={styles.emailNote}>Email address cannot be changed</Text>
+          </View>
 
           <CustomTextInput
             label="Phone Number (Optional)"
@@ -208,14 +203,19 @@ const EditProfileScreen: React.FC<EditProfileScreenProps> = ({ navigation }) => 
             <Text style={styles.subscriptionTitle}>Current Subscription</Text>
             <View style={styles.subscriptionDetails}>
               <Text style={styles.subscriptionTier}>
-                {profile?.subscription_tier === 'premium' ? '⭐ Premium Member' : '🆓 Free Member'}
+                ⭐ Premium Member {/* TEMPORARY: All users show as premium for app launch */}
               </Text>
-              {profile?.subscription_expires_at && (
-                <Text style={styles.subscriptionExpiry}>
-                  Expires: {new Date(profile.subscription_expires_at).toLocaleDateString('en-IN')}
-                </Text>
-              )}
+              <Text style={styles.premiumStatus}>
+                ✨ Enjoy Premium Features
+              </Text>
             </View>
+          </View>
+
+          <View style={styles.infoBox}>
+            <Text style={styles.infoIcon}>ℹ️</Text>
+            <Text style={styles.infoText}>
+              Your profile information is securely stored and used to personalize your experience.
+            </Text>
           </View>
         </View>
       </ScrollView>
@@ -265,7 +265,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   scrollContent: {
-    padding: spacing.lg,
+    padding: spacing.md,
   },
   form: {
     flex: 1,
@@ -273,6 +273,7 @@ const styles = StyleSheet.create({
   nameRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
+    marginBottom: spacing.md,
   },
   nameInput: {
     flex: 1,
@@ -281,78 +282,18 @@ const styles = StyleSheet.create({
   inputIcon: {
     fontSize: 20,
   },
-  label: {
-    ...typography.caption,
-    fontWeight: '600',
-    color: colors.text,
-    marginBottom: spacing.sm,
-  },
-  currencySelector: {
-    marginBottom: spacing.lg,
-  },
-  currencyScroll: {
-    flexGrow: 0,
-  },
-  currencyOption: {
-    backgroundColor: colors.surface,
-    borderRadius: 12,
-    padding: spacing.md,
-    alignItems: 'center',
-    marginRight: spacing.sm,
-    borderWidth: 2,
-    borderColor: 'transparent',
-    minWidth: 100,
-  },
-  currencyOptionSelected: {
-    backgroundColor: colors.primaryLight + '20',
-    borderColor: colors.primary,
-  },
-  currencySymbol: {
-    fontSize: 24,
-    marginBottom: spacing.sm,
-  },
-  currencyCode: {
-    ...typography.body,
-    color: colors.text,
-    fontWeight: 'bold',
-    marginBottom: spacing.xs,
-  },
-  currencyCodeSelected: {
-    color: colors.primary,
-  },
-  currencyName: {
-    ...typography.small,
-    color: colors.textSecondary,
-    textAlign: 'center',
-  },
-  infoBox: {
-    flexDirection: 'row',
-    backgroundColor: colors.info + '20',
-    borderRadius: 8,
-    padding: spacing.md,
-    marginBottom: spacing.lg,
-  },
-  infoIcon: {
-    fontSize: 20,
-    marginRight: spacing.sm,
-  },
-  infoText: {
-    ...typography.caption,
-    color: colors.text,
-    flex: 1,
-    lineHeight: 18,
-  },
   subscriptionInfo: {
     backgroundColor: colors.surface,
     borderRadius: 12,
-    padding: spacing.lg,
-    marginBottom: spacing.lg,
+    padding: spacing.md,
+    marginTop: spacing.md,
+    marginBottom: spacing.md,
   },
   subscriptionTitle: {
     ...typography.caption,
     color: colors.text,
     fontWeight: 'bold',
-    marginBottom: spacing.md,
+    marginBottom: spacing.sm,
     textTransform: 'uppercase',
     letterSpacing: 0.5,
   },
@@ -365,17 +306,73 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     marginBottom: spacing.xs,
   },
+  premiumStatus: {
+    ...typography.small,
+    color: colors.textSecondary,
+    textAlign: 'center',
+    marginTop: spacing.xs,
+  },
   subscriptionExpiry: {
     ...typography.small,
     color: colors.textSecondary,
   },
+  infoBox: {
+    flexDirection: 'row',
+    backgroundColor: colors.info + '20',
+    borderRadius: 8,
+    padding: spacing.md,
+    marginTop: spacing.md,
+  },
+  infoIcon: {
+    fontSize: 20,
+    marginRight: spacing.sm,
+  },
+  infoText: {
+    ...typography.caption,
+    color: colors.text,
+    flex: 1,
+    lineHeight: 18,
+  },
   footer: {
-    padding: spacing.lg,
+    padding: spacing.md,
     borderTopWidth: 1,
     borderTopColor: colors.border,
   },
   saveButton: {
     width: '100%',
+  },
+  emailContainer: {
+    marginBottom: spacing.md,
+  },
+  emailLabel: {
+    ...typography.caption,
+    color: colors.text,
+    fontWeight: '600',
+    marginBottom: spacing.sm,
+  },
+  emailDisplay: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: colors.surface,
+    borderRadius: 8,
+    padding: spacing.md,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  emailIcon: {
+    fontSize: 20,
+    marginRight: spacing.md,
+  },
+  emailText: {
+    ...typography.body,
+    color: colors.textSecondary,
+    flex: 1,
+  },
+  emailNote: {
+    ...typography.small,
+    color: colors.textSecondary,
+    fontStyle: 'italic',
+    marginTop: spacing.xs,
   },
 });
 

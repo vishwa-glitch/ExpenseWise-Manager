@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import {
   View,
   Text,
@@ -9,6 +9,7 @@ import {
   RefreshControl,
   Alert,
 } from 'react-native';
+import { useFocusEffect } from '@react-navigation/native';
 import { useAppDispatch } from '../../hooks/useAppDispatch';
 import { useTypedSelector } from '../../hooks/useTypedSelector';
 import { fetchBudgets, deleteBudget } from '../../store/slices/budgetsSlice';
@@ -19,6 +20,7 @@ import { LoadingSpinner } from '../../components/common/LoadingSpinner';
 import { colors, typography, spacing } from '../../constants/colors';
 import { SUBSCRIPTION_TIERS } from '../../config/api';
 import { RootState } from '../../store';
+import { formatCurrency } from '../../utils/currency';
 
 interface BudgetsListScreenProps {
   navigation: any;
@@ -27,6 +29,7 @@ interface BudgetsListScreenProps {
 const BudgetsListScreen: React.FC<BudgetsListScreenProps> = ({ navigation }) => {
   const dispatch = useAppDispatch();
   const [refreshing, setRefreshing] = useState(false);
+  const flatListRef = useRef<FlatList>(null);
 
   const budgetsSelector = (state: RootState) => state.budgets;
   const userSelector = (state: RootState) => state.user;
@@ -35,12 +38,32 @@ const BudgetsListScreen: React.FC<BudgetsListScreenProps> = ({ navigation }) => 
   const { budgets, isLoading } = useTypedSelector(budgetsSelector);
   const { profile } = useTypedSelector(userSelector);
   const { isAuthenticated } = useTypedSelector(authSelector);
+  const { displayCurrency } = useTypedSelector((state) => state.user);
 
   useEffect(() => {
     if (isAuthenticated) {
       loadData();
     }
   }, [isAuthenticated]);
+
+  // Handle screen focus to restore scroll functionality
+  useFocusEffect(
+    React.useCallback(() => {
+      // Reset scroll position and ensure FlatList is properly initialized
+      if (flatListRef.current) {
+        // Small delay to ensure the component is fully rendered
+        setTimeout(() => {
+          flatListRef.current?.scrollToOffset({ offset: 0, animated: false });
+        }, 100);
+      }
+    }, [])
+  );
+
+  const restoreScrollPosition = () => {
+    if (flatListRef.current) {
+      flatListRef.current.scrollToOffset({ offset: 0, animated: true });
+    }
+  };
 
   const loadData = async () => {
     if (!isAuthenticated) {
@@ -81,9 +104,7 @@ const BudgetsListScreen: React.FC<BudgetsListScreenProps> = ({ navigation }) => 
   const canCreateBudget = () => {
     if (!profile) return false;
     
-    const isFreeTier = profile.subscription_tier === 'free';
-    // For now, let's allow unlimited budgets for both tiers
-    // You can adjust this based on your business logic
+    // TEMPORARY: All users can create unlimited budgets for app launch
     return true;
   };
 
@@ -140,7 +161,11 @@ const BudgetsListScreen: React.FC<BudgetsListScreenProps> = ({ navigation }) => 
   };
 
   const calculateTotalSpent = () => {
-    return getActiveBudgets().reduce((total: number, budget: any) => total + (budget.spent || 0), 0);
+    return getActiveBudgets().reduce((total: number, budget: any) => total + (budget.spent_amount || 0), 0);
+  };
+
+  const formatCurrencyAmount = (amount: number) => {
+    return formatCurrency(amount, displayCurrency);
   };
 
   const renderBudgetItem = ({ item }: { item: any }) => (
@@ -160,7 +185,7 @@ const BudgetsListScreen: React.FC<BudgetsListScreenProps> = ({ navigation }) => 
           <Text style={styles.summaryIcon}>📊</Text>
           <Text style={styles.summaryLabel}>Total Budget</Text>
           <Text style={styles.summaryValue}>
-            ₹{calculateTotalBudgetAmount().toLocaleString('en-IN')}
+            {formatCurrencyAmount(calculateTotalBudgetAmount())}
           </Text>
         </View>
         
@@ -168,7 +193,7 @@ const BudgetsListScreen: React.FC<BudgetsListScreenProps> = ({ navigation }) => 
           <Text style={styles.summaryIcon}>💸</Text>
           <Text style={styles.summaryLabel}>Total Spent</Text>
           <Text style={[styles.summaryValue, { color: colors.expense }]}>
-            ₹{calculateTotalSpent().toLocaleString('en-IN')}
+            {formatCurrencyAmount(calculateTotalSpent())}
           </Text>
         </View>
         
@@ -179,25 +204,21 @@ const BudgetsListScreen: React.FC<BudgetsListScreenProps> = ({ navigation }) => 
             styles.summaryValue,
             { color: (calculateTotalBudgetAmount() - calculateTotalSpent()) >= 0 ? colors.income : colors.expense }
           ]}>
-            ₹{(calculateTotalBudgetAmount() - calculateTotalSpent()).toLocaleString('en-IN')}
+            {formatCurrencyAmount(calculateTotalBudgetAmount() - calculateTotalSpent())}
           </Text>
         </View>
-      </View>
 
-      {/* Stats */}
-      <View style={styles.statsContainer}>
-        <View style={styles.statItem}>
-          <Text style={styles.statNumber}>{getActiveBudgets().length}</Text>
-          <Text style={styles.statLabel}>Active Budgets</Text>
-        </View>
-        <View style={styles.statItem}>
-          <Text style={styles.statNumber}>{getInactiveBudgets().length}</Text>
-          <Text style={styles.statLabel}>Inactive</Text>
-        </View>
-        <View style={styles.statItem}>
-          <Text style={styles.statNumber}>{budgets.length}</Text>
-          <Text style={styles.statLabel}>Total</Text>
-        </View>
+        <TouchableOpacity 
+          style={styles.summaryCard}
+          onPress={() => navigation.navigate('BudgetAnalytics')}
+          activeOpacity={0.8}
+        >
+          <Text style={styles.summaryIcon}>📈</Text>
+          <Text style={styles.summaryLabel}>Analytics</Text>
+          <Text style={[styles.summaryValue, { color: colors.primary }]}>
+            View
+          </Text>
+        </TouchableOpacity>
       </View>
 
       <View style={styles.sectionHeader}>
@@ -232,6 +253,7 @@ const BudgetsListScreen: React.FC<BudgetsListScreenProps> = ({ navigation }) => 
   return (
     <SafeAreaView style={styles.container}>
       <FlatList
+        ref={flatListRef}
         data={budgets}
         renderItem={renderBudgetItem}
         keyExtractor={(item) => item.id}
@@ -241,7 +263,14 @@ const BudgetsListScreen: React.FC<BudgetsListScreenProps> = ({ navigation }) => 
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
         }
         contentContainerStyle={styles.listContent}
-        showsVerticalScrollIndicator={false}
+        showsVerticalScrollIndicator={true}
+        scrollEnabled={true}
+        nestedScrollEnabled={true}
+        keyboardShouldPersistTaps="handled"
+        removeClippedSubviews={false}
+        initialNumToRender={10}
+        maxToRenderPerBatch={10}
+        windowSize={10}
       />
 
       {/* Floating Action Button */}
@@ -269,16 +298,18 @@ const styles = StyleSheet.create({
   },
   summaryContainer: {
     flexDirection: 'row',
+    flexWrap: 'wrap',
     justifyContent: 'space-between',
     marginBottom: spacing.lg,
+    paddingHorizontal: spacing.sm, // Add some padding to center the smaller cards
   },
   summaryCard: {
-    flex: 1,
+    width: '43.7%', // Increased from 40.8% by 7%
     backgroundColor: colors.card,
-    borderRadius: 12,
-    padding: spacing.md,
+    borderRadius: 10, // Reduced from 12
+    padding: spacing.xs, // Reduced from spacing.sm
     alignItems: 'center',
-    marginHorizontal: spacing.xs,
+    marginBottom: spacing.sm, // Reduced from spacing.md
     shadowColor: '#000',
     shadowOffset: {
       width: 0,
@@ -289,8 +320,8 @@ const styles = StyleSheet.create({
     elevation: 5,
   },
   summaryIcon: {
-    fontSize: 24,
-    marginBottom: spacing.sm,
+    fontSize: 18, // Reduced from 20
+    marginBottom: spacing.xs,
   },
   summaryLabel: {
     ...typography.caption,
@@ -298,42 +329,14 @@ const styles = StyleSheet.create({
     marginBottom: spacing.xs,
     fontWeight: '600',
     textAlign: 'center',
+    fontSize: 10, // Reduced from 11
   },
   summaryValue: {
-    ...typography.body,
+    ...typography.h3,
     color: colors.text,
     fontWeight: 'bold',
     textAlign: 'center',
-  },
-  statsContainer: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-    backgroundColor: colors.card,
-    borderRadius: 12,
-    padding: spacing.lg,
-    marginBottom: spacing.lg,
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.1,
-    shadowRadius: 3.84,
-    elevation: 5,
-  },
-  statItem: {
-    alignItems: 'center',
-  },
-  statNumber: {
-    ...typography.h2,
-    color: colors.primary,
-    fontWeight: 'bold',
-    marginBottom: spacing.xs,
-  },
-  statLabel: {
-    ...typography.caption,
-    color: colors.textSecondary,
-    fontWeight: '600',
+    fontSize: 13, // Reduced from 14
   },
   sectionHeader: {
     flexDirection: 'row',

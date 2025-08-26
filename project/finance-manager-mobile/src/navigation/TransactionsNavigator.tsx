@@ -26,12 +26,7 @@ const TransactionTopTabs: React.FC<{ navigation: any }> = ({ navigation }) => {
             <Text style={styles.backIcon}>←</Text>
           </TouchableOpacity>
           <Text style={styles.headerTitle}>Transactions</Text>
-          <TouchableOpacity
-            style={styles.menuButton}
-            onPress={() => navigation.openDrawer()}
-          >
-            <Text style={styles.menuIcon}>☰</Text>
-          </TouchableOpacity>
+          <View style={styles.menuButton} />
         </View>
       </SafeAreaView>
 

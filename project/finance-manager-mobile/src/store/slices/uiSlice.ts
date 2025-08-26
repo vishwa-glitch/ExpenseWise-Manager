@@ -4,18 +4,26 @@ interface UIState {
   theme: 'light' | 'dark';
   isLoading: boolean;
   activeTab: string;
-  showPremiumModal: boolean;
+
   showAddTransactionModal: boolean;
   showAddGoalModal: boolean;
+  // Font settings
+  fontSize: 'small' | 'medium' | 'large';
+  fontFamily: 'system' | 'serif' | 'monospace';
+  boldNumbers: boolean;
 }
 
 const initialState: UIState = {
   theme: 'light',
   isLoading: false,
   activeTab: 'Dashboard',
-  showPremiumModal: false,
+
   showAddTransactionModal: false,
   showAddGoalModal: false,
+  // Font settings defaults
+  fontSize: 'medium',
+  fontFamily: 'system',
+  boldNumbers: false,
 };
 
 const uiSlice = createSlice({
@@ -31,12 +39,7 @@ const uiSlice = createSlice({
     setActiveTab: (state, action: PayloadAction<string>) => {
       state.activeTab = action.payload;
     },
-    showPremiumModal: (state) => {
-      state.showPremiumModal = true;
-    },
-    hidePremiumModal: (state) => {
-      state.showPremiumModal = false;
-    },
+
     showAddTransactionModal: (state) => {
       state.showAddTransactionModal = true;
     },
@@ -49,6 +52,16 @@ const uiSlice = createSlice({
     hideAddGoalModal: (state) => {
       state.showAddGoalModal = false;
     },
+    // Font settings actions
+    setFontSize: (state, action: PayloadAction<'small' | 'medium' | 'large'>) => {
+      state.fontSize = action.payload;
+    },
+    setFontFamily: (state, action: PayloadAction<'system' | 'serif' | 'monospace'>) => {
+      state.fontFamily = action.payload;
+    },
+    setBoldNumbers: (state, action: PayloadAction<boolean>) => {
+      state.boldNumbers = action.payload;
+    },
   },
 });
 
@@ -56,12 +69,14 @@ export const {
   setTheme,
   setLoading,
   setActiveTab,
-  showPremiumModal,
-  hidePremiumModal,
+
   showAddTransactionModal,
   hideAddTransactionModal,
   showAddGoalModal,
   hideAddGoalModal,
+  setFontSize,
+  setFontFamily,
+  setBoldNumbers,
 } = uiSlice.actions;
 
 export default uiSlice.reducer;

@@ -14,6 +14,7 @@ import { createCategory, updateCategory } from '../../store/slices/categoriesSli
 import { CustomTextInput } from '../../components/common/CustomTextInput';
 import { CustomButton } from '../../components/common/CustomButton';
 import { colors, typography, spacing } from '../../constants/colors';
+import { checkCategoryCreationLimit, getUserStats, getUserProfile } from '../../utils/subscriptionUtils';
 
 interface AddEditCategoryScreenProps {
   navigation: any;
@@ -24,6 +25,15 @@ const AddEditCategoryScreen: React.FC<AddEditCategoryScreenProps> = ({ navigatio
   const dispatch = useAppDispatch();
   const { categoryId, category } = route.params || {};
   const isEditing = !!categoryId;
+
+  // Get user profile and stats for limit checking
+  const { profile } = useTypedSelector((state) => state.user);
+  const userStats = profile?.stats || {
+    total_transactions: 0,
+    total_accounts: 0,
+    total_categories: 0,
+    total_goals: 0,
+  };
 
   const [formData, setFormData] = useState({
     name: '',
@@ -107,6 +117,19 @@ const AddEditCategoryScreen: React.FC<AddEditCategoryScreenProps> = ({ navigatio
   const handleSave = async () => {
     if (!validateForm()) return;
 
+    // Check category creation limit for new categories only
+    if (!isEditing) {
+      const limitExceeded = checkCategoryCreationLimit(
+        userStats.total_categories,
+        profile,
+        navigation
+      );
+      
+      if (limitExceeded) {
+        return; // Stop execution if limit exceeded
+      }
+    }
+
     setIsLoading(true);
 
     try {
@@ -115,7 +138,6 @@ const AddEditCategoryScreen: React.FC<AddEditCategoryScreenProps> = ({ navigatio
         color: formData.color,
         icon: formData.icon,
         description: formData.description.trim() || undefined,
-        is_custom: true, // Mark as custom category
       };
 
       if (isEditing) {

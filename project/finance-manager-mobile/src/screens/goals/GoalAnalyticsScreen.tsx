@@ -14,6 +14,7 @@ import { fetchGoals } from '../../store/slices/goalsSlice';
 import { LineChart, PieChart, BarChart } from '../../components/charts';
 import { LoadingSpinner } from '../../components/common/LoadingSpinner';
 import { TimePeriodSelector, TimePeriod } from '../../components/common/TimePeriodSelector';
+
 import { colors, typography, spacing } from '../../constants/colors';
 import { chartUtils } from '../../constants/chartConfig';
 import { formatCurrency, getCurrencySymbol } from '../../utils/currency';
@@ -30,6 +31,7 @@ const GoalAnalyticsScreen: React.FC<GoalAnalyticsScreenProps> = ({ navigation })
   const { goals, isLoading } = useTypedSelector((state) => state.goals);
   const { isAuthenticated } = useTypedSelector((state) => state.auth);
   const { displayCurrency } = useTypedSelector((state) => state.user);
+  const { profile } = useTypedSelector((state) => state.user);
 
   useEffect(() => {
     if (isAuthenticated) {
@@ -247,23 +249,23 @@ const GoalAnalyticsScreen: React.FC<GoalAnalyticsScreenProps> = ({ navigation })
 
   return (
     <SafeAreaView style={styles.container}>
-      <View style={styles.header}>
-        <TouchableOpacity
-          style={styles.backButton}
-          onPress={() => navigation.goBack()}
-        >
-          <Text style={styles.backIcon}>←</Text>
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>Goal Analytics</Text>
-        <View style={styles.placeholder} />
-      </View>
+        <View style={styles.header}>
+          <TouchableOpacity
+            style={styles.backButton}
+            onPress={() => navigation.goBack()}
+          >
+            <Text style={styles.backIcon}>←</Text>
+          </TouchableOpacity>
+          <Text style={styles.headerTitle}>Goal Analytics</Text>
+          <View style={styles.placeholder} />
+        </View>
 
-      <ScrollView 
-        style={styles.scrollView}
-        refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
-        }
-      >
+        <ScrollView 
+          style={styles.scrollView}
+          refreshControl={
+            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+          }
+        >
         {/* Summary Stats */}
         <View style={styles.summaryContainer}>
           <View style={styles.summaryCard}>
@@ -405,9 +407,9 @@ const GoalAnalyticsScreen: React.FC<GoalAnalyticsScreenProps> = ({ navigation })
           <Text style={styles.premiumText}>
             You're enjoying detailed goal analytics as part of your premium subscription. This helps you track your progress and make better financial decisions.
           </Text>
-        </View>
-      </ScrollView>
-    </SafeAreaView>
+                  </View>
+        </ScrollView>
+      </SafeAreaView>
   );
 };
 

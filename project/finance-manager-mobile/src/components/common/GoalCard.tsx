@@ -8,15 +8,15 @@ interface GoalCardProps {
   goal: {
     id: string;
     title: string;
-    target_amount: number;
-    current_amount: number;
-    progress_percentage: number;
+    target_amount?: number;
+    current_amount?: number;
+    progress_percentage?: number;
     target_date?: string;
     days_remaining?: number;
     monthly_savings_needed?: number;
     status: string;
     category?: string;
-    priority?: number;
+    priority?: string;
     currency?: string;
   };
   onPress?: () => void;
@@ -25,8 +25,18 @@ interface GoalCardProps {
 }
 
 export const GoalCard: React.FC<GoalCardProps> = ({ goal, onPress, onContribute, compact = false }) => {
+  // Safety check for malformed goal object
+  if (!goal || typeof goal !== 'object') {
+    console.warn('GoalCard: Invalid goal object provided:', goal);
+    return null;
+  }
+
   const { displayCurrency } = useTypedSelector((state) => state.user);
-  const formatAmount = (amount: number) => {
+  const formatAmount = (amount: number | undefined | null) => {
+    // Handle undefined, null, or NaN values
+    if (amount === undefined || amount === null || isNaN(amount)) {
+      amount = 0;
+    }
     const currency = goal.currency || displayCurrency || 'USD';
     return formatCurrency(amount, currency, { maximumFractionDigits: 0 });
   };
@@ -57,14 +67,16 @@ export const GoalCard: React.FC<GoalCardProps> = ({ goal, onPress, onContribute,
   };
 
   const getProgressColor = () => {
-    if (goal.progress_percentage >= 100) return colors.success;
-    if (goal.progress_percentage >= 75) return colors.primary;
-    if (goal.progress_percentage >= 50) return colors.warning;
+    const progress = goal.progress_percentage || 0;
+    if (progress >= 100) return colors.success;
+    if (progress >= 75) return colors.primary;
+    if (progress >= 50) return colors.warning;
     return colors.accent;
   };
 
   const getStatusColor = () => {
-    switch (goal.status) {
+    const status = goal.status || 'active';
+    switch (status) {
       case 'completed': return colors.success;
       case 'active': return colors.primary;
       case 'paused': return colors.warning;
@@ -77,6 +89,20 @@ export const GoalCard: React.FC<GoalCardProps> = ({ goal, onPress, onContribute,
     if (goal.days_remaining < 30) return colors.error;
     if (goal.days_remaining < 90) return colors.warning;
     return colors.textSecondary;
+  };
+
+  const getPriorityColor = () => {
+    switch (goal.priority) {
+      case 'high': return colors.error;
+      case 'medium': return colors.warning;
+      case 'low': return colors.success;
+      default: return colors.textSecondary;
+    }
+  };
+
+  const getPriorityDisplay = () => {
+    if (!goal.priority) return '';
+    return goal.priority.charAt(0).toUpperCase() + goal.priority.slice(1);
   };
 
   return (
@@ -95,7 +121,7 @@ export const GoalCard: React.FC<GoalCardProps> = ({ goal, onPress, onContribute,
           </View>
           <View style={styles.titleContainer}>
             <Text style={styles.title} numberOfLines={1}>
-              {goal.title}
+              {goal.title || 'Untitled Goal'}
             </Text>
             {!compact && goal.category && (
               <Text style={styles.category}>
@@ -106,15 +132,15 @@ export const GoalCard: React.FC<GoalCardProps> = ({ goal, onPress, onContribute,
         </View>
         <View style={styles.headerRight}>
           {goal.priority && (
-            <View style={[styles.priorityBadge, { backgroundColor: getProgressColor() }]}>
-              <Text style={styles.priorityText}>P{goal.priority}</Text>
+            <View style={[styles.priorityBadge, { backgroundColor: getPriorityColor() }]}>
+              <Text style={styles.priorityText}>{getPriorityDisplay()}</Text>
             </View>
           )}
-          <View style={[styles.statusBadge, { backgroundColor: getStatusColor() + '20' }]}>
-            <Text style={[styles.statusText, { color: getStatusColor() }]}>
-              {goal.status.charAt(0).toUpperCase() + goal.status.slice(1)}
-            </Text>
-          </View>
+                      <View style={[styles.statusBadge, { backgroundColor: getStatusColor() + '20' }]}>
+              <Text style={[styles.statusText, { color: getStatusColor() }]}>
+                {(goal.status || 'active').charAt(0).toUpperCase() + (goal.status || 'active').slice(1)}
+              </Text>
+            </View>
         </View>
       </View>
 
@@ -123,7 +149,7 @@ export const GoalCard: React.FC<GoalCardProps> = ({ goal, onPress, onContribute,
         <View style={styles.progressInfo}>
           <Text style={styles.progressLabel}>Progress</Text>
           <Text style={[styles.progressText, { color: getProgressColor() }]}>
-            {goal.progress_percentage.toFixed(1)}%
+            {(goal.progress_percentage || 0).toFixed(1)}%
           </Text>
         </View>
         <View style={styles.progressBar}>
@@ -131,7 +157,7 @@ export const GoalCard: React.FC<GoalCardProps> = ({ goal, onPress, onContribute,
             style={[
               styles.progressFill,
               {
-                width: `${Math.min(goal.progress_percentage, 100)}%`,
+                width: `${Math.min(goal.progress_percentage || 0, 100)}%`,
                 backgroundColor: getProgressColor(),
               },
             ]}
@@ -156,7 +182,7 @@ export const GoalCard: React.FC<GoalCardProps> = ({ goal, onPress, onContribute,
         <View style={styles.amountRow}>
           <Text style={styles.amountLabel}>Remaining</Text>
           <Text style={styles.remainingAmount}>
-            {formatAmount(goal.target_amount - goal.current_amount)}
+            {formatAmount((goal.target_amount || 0) - (goal.current_amount || 0))}
           </Text>
         </View>
       </View>
@@ -177,7 +203,7 @@ export const GoalCard: React.FC<GoalCardProps> = ({ goal, onPress, onContribute,
           </View>
           
           {/* Quick Contribute Button */}
-          {onContribute && goal.status === 'active' && (
+          {onContribute && (goal.status || 'active') === 'active' && (
             <TouchableOpacity
               style={styles.contributeButton}
               onPress={onContribute}
@@ -193,7 +219,7 @@ export const GoalCard: React.FC<GoalCardProps> = ({ goal, onPress, onContribute,
         <View style={styles.savingsNeeded}>
           <Text style={styles.savingsIcon}>💡</Text>
           <Text style={styles.savingsText}>
-            Save {formatAmount(goal.monthly_savings_needed)}/month to reach your goal on time
+            Save {formatAmount(goal.monthly_savings_needed || 0)}/month to reach your goal on time
           </Text>
         </View>
       )}

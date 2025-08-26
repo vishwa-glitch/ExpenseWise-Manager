@@ -7,6 +7,9 @@ import GoalDetailScreen from '../screens/goals/GoalDetailScreen';
 import AddManualGoalScreen from '../screens/goals/AddManualGoalScreen';
 import GoalAnalyticsScreen from '../screens/goals/GoalAnalyticsScreen';
 import BudgetsListScreen from '../screens/budgets/BudgetsListScreen';
+import BudgetDetailScreen from '../screens/budgets/BudgetDetailScreen';
+import CreateEditBudgetScreen from '../screens/budgets/CreateEditBudgetScreen';
+import BudgetAnalyticsScreen from '../screens/budgets/BudgetAnalyticsScreen';
 import { colors, typography, spacing } from '../constants/colors';
 
 const Tab = createMaterialTopTabNavigator();
@@ -24,12 +27,7 @@ const GoalsTopTabs: React.FC<{ navigation: any }> = ({ navigation }) => {
             <Text style={styles.backIcon}>←</Text>
           </TouchableOpacity>
           <Text style={styles.headerTitle}>Goals</Text>
-          <TouchableOpacity
-            style={styles.menuButton}
-            onPress={() => navigation.openDrawer()}
-          >
-            <Text style={styles.menuIcon}>☰</Text>
-          </TouchableOpacity>
+          <View style={styles.menuButton} />
         </View>
       </SafeAreaView>
 
@@ -94,6 +92,10 @@ const GoalsNavigator: React.FC = () => {
       <Stack.Screen name="GoalDetail" component={GoalDetailScreen} />
       <Stack.Screen name="AddManualGoal" component={AddManualGoalScreen} />
       <Stack.Screen name="GoalAnalytics" component={GoalAnalyticsScreen} />
+      <Stack.Screen name="BudgetDetail" component={BudgetDetailScreen} />
+      <Stack.Screen name="CreateBudget" component={CreateEditBudgetScreen} />
+      <Stack.Screen name="EditBudget" component={CreateEditBudgetScreen} />
+      <Stack.Screen name="BudgetAnalytics" component={BudgetAnalyticsScreen} />
     </Stack.Navigator>
   );
 };

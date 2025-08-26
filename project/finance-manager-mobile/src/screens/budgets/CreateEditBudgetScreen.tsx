@@ -14,6 +14,7 @@ import { createBudget, updateBudget } from '../../store/slices/budgetsSlice';
 import { fetchCategories } from '../../store/slices/categoriesSlice';
 import { CustomTextInput } from '../../components/common/CustomTextInput';
 import { CustomButton } from '../../components/common/CustomButton';
+import DatePicker from '../../components/common/DatePicker';
 import { colors, typography, spacing } from '../../constants/colors';
 import { getCurrencySymbol } from '../../utils/currency';
 
@@ -34,7 +35,7 @@ const CreateEditBudgetScreen: React.FC<CreateEditBudgetScreenProps> = ({ navigat
     name: '',
     amount: '',
     period: 'monthly',
-    category_id: '',
+    category_id: '', // Empty string means no category selected (all categories)
     start_date: '',
     end_date: '',
     currency: displayCurrency,
@@ -44,18 +45,20 @@ const CreateEditBudgetScreen: React.FC<CreateEditBudgetScreenProps> = ({ navigat
   const [errors, setErrors] = useState({
     name: '',
     amount: '',
+    category_id: '',
     start_date: '',
     end_date: '',
   });
 
   const [isLoading, setIsLoading] = useState(false);
+  const [showStartDatePicker, setShowStartDatePicker] = useState(false);
+  const [showEndDatePicker, setShowEndDatePicker] = useState(false);
 
   const periodOptions = [
     { value: 'weekly', label: 'Weekly', icon: '📅' },
     { value: 'monthly', label: 'Monthly', icon: '🗓️' },
-    { value: 'quarterly', label: 'Quarterly', icon: '📊' },
     { value: 'yearly', label: 'Yearly', icon: '🗓️' },
-    { value: 'custom', label: 'Custom', icon: '⚙️' },
+    { value: 'custom', label: 'Custom Range', icon: '⚙️' },
   ];
 
   useEffect(() => {
@@ -104,18 +107,18 @@ const CreateEditBudgetScreen: React.FC<CreateEditBudgetScreenProps> = ({ navigat
         startDate = new Date(today.getFullYear(), today.getMonth(), 1);
         endDate = new Date(today.getFullYear(), today.getMonth() + 1, 0);
         break;
-      case 'quarterly':
-        const quarter = Math.floor(today.getMonth() / 3);
-        startDate = new Date(today.getFullYear(), quarter * 3, 1);
-        endDate = new Date(today.getFullYear(), quarter * 3 + 3, 0);
-        break;
       case 'yearly':
         startDate = new Date(today.getFullYear(), 0, 1);
         endDate = new Date(today.getFullYear(), 11, 31);
         break;
-      default:
-        // Custom - don't set default dates
+      case 'custom':
+        // For custom, don't set default dates - let user choose
         return;
+      default:
+        // Default to monthly if unknown period
+        startDate = new Date(today.getFullYear(), today.getMonth(), 1);
+        endDate = new Date(today.getFullYear(), today.getMonth() + 1, 0);
+        break;
     }
 
     setFormData(prev => ({
@@ -129,6 +132,7 @@ const CreateEditBudgetScreen: React.FC<CreateEditBudgetScreenProps> = ({ navigat
     const newErrors = {
       name: '',
       amount: '',
+      category_id: '',
       start_date: '',
       end_date: '',
     };
@@ -150,24 +154,32 @@ const CreateEditBudgetScreen: React.FC<CreateEditBudgetScreenProps> = ({ navigat
       hasError = true;
     }
 
-    // Date validation
-    if (!formData.start_date) {
-      newErrors.start_date = 'Start date is required';
+    // Category validation - MANDATORY
+    if (!formData.category_id || formData.category_id.trim() === '') {
+      newErrors.category_id = 'Category is required for budgeting';
       hasError = true;
     }
 
-    if (!formData.end_date) {
-      newErrors.end_date = 'End date is required';
-      hasError = true;
-    }
-
-    if (formData.start_date && formData.end_date) {
-      const startDate = new Date(formData.start_date);
-      const endDate = new Date(formData.end_date);
-      
-      if (startDate >= endDate) {
-        newErrors.end_date = 'End date must be after start date';
+    // Date validation - only required for custom period
+    if (formData.period === 'custom') {
+      if (!formData.start_date) {
+        newErrors.start_date = 'Start date is required for custom period';
         hasError = true;
+      }
+
+      if (!formData.end_date) {
+        newErrors.end_date = 'End date is required for custom period';
+        hasError = true;
+      }
+
+      if (formData.start_date && formData.end_date) {
+        const startDate = new Date(formData.start_date);
+        const endDate = new Date(formData.end_date);
+        
+        if (startDate >= endDate) {
+          newErrors.end_date = 'End date must be after start date';
+          hasError = true;
+        }
       }
     }
 
@@ -181,16 +193,18 @@ const CreateEditBudgetScreen: React.FC<CreateEditBudgetScreenProps> = ({ navigat
     setIsLoading(true);
 
     try {
-      const budgetData = {
+      const budgetData: any = {
         name: formData.name.trim(),
         amount: parseFloat(formData.amount),
         period: formData.period,
-        category_id: formData.category_id || null,
         start_date: formData.start_date,
         end_date: formData.end_date,
         currency: formData.currency,
         is_active: formData.is_active,
       };
+
+      // Category is mandatory - always include it
+      budgetData.category_id = formData.category_id;
 
       if (isEditing) {
         await dispatch(updateBudget({ id: budgetId, data: budgetData })).unwrap();
@@ -218,9 +232,85 @@ const CreateEditBudgetScreen: React.FC<CreateEditBudgetScreenProps> = ({ navigat
     }
 
     // Update dates when period changes
-    if (field === 'period' && typeof value === 'string' && value !== 'custom') {
-      setDefaultDates(value);
+    if (field === 'period' && typeof value === 'string') {
+      if (value === 'custom') {
+        // Clear dates for custom period - user will set them manually
+        setFormData(prev => ({
+          ...prev,
+          start_date: '',
+          end_date: '',
+        }));
+      } else {
+        // Set default dates for predefined periods
+        setDefaultDates(value);
+      }
     }
+  };
+
+  const handleStartDateSelect = (date: Date) => {
+    const dateString = date.toISOString().split('T')[0];
+    updateFormData('start_date', dateString);
+  };
+
+  const handleEndDateSelect = (date: Date) => {
+    const dateString = date.toISOString().split('T')[0];
+    updateFormData('end_date', dateString);
+  };
+
+  const formatDisplayDate = (dateString: string) => {
+    if (!dateString) return '';
+    const date = new Date(dateString);
+    return date.toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+    });
+  };
+
+  const getCategoryIcon = (category: any) => {
+    // If category has an icon property, map it to emoji
+    if (category.icon) {
+      const iconMap: { [key: string]: string } = {
+        'utensils': '🍽️',
+        'car': '🚗',
+        'shopping-bag': '🛍️',
+        'film': '🎬',
+        'zap': '⚡',
+        'heart': '🏥',
+        'book': '📚',
+        'plane': '✈️',
+        'briefcase': '💼',
+        'trending-up': '📈',
+        'home': '🏠',
+        'phone': '📱',
+        'gift': '🎁',
+        'coffee': '☕',
+        'music': '🎵',
+        'camera': '📷',
+        'gamepad': '🎮',
+        'dumbbell': '🏋️',
+        'palette': '🎨',
+        'tool': '🔧',
+        'tag': '🏷️',
+      };
+      
+      return iconMap[category.icon] || '🏷️';
+    }
+    
+    // Fallback to name-based icons
+    const name = category.name?.toLowerCase() || '';
+    if (name.includes('food') || name.includes('dining')) return '🍽️';
+    if (name.includes('transport') || name.includes('car')) return '🚗';
+    if (name.includes('shop') || name.includes('retail')) return '🛍️';
+    if (name.includes('entertainment') || name.includes('movie')) return '🎬';
+    if (name.includes('utilities') || name.includes('electric')) return '⚡';
+    if (name.includes('health') || name.includes('medical')) return '🏥';
+    if (name.includes('education') || name.includes('school')) return '📚';
+    if (name.includes('travel') || name.includes('vacation')) return '✈️';
+    if (name.includes('salary') || name.includes('income')) return '💼';
+    if (name.includes('investment') || name.includes('stock')) return '📈';
+    
+    return '🏷️'; // Default fallback
   };
 
   const renderPeriodSelector = () => (
@@ -253,26 +343,8 @@ const CreateEditBudgetScreen: React.FC<CreateEditBudgetScreenProps> = ({ navigat
 
   const renderCategorySelector = () => (
     <View style={styles.selectorContainer}>
-      <Text style={styles.label}>Category (Optional)</Text>
+      <Text style={styles.label}>Category *</Text>
       <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.horizontalScroll}>
-        <TouchableOpacity
-          style={[
-            styles.categoryOption,
-            !formData.category_id && styles.categoryOptionSelected,
-          ]}
-          onPress={() => updateFormData('category_id', '')}
-        >
-          <Text style={styles.categoryIcon}>🏷️</Text>
-          <Text
-            style={[
-              styles.categoryLabel,
-              !formData.category_id && styles.categoryLabelSelected,
-            ]}
-          >
-            All Categories
-          </Text>
-        </TouchableOpacity>
-        
         {categories.map((category) => (
           <TouchableOpacity
             key={category.id}
@@ -283,7 +355,7 @@ const CreateEditBudgetScreen: React.FC<CreateEditBudgetScreenProps> = ({ navigat
             onPress={() => updateFormData('category_id', category.id)}
           >
             <Text style={styles.categoryIcon}>
-              {category.icon ? '🏷️' : '💰'}
+              {getCategoryIcon(category)}
             </Text>
             <Text
               style={[
@@ -296,6 +368,9 @@ const CreateEditBudgetScreen: React.FC<CreateEditBudgetScreenProps> = ({ navigat
           </TouchableOpacity>
         ))}
       </ScrollView>
+      {errors.category_id && (
+        <Text style={styles.errorText}>{errors.category_id}</Text>
+      )}
     </View>
   );
 
@@ -341,26 +416,52 @@ const CreateEditBudgetScreen: React.FC<CreateEditBudgetScreenProps> = ({ navigat
 
           {renderCategorySelector()}
 
-          <View style={styles.dateRow}>
-            <CustomTextInput
-              label="Start Date *"
-              value={formData.start_date}
-              onChangeText={(value) => updateFormData('start_date', value)}
-              placeholder="YYYY-MM-DD"
-              error={errors.start_date}
-              style={styles.dateInput}
-              leftIcon={<Text style={styles.inputIcon}>📅</Text>}
-            />
-            <CustomTextInput
-              label="End Date *"
-              value={formData.end_date}
-              onChangeText={(value) => updateFormData('end_date', value)}
-              placeholder="YYYY-MM-DD"
-              error={errors.end_date}
-              style={styles.dateInput}
-              leftIcon={<Text style={styles.inputIcon}>📅</Text>}
-            />
-          </View>
+          {formData.period === 'custom' ? (
+            <View style={styles.dateRow}>
+              <View style={styles.dateInput}>
+                <Text style={styles.label}>Start Date *</Text>
+                <TouchableOpacity
+                  style={styles.datePickerButton}
+                  onPress={() => setShowStartDatePicker(true)}
+                >
+                  <Text style={styles.datePickerIcon}>📅</Text>
+                  <Text style={styles.datePickerText}>
+                    {formData.start_date ? formatDisplayDate(formData.start_date) : 'Select Start Date'}
+                  </Text>
+                  <Text style={styles.datePickerArrow}>›</Text>
+                </TouchableOpacity>
+                {errors.start_date && <Text style={styles.errorText}>{errors.start_date}</Text>}
+              </View>
+              
+              <View style={styles.dateInput}>
+                <Text style={styles.label}>End Date *</Text>
+                <TouchableOpacity
+                  style={styles.datePickerButton}
+                  onPress={() => setShowEndDatePicker(true)}
+                >
+                  <Text style={styles.datePickerIcon}>📅</Text>
+                  <Text style={styles.datePickerText}>
+                    {formData.end_date ? formatDisplayDate(formData.end_date) : 'Select End Date'}
+                  </Text>
+                  <Text style={styles.datePickerArrow}>›</Text>
+                </TouchableOpacity>
+                {errors.end_date && <Text style={styles.errorText}>{errors.end_date}</Text>}
+              </View>
+            </View>
+          ) : (
+            <View style={styles.dateInfo}>
+              <Text style={styles.label}>Budget Period</Text>
+              <View style={styles.dateInfoBox}>
+                <Text style={styles.dateInfoIcon}>📅</Text>
+                <Text style={styles.dateInfoText}>
+                  {formData.start_date && formData.end_date 
+                    ? `${formatDisplayDate(formData.start_date)} - ${formatDisplayDate(formData.end_date)}`
+                    : 'Dates will be set automatically based on period'
+                  }
+                </Text>
+              </View>
+            </View>
+          )}
 
           {/* Active Toggle */}
           <View style={styles.toggleContainer}>
@@ -397,15 +498,12 @@ const CreateEditBudgetScreen: React.FC<CreateEditBudgetScreenProps> = ({ navigat
             </View>
           </View>
 
-          <View style={styles.infoBox}>
-            <Text style={styles.infoIcon}>💡</Text>
-            <Text style={styles.infoText}>
-              {formData.category_id 
-                ? 'This budget will track expenses only for the selected category.'
-                : 'This budget will track all expenses across all categories.'
-              }
-            </Text>
-          </View>
+                     <View style={styles.infoBox}>
+             <Text style={styles.infoIcon}>💡</Text>
+             <Text style={styles.infoText}>
+               This budget will track expenses for the selected category. You can create multiple budgets for different categories to manage your spending effectively.
+             </Text>
+           </View>
         </View>
       </ScrollView>
 
@@ -417,6 +515,25 @@ const CreateEditBudgetScreen: React.FC<CreateEditBudgetScreenProps> = ({ navigat
           style={styles.saveButton}
         />
       </View>
+
+      {/* Date Picker Modals */}
+      <DatePicker
+        visible={showStartDatePicker}
+        onClose={() => setShowStartDatePicker(false)}
+        onDateSelect={handleStartDateSelect}
+        title="Select Start Date"
+        initialDate={formData.start_date ? new Date(formData.start_date) : new Date()}
+        maxDate={formData.end_date ? new Date(formData.end_date) : undefined}
+      />
+
+      <DatePicker
+        visible={showEndDatePicker}
+        onClose={() => setShowEndDatePicker(false)}
+        onDateSelect={handleEndDateSelect}
+        title="Select End Date"
+        initialDate={formData.end_date ? new Date(formData.end_date) : new Date()}
+        minDate={formData.start_date ? new Date(formData.start_date) : undefined}
+      />
     </SafeAreaView>
   );
 };
@@ -534,6 +651,7 @@ const styles = StyleSheet.create({
     color: colors.primary,
     fontWeight: '600',
   },
+
   dateRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -541,6 +659,58 @@ const styles = StyleSheet.create({
   dateInput: {
     flex: 1,
     marginHorizontal: spacing.xs,
+  },
+  datePickerButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: 8,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.md,
+    marginTop: spacing.xs,
+  },
+  datePickerIcon: {
+    fontSize: 20,
+    marginRight: spacing.sm,
+  },
+  datePickerText: {
+    flex: 1,
+    ...typography.body,
+    color: colors.text,
+  },
+  datePickerArrow: {
+    fontSize: 18,
+    color: colors.textSecondary,
+  },
+  errorText: {
+    ...typography.caption,
+    color: colors.error,
+    marginTop: spacing.xs,
+  },
+  dateInfo: {
+    marginBottom: spacing.lg,
+  },
+  dateInfoBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: 8,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.md,
+    marginTop: spacing.xs,
+  },
+  dateInfoIcon: {
+    fontSize: 20,
+    marginRight: spacing.sm,
+  },
+  dateInfoText: {
+    flex: 1,
+    ...typography.body,
+    color: colors.text,
   },
   toggleContainer: {
     marginBottom: spacing.lg,

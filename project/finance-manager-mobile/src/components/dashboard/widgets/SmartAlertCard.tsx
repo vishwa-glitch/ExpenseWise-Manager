@@ -63,14 +63,14 @@ export const SmartAlertCard: React.FC<Partial<SmartAlertCardProps>> = ({
     >
       <View style={styles.topRow}>
         <Text style={styles.icon}>⚠️</Text>
-        <Text style={styles.title}>{`${title}: ${percentageUsed}% used`}</Text>
+        <Text style={styles.title}>{title}</Text>
       </View>
 
       <Text style={styles.amountText}>
         {formatCurrency(currentAmount, displayCurrency)} of {formatCurrency(totalAmount, displayCurrency)}
       </Text>
 
-      <Text style={styles.subtitle}>{`${daysLeft} days left this month`}</Text>
+      <Text style={styles.subtitle}>{`${percentageUsed}% used • ${daysLeft} days left this month`}</Text>
 
       <TouchableOpacity
         style={styles.detailsButton}
@@ -86,42 +86,45 @@ export const SmartAlertCard: React.FC<Partial<SmartAlertCardProps>> = ({
 
 const styles = StyleSheet.create({
   card: {
-    backgroundColor: `${colors.warning}20`, // warning with 20% opacity
-    borderRadius: 12,
-    padding: 16,
+    backgroundColor: colors.card,
+    borderRadius: 14,
+    padding: spacing.lg,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
     shadowOpacity: 0.1,
     shadowRadius: 4,
-    elevation: 3,
-    borderWidth: 1,
-    borderColor: colors.warning,
+    elevation: 4,
   },
   loadingContainer: {
     justifyContent: 'center',
     alignItems: 'center',
-    height: 150, // Fixed height for loading state
+    height: 115,
   },
   loadingText: {
     ...typography.body,
     color: colors.text,
-    marginTop: spacing.md,
+    marginTop: spacing.sm,
+    fontSize: 14,
   },
   errorContainer: {
     justifyContent: 'center',
     alignItems: 'center',
-    height: 150,
-    backgroundColor: `${colors.error}20`, // error with 20% opacity
+    height: 115,
+    backgroundColor: `${colors.error}20`,
     borderColor: colors.error,
   },
   errorIcon: {
-    fontSize: 24,
-    marginBottom: spacing.sm,
+    fontSize: 23,
+    marginBottom: spacing.xs,
   },
   errorText: {
     ...typography.body,
     color: colors.text,
     textAlign: 'center',
+    fontSize: 14,
   },
   topRow: {
     flexDirection: 'row',
@@ -129,24 +132,29 @@ const styles = StyleSheet.create({
     marginBottom: spacing.sm,
   },
   icon: {
-    fontSize: 20,
+    fontSize: 18,
     marginRight: spacing.sm,
   },
   title: {
-    ...typography.body,
-    color: colors.text,
-    fontWeight: 'bold',
-    fontSize: 16,
+    ...typography.caption,
+    color: colors.textSecondary,
+    fontWeight: '600',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+    fontSize: 11,
   },
   amountText: {
-    ...typography.h3,
+    ...typography.h2,
     color: colors.text,
+    fontWeight: 'bold',
     marginBottom: spacing.xs,
+    fontSize: 21,
   },
   subtitle: {
     ...typography.caption,
     color: colors.textSecondary,
-    marginBottom: spacing.md,
+    marginBottom: spacing.sm,
+    fontSize: 11,
   },
   detailsButton: {
     flexDirection: 'row',
@@ -155,16 +163,16 @@ const styles = StyleSheet.create({
     backgroundColor: colors.warning,
     paddingVertical: spacing.sm,
     paddingHorizontal: spacing.md,
-    borderRadius: 8,
+    borderRadius: 7,
   },
   detailsButtonText: {
     ...typography.caption,
     color: colors.text,
     fontWeight: '600',
+    fontSize: 11,
   },
   arrowIcon: {
-    color: colors.text,
-    marginLeft: spacing.sm,
-    fontWeight: 'bold',
+    fontSize: 14,
+    marginLeft: spacing.xs,
   },
 });

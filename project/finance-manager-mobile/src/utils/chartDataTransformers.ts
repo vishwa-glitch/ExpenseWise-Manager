@@ -169,16 +169,16 @@ export const calculateDateRange = (period: TimePeriod): { startDate: Date; endDa
 /**
  * Format currency values for display
  */
-export const formatChartCurrency = (amount: number, currency = '₹'): string => {
+export const formatChartCurrency = (amount: number, currency = '$'): string => {
   try {
     if (typeof amount !== 'number' || isNaN(amount)) {
       return `${currency}0`;
     }
 
-    if (amount >= 10000000) { // 1 crore
-      return `${currency}${(amount / 10000000).toFixed(1)}Cr`;
-    } else if (amount >= 100000) { // 1 lakh
-      return `${currency}${(amount / 100000).toFixed(1)}L`;
+    if (amount >= 10000000) { // 10 million
+      return `${currency}${(amount / 1000000).toFixed(1)}M`;
+    } else if (amount >= 100000) { // 100 thousand
+      return `${currency}${(amount / 1000).toFixed(1)}K`;
     } else if (amount >= 1000) { // 1 thousand
       return `${currency}${(amount / 1000).toFixed(1)}K`;
     } else {

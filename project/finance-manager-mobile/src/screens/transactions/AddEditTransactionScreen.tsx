@@ -10,7 +10,7 @@ import {
 } from 'react-native';
 import { useAppDispatch } from '../../hooks/useAppDispatch';
 import { useTypedSelector } from '../../hooks/useTypedSelector';
-import { createTransaction, updateTransaction } from '../../store/slices/transactionsSlice';
+import { createTransaction, updateTransaction, fetchTransactions } from '../../store/slices/transactionsSlice';
 import { fetchAccounts } from '../../store/slices/accountsSlice';
 import { fetchCategories } from '../../store/slices/categoriesSlice';
 import { CustomTextInput } from '../../components/common/CustomTextInput';
@@ -34,9 +34,6 @@ const AddEditTransactionScreen: React.FC<AddEditTransactionScreenProps> = ({ nav
   const { displayCurrency } = useTypedSelector((state) => state.user);
   const { isAuthenticated } = useTypedSelector((state) => state.auth);
 
-  const selectedAccount = accounts.find(acc => acc.id === formData.account_id);
-  const currency = selectedAccount?.currency || displayCurrency || 'USD';
-
   const [formData, setFormData] = useState({
     account_id: accountId || '',
     category_id: '',
@@ -57,6 +54,12 @@ const AddEditTransactionScreen: React.FC<AddEditTransactionScreenProps> = ({ nav
 
   const [isLoading, setIsLoading] = useState(false);
   const [dataLoaded, setDataLoaded] = useState(false);
+  const [hasShownAccountAlert, setHasShownAccountAlert] = useState(false);
+  const [hasShownCategoryAlert, setHasShownCategoryAlert] = useState(false);
+
+  // Calculate selected account and currency based on form data
+  const selectedAccount = accounts?.find(acc => acc.id === formData.account_id);
+  const currency = selectedAccount?.currency || displayCurrency || 'USD';
 
   useEffect(() => {
     if (isAuthenticated) {
@@ -65,7 +68,7 @@ const AddEditTransactionScreen: React.FC<AddEditTransactionScreenProps> = ({ nav
   }, [isAuthenticated]);
 
   useEffect(() => {
-    if (isEditing && transaction) {
+    if (isEditing && transaction && transaction.account_id) {
       setFormData({
         account_id: transaction.account_id || '',
         category_id: transaction.category_id || '',
@@ -78,6 +81,51 @@ const AddEditTransactionScreen: React.FC<AddEditTransactionScreenProps> = ({ nav
       });
     }
   }, [isEditing, transaction]);
+
+  // Show alerts when data is loaded and no accounts/categories exist
+  useEffect(() => {
+    if (dataLoaded && !hasShownAccountAlert && (!accounts || accounts.length === 0)) {
+      setHasShownAccountAlert(true);
+      Alert.alert(
+        'No Accounts Found',
+        'You need to create an account first before adding transactions. Would you like to create an account now?',
+        [
+          {
+            text: 'Cancel',
+            style: 'cancel',
+            onPress: () => navigation.goBack(),
+          },
+          {
+            text: 'Create Account',
+            onPress: () => navigation.navigate('Accounts', { screen: 'AddEditAccount' }),
+          },
+        ],
+        { cancelable: false }
+      );
+    }
+  }, [dataLoaded, accounts, hasShownAccountAlert, navigation]);
+
+  useEffect(() => {
+    if (dataLoaded && !hasShownCategoryAlert && (!categories || categories.length === 0)) {
+      setHasShownCategoryAlert(true);
+      Alert.alert(
+        'No Categories Found',
+        'You need to create categories first to organize your transactions. Would you like to manage categories now?',
+        [
+          {
+            text: 'Cancel',
+            style: 'cancel',
+            onPress: () => navigation.goBack(),
+          },
+          {
+            text: 'Manage Categories',
+            onPress: () => navigation.navigate('More', { screen: 'Categories' }),
+          },
+        ],
+        { cancelable: false }
+      );
+    }
+  }, [dataLoaded, categories, hasShownCategoryAlert, navigation]);
 
   const loadData = async () => {
     if (!isAuthenticated) {
@@ -109,7 +157,7 @@ const AddEditTransactionScreen: React.FC<AddEditTransactionScreenProps> = ({ nav
     let hasError = false;
 
     // Account validation
-    if (!formData.account_id.trim()) {
+    if (!formData.account_id || !formData.account_id.trim()) {
       newErrors.account_id = 'Please select an account';
       hasError = true;
     }
@@ -157,6 +205,9 @@ const AddEditTransactionScreen: React.FC<AddEditTransactionScreenProps> = ({ nav
         await dispatch(updateTransaction({ id: transactionId, data: transactionData })).unwrap();
       } else {
         await dispatch(createTransaction(transactionData)).unwrap();
+        // Refresh transactions list to get complete data with category information
+        // This ensures the newly created transaction has all category details
+        await dispatch(fetchTransactions({ page: 1, limit: 20 }));
       }
 
       navigation.goBack();
@@ -226,7 +277,7 @@ const AddEditTransactionScreen: React.FC<AddEditTransactionScreenProps> = ({ nav
   };
 
   const renderAccountSelector = () => {
-    if (accounts.length === 0) {
+    if (!accounts || accounts.length === 0) {
       return (
         <View style={styles.emptyStateContainer}>
           <Text style={styles.emptyStateIcon}>🏦</Text>
@@ -249,14 +300,14 @@ const AddEditTransactionScreen: React.FC<AddEditTransactionScreenProps> = ({ nav
       <View style={styles.selectorContainer}>
         <Text style={styles.label}>Account *</Text>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.horizontalScroll}>
-          {accounts.map((account) => (
+          {accounts?.map((account) => (
             <TouchableOpacity
               key={account.id}
               style={[
                 styles.selectorOption,
                 formData.account_id === account.id && styles.selectorOptionSelected,
               ]}
-              onPress={() => updateFormData('account_id', account.id)}
+              onPress={() => account.id && updateFormData('account_id', account.id)}
             >
               <Text style={styles.selectorIcon}>
                 {account.type === 'checking' ? '🏦' : account.type === 'savings' ? '💰' : '💳'}
@@ -288,7 +339,7 @@ const AddEditTransactionScreen: React.FC<AddEditTransactionScreenProps> = ({ nav
       );
     }
 
-    if (categories.length === 0) {
+    if (!categories || categories.length === 0) {
       return (
         <View style={styles.emptyStateContainer}>
           <Text style={styles.emptyStateIcon}>🏷️</Text>
@@ -311,14 +362,14 @@ const AddEditTransactionScreen: React.FC<AddEditTransactionScreenProps> = ({ nav
       <View style={styles.selectorContainer}>
         <Text style={styles.label}>Category *</Text>
         <View style={styles.categoryGrid}>
-          {categories.map((category) => (
+          {categories?.map((category) => (
             <TouchableOpacity
               key={category.id}
               style={[
                 styles.categoryGridItem,
                 formData.category_id === category.id && styles.selectorOptionSelected,
               ]}
-              onPress={() => updateFormData('category_id', category.id)}
+              onPress={() => category.id && updateFormData('category_id', category.id)}
             >
               {/* Category Icon */}
               <Text style={styles.categoryIcon}>

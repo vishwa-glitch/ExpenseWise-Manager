@@ -50,6 +50,7 @@ const StatementImportScreen: React.FC = () => {
   const dispatch = useAppDispatch();
   const { accounts } = useTypedSelector((state) => state.accounts);
   const { categories } = useTypedSelector((state) => state.categories);
+  const { transactions } = useTypedSelector((state) => state.transactions);
   const { profile, displayCurrency } = useTypedSelector((state) => state.user);
   const { isAuthenticated } = useTypedSelector((state) => state.auth);
 
@@ -121,17 +122,14 @@ const StatementImportScreen: React.FC = () => {
 
   // Check if user is premium
   const isPremiumUser = () => {
-    return profile?.subscription_tier === 'premium';
+    // TEMPORARY: All users are premium for app launch
+    return true;
   };
 
   // Check if export operation is allowed for free users
   const isExportAllowed = () => {
-    if (isPremiumUser()) {
-      return true; // Premium users can export anything
-    }
-
-    // Free users can only export without custom date range (defaults to 1 month)
-    return !isCustomDateRange && !exportStartDate && !exportEndDate;
+    // TEMPORARY: All users can export anything for app launch
+    return true;
   };
 
   const parseCSVContent = (content: string): ParsedTransaction[] => {
@@ -366,6 +364,16 @@ const StatementImportScreen: React.FC = () => {
   };
 
   const handleExport = async () => {
+    // Check if there are transactions to export
+    if (!transactions || transactions.length === 0) {
+      Alert.alert(
+        'No Transactions to Export',
+        'You don\'t have any transactions yet. Add some transactions first to export your financial data.',
+        [{ text: 'OK' }]
+      );
+      return;
+    }
+
     if (!isExportAllowed()) {
       Alert.alert(
         'Premium Feature Required',

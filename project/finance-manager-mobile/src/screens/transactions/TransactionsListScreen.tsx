@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useCallback } from "react";
+import { useFocusEffect } from "@react-navigation/native";
 import {
   View,
   Text,
@@ -15,11 +16,11 @@ import {
   fetchTransactions,
   deleteTransaction,
 } from "../../store/slices/transactionsSlice";
-import { TransactionItem } from "../../components/common/TransactionItem";
-import { LoadingSpinner } from "../../components/common/LoadingSpinner";
+import { TransactionItem, LoadingSpinner } from "../../components/common";
 import { colors, spacing } from "../../constants/colors";
 import { formatCurrency } from "../../utils/currency";
 import { Transaction } from "../../types/transaction";
+import { ExportSection } from "../../components/export";
 
 // Enhanced filter components
 import SearchBar from "../../components/transactions/SearchBar";
@@ -154,6 +155,15 @@ const TransactionsListScreen: React.FC<TransactionsListScreenProps> = ({
     loadData,
   ]);
 
+  // Refresh data when screen comes into focus
+  useFocusEffect(
+    useCallback(() => {
+      if (isAuthenticated) {
+        loadData(1, true);
+      }
+    }, [isAuthenticated, loadData])
+  );
+
   // Load data when filters change
   useEffect(() => {
     if (isAuthenticated && hasActiveFiltersFromHook) {
@@ -202,18 +212,15 @@ const TransactionsListScreen: React.FC<TransactionsListScreenProps> = ({
   };
 
   const groupAndCalculateRunningBalance = (transactionsList: Transaction[]) => {
-    // Helper function to extract date key without timezone issues
+    // Helper function to extract date key in local timezone
     const getDateKey = (transaction: any) => {
-      if (transaction.transaction_date.includes("T")) {
-        // If it's an ISO string, extract the date part
-        return transaction.transaction_date.split("T")[0];
-      } else if (transaction.transaction_date.includes(" ")) {
-        // If it's a datetime string, extract the date part
-        return transaction.transaction_date.split(" ")[0];
-      } else {
-        // If it's already just a date, use it as is
-        return transaction.transaction_date;
-      }
+      const date = new Date(transaction.transaction_date);
+      
+      // Convert to local timezone for grouping
+      const localDate = new Date(date.getTime() - (date.getTimezoneOffset() * 60000));
+      
+      // Return date in YYYY-MM-DD format
+      return localDate.toISOString().split('T')[0];
     };
 
     // Sort transactions by date string (newest first) - avoid new Date() for sorting
@@ -335,16 +342,16 @@ const TransactionsListScreen: React.FC<TransactionsListScreenProps> = ({
   };
 
   const formatFilterDate = (dateString: string) => {
-    // Parse date safely to avoid timezone issues
+    // Parse date safely and convert to local timezone
     const dateParts = dateString.split("-");
     const year = parseInt(dateParts[0]);
     const month = parseInt(dateParts[1]) - 1; // Month is 0-indexed
     const day = parseInt(dateParts[2]);
 
-    // Create date in local timezone to avoid shifts
+    // Create date in local timezone
     const date = new Date(year, month, day);
 
-    // Manual formatting to avoid timezone issues
+    // Manual formatting using local timezone
     const weekdays = [
       "Sunday",
       "Monday",
@@ -376,16 +383,16 @@ const TransactionsListScreen: React.FC<TransactionsListScreenProps> = ({
   };
 
   const formatDateForDisplay = (dateString: string) => {
-    // Parse date safely to avoid timezone issues
+    // Parse date safely and convert to local timezone
     const dateParts = dateString.split("-");
     const year = parseInt(dateParts[0]);
     const month = parseInt(dateParts[1]) - 1; // Month is 0-indexed
     const day = parseInt(dateParts[2]);
 
-    // Create date in local timezone to avoid shifts
+    // Create date in local timezone
     const date = new Date(year, month, day);
 
-    // Manual formatting to avoid timezone issues
+    // Manual formatting using local timezone
     const weekdays = [
       "Sunday",
       "Monday",
@@ -540,7 +547,7 @@ const TransactionsListScreen: React.FC<TransactionsListScreenProps> = ({
           ]}
           onPress={() => setShowFiltersModal(true)}
         >
-          <Text style={styles.filtersButtonIcon}>🔍</Text>
+          <Text style={styles.filtersButtonIcon}>⚙️</Text>
           <Text style={[
             styles.filtersButtonText,
             hasActiveFiltersFromHook && styles.filtersButtonTextActive
@@ -576,6 +583,14 @@ const TransactionsListScreen: React.FC<TransactionsListScreenProps> = ({
           {startDate && endDate && " in selected date range"}
         </Text>
       </View>
+
+      {/* Export Section */}
+      <ExportSection 
+        navigation={navigation} 
+        title="Export Transactions"
+        showTitle={true}
+        isCompact={true}
+      />
     </View>
   );
 
@@ -738,10 +753,10 @@ const TransactionsListScreen: React.FC<TransactionsListScreenProps> = ({
         <Text style={styles.fabIcon}>+</Text>
       </TouchableOpacity>
 
-      {/* Filters Modal */}
-      {renderFiltersModal()}
-    </View>
-  );
+             {/* Filters Modal */}
+       {renderFiltersModal()}
+     </View>
+   );
 };
 
 const styles = StyleSheet.create({
@@ -1048,6 +1063,6 @@ const styles = StyleSheet.create({
   modalActionButtonTextPrimary: {
     color: colors.background,
   },
- });
+});
  
  export default TransactionsListScreen;

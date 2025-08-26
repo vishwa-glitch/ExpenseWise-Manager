@@ -13,11 +13,13 @@ import { useAppDispatch } from '../../hooks/useAppDispatch';
 import { useTypedSelector } from '../../hooks/useTypedSelector';
 import { fetchCategories, deleteCategory } from '../../store/slices/categoriesSlice';
 import { fetchUserProfile } from '../../store/slices/userSlice';
-import { showPremiumModal } from '../../store/slices/uiSlice';
+
 import { LoadingSpinner } from '../../components/common/LoadingSpinner';
 import { CustomButton } from '../../components/common/CustomButton';
 import { colors, typography, spacing } from '../../constants/colors';
-import { SUBSCRIPTION_TIERS } from '../../config/api';
+import { FREE_TIER_LIMITS } from '../../utils/subscriptionUtils';
+
+
 
 interface CategoriesScreenProps {
   navigation: any;
@@ -52,43 +54,19 @@ const CategoriesScreen: React.FC<CategoriesScreenProps> = ({ navigation }) => {
   };
 
   const getCustomCategories = () => {
-    return categories.filter(cat => cat.is_custom);
+    return categories.filter(cat => !cat.is_default);
   };
 
   const getDefaultCategories = () => {
-    return categories.filter(cat => !cat.is_custom);
-  };
-
-  const canAddCategory = () => {
-    if (!profile) return false;
-    
-    const isFreeTier = profile.subscription_tier === 'free';
-    const customCategoryLimit = SUBSCRIPTION_TIERS.FREE.custom_categories;
-    const customCategoriesCount = getCustomCategories().length;
-    
-    return !isFreeTier || customCategoriesCount < customCategoryLimit;
+    return categories.filter(cat => cat.is_default);
   };
 
   const handleAddCategory = () => {
-    if (canAddCategory()) {
-      navigation.navigate('AddEditCategory');
-    } else {
-      Alert.alert(
-        'Category Limit Reached',
-        `Free tier allows up to ${SUBSCRIPTION_TIERS.FREE.custom_categories} custom categories. Upgrade to Premium for unlimited categories.`,
-        [
-          { text: 'Cancel', style: 'cancel' },
-          {
-            text: 'Upgrade',
-            onPress: () => dispatch(showPremiumModal()),
-          },
-        ]
-      );
-    }
+    navigation.navigate('AddEditCategory');
   };
 
   const handleEditCategory = (category: any) => {
-    if (category.is_custom) {
+    if (!category.is_default) {
       navigation.navigate('AddEditCategory', {
         categoryId: category.id,
         category: category,
@@ -103,7 +81,7 @@ const CategoriesScreen: React.FC<CategoriesScreenProps> = ({ navigation }) => {
   };
 
   const handleDeleteCategory = (category: any) => {
-    if (!category.is_custom) {
+    if (category.is_default) {
       Alert.alert(
         'Cannot Delete',
         'Default categories cannot be deleted.',
@@ -181,6 +159,99 @@ const CategoriesScreen: React.FC<CategoriesScreenProps> = ({ navigation }) => {
     return '🏷️'; // Default fallback
   };
 
+  const renderDefaultCategoryGrid = () => {
+    const defaultCategories = getDefaultCategories();
+    
+    return (
+      <View style={styles.defaultCategoriesSection}>
+        <View style={styles.sectionHeader}>
+          <Text style={styles.sectionTitle}>Default Categories</Text>
+        </View>
+        <View style={styles.gridContainer}>
+          {defaultCategories.map((category, index) => (
+            <TouchableOpacity
+              key={category.id}
+              style={styles.gridItem}
+              onPress={() => handleEditCategory(category)}
+            >
+              <View style={styles.gridItemContent}>
+                <Text style={styles.gridItemIcon}>
+                  {getCategoryIcon(category)}
+                </Text>
+                <Text style={styles.gridItemName} numberOfLines={2}>
+                  {category.name}
+                </Text>
+                <Text style={styles.gridItemCount}>
+                  {category.transaction_count || 0}
+                </Text>
+              </View>
+            </TouchableOpacity>
+          ))}
+        </View>
+      </View>
+    );
+  };
+
+  const renderCustomCategoriesSection = () => {
+    const customCategories = getCustomCategories();
+    
+    return (
+      <View style={styles.customCategoriesSection}>
+        <View style={styles.sectionHeader}>
+          <Text style={styles.sectionTitle}>Custom Categories</Text>
+        </View>
+        <TouchableOpacity
+          style={styles.addCustomButton}
+          onPress={handleAddCategory}
+        >
+          <Text style={styles.addCustomButtonText}>Add Custom</Text>
+        </TouchableOpacity>
+        {customCategories.length > 0 && (
+          <View style={styles.customCategoriesList}>
+            {customCategories.map((category) => (
+              <View key={category.id} style={styles.categoryItem}>
+                <View style={styles.categoryLeft}>
+                  <View
+                    style={[
+                      styles.categoryColor,
+                      { backgroundColor: category.color || colors.primary },
+                    ]}
+                  />
+                  <Text style={styles.categoryIcon}>
+                    {getCategoryIcon(category)}
+                  </Text>
+                  <View style={styles.categoryDetails}>
+                    <Text style={styles.categoryName}>{category.name}</Text>
+                    <Text style={styles.categoryType}>
+                      Custom • {category.transaction_count || 0} transactions
+                    </Text>
+                    {category.description && (
+                      <Text style={styles.categoryDescription}>{category.description}</Text>
+                    )}
+                  </View>
+                </View>
+                <View style={styles.categoryActions}>
+                  <TouchableOpacity
+                    style={styles.actionButton}
+                    onPress={() => handleEditCategory(category)}
+                  >
+                    <Text style={styles.editIcon}>✏️</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={styles.actionButton}
+                    onPress={() => handleDeleteCategory(category)}
+                  >
+                    <Text style={styles.deleteIcon}>🗑️</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            ))}
+          </View>
+        )}
+      </View>
+    );
+  };
+
   const renderCategoryItem = ({ item }: { item: any }) => (
     <View style={styles.categoryItem}>
       <View style={styles.categoryLeft}>
@@ -196,7 +267,7 @@ const CategoriesScreen: React.FC<CategoriesScreenProps> = ({ navigation }) => {
         <View style={styles.categoryDetails}>
           <Text style={styles.categoryName}>{item.name}</Text>
           <Text style={styles.categoryType}>
-            {item.is_custom ? 'Custom' : 'Default'} • {item.transaction_count || 0} transactions
+            {!item.is_default ? 'Custom' : 'Default'} • {item.transaction_count || 0} transactions
           </Text>
           {item.description && (
             <Text style={styles.categoryDescription}>{item.description}</Text>
@@ -204,7 +275,7 @@ const CategoriesScreen: React.FC<CategoriesScreenProps> = ({ navigation }) => {
         </View>
       </View>
       <View style={styles.categoryActions}>
-        {item.is_custom && (
+        {!item.is_default && (
           <>
             <TouchableOpacity
               style={styles.actionButton}
@@ -231,13 +302,12 @@ const CategoriesScreen: React.FC<CategoriesScreenProps> = ({ navigation }) => {
           <Text style={styles.statNumber}>{getDefaultCategories().length}</Text>
           <Text style={styles.statLabel}>Default</Text>
         </View>
-        <View style={styles.statItem}>
-          <Text style={styles.statNumber}>
-            {getCustomCategories().length}
-            {profile?.subscription_tier === 'free' ? ` / ${SUBSCRIPTION_TIERS.FREE.custom_categories}` : ''}
-          </Text>
-          <Text style={styles.statLabel}>Custom</Text>
-        </View>
+                 <View style={styles.statItem}>
+           <Text style={styles.statNumber}>
+             {getCustomCategories().length}
+           </Text>
+           <Text style={styles.statLabel}>Custom</Text>
+         </View>
         <View style={styles.statItem}>
           <Text style={styles.statNumber}>{categories.length}</Text>
           <Text style={styles.statLabel}>Total</Text>
@@ -272,9 +342,6 @@ const CategoriesScreen: React.FC<CategoriesScreenProps> = ({ navigation }) => {
     return <LoadingSpinner />;
   }
 
-  const defaultCategories = getDefaultCategories();
-  const customCategories = getCustomCategories();
-
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.headerBar}>
@@ -291,37 +358,25 @@ const CategoriesScreen: React.FC<CategoriesScreenProps> = ({ navigation }) => {
       <FlatList
         data={[
           { type: 'header' },
-          { type: 'section', title: 'Default Categories' },
-          ...defaultCategories.map(cat => ({ ...cat, type: 'category' })),
-          { type: 'section', title: 'Custom Categories' },
-          ...customCategories.map(cat => ({ ...cat, type: 'category' })),
+          { type: 'default-grid' },
+          { type: 'custom-section' },
         ]}
         renderItem={({ item }) => {
           if (item.type === 'header') return renderHeader();
-          if (item.type === 'section') return renderSectionHeader(item.title);
-          return renderCategoryItem({ item });
+          if (item.type === 'default-grid') return renderDefaultCategoryGrid();
+          if (item.type === 'custom-section') return renderCustomCategoriesSection();
+          return null;
         }}
-        keyExtractor={(item, index) => `${item.type}-${item.id || index}`}
+        keyExtractor={(item, index) => `${item.type}-${index}`}
         ListEmptyComponent={renderEmptyState}
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
         }
-        contentContainerStyle={styles.listContent}
-        showsVerticalScrollIndicator={false}
-      />
-
-      {/* Floating Action Button */}
-      <TouchableOpacity
-        style={[
-          styles.fab,
-          !canAddCategory() && styles.fabDisabled,
-        ]}
-        onPress={handleAddCategory}
-      >
-        <Text style={styles.fabIcon}>+</Text>
-      </TouchableOpacity>
-    </SafeAreaView>
-  );
+                 contentContainerStyle={styles.listContent}
+         showsVerticalScrollIndicator={false}
+       />
+     </SafeAreaView>
+   );
 };
 
 const styles = StyleSheet.create({
@@ -357,22 +412,24 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.lg,
   },
   header: {
-    paddingVertical: spacing.lg,
+    paddingVertical: spacing.md,
   },
   statsContainer: {
     flexDirection: 'row',
     justifyContent: 'space-around',
     backgroundColor: colors.card,
-    borderRadius: 12,
+    borderRadius: 16,
     padding: spacing.lg,
     shadowColor: '#000',
     shadowOffset: {
       width: 0,
-      height: 2,
+      height: 4,
     },
-    shadowOpacity: 0.1,
-    shadowRadius: 3.84,
-    elevation: 5,
+    shadowOpacity: 0.15,
+    shadowRadius: 8,
+    elevation: 8,
+    borderWidth: 1,
+    borderColor: colors.border,
   },
   statItem: {
     alignItems: 'center',
@@ -388,13 +445,93 @@ const styles = StyleSheet.create({
     color: colors.textSecondary,
     fontWeight: '600',
   },
+  defaultCategoriesSection: {
+    marginBottom: spacing.lg,
+  },
+  customCategoriesSection: {
+    marginBottom: spacing.lg,
+  },
   sectionHeader: {
     paddingVertical: spacing.md,
+    paddingHorizontal: spacing.sm,
   },
   sectionTitle: {
     ...typography.h3,
     color: colors.text,
+    fontWeight: '700',
+    fontSize: 18,
+  },
+  gridContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'space-between',
+    gap: spacing.sm,
+  },
+  gridItem: {
+    width: '30%',
+    aspectRatio: 1,
+    marginBottom: spacing.sm,
+  },
+  gridItemContent: {
+    flex: 1,
+    backgroundColor: colors.card,
+    borderRadius: 16,
+    padding: spacing.md,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  gridItemIcon: {
+    fontSize: 28,
+    marginBottom: spacing.sm,
+  },
+  gridItemName: {
+    ...typography.body,
+    color: colors.text,
     fontWeight: '600',
+    textAlign: 'center',
+    marginBottom: spacing.xs,
+    fontSize: 12,
+    lineHeight: 16,
+  },
+  gridItemCount: {
+    ...typography.caption,
+    color: colors.textSecondary,
+    fontSize: 11,
+    fontWeight: '500',
+  },
+  addCustomButton: {
+    backgroundColor: colors.primary,
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.md,
+    borderRadius: 12,
+    alignItems: 'center',
+    marginBottom: spacing.sm,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 4,
+    },
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+    elevation: 8,
+  },
+  addCustomButtonText: {
+    ...typography.body,
+    color: colors.background,
+    fontWeight: '600',
+  },
+  customCategoriesList: {
+    marginTop: spacing.sm,
   },
   categoryItem: {
     flexDirection: 'row',
@@ -496,34 +633,6 @@ const styles = StyleSheet.create({
     ...typography.body,
     color: colors.background,
     fontWeight: '600',
-  },
-  fab: {
-    position: 'absolute',
-    bottom: spacing.xl,
-    right: spacing.lg,
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    backgroundColor: colors.primary,
-    justifyContent: 'center',
-    alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 4,
-    },
-    shadowOpacity: 0.3,
-    shadowRadius: 4.65,
-    elevation: 8,
-  },
-  fabDisabled: {
-    backgroundColor: colors.textSecondary,
-    opacity: 0.6,
-  },
-  fabIcon: {
-    fontSize: 24,
-    color: colors.background,
-    fontWeight: 'bold',
   },
 });
 

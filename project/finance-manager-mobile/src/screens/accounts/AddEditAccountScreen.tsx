@@ -15,6 +15,7 @@ import { CustomTextInput } from '../../components/common/CustomTextInput';
 import { CustomButton } from '../../components/common/CustomButton';
 import { colors, typography, spacing } from '../../constants/colors';
 import { getCurrencySymbol } from '../../utils/currency';
+import { checkAccountCreationLimit, getUserStats, getUserProfile } from '../../utils/subscriptionUtils';
 
 interface AddEditAccountScreenProps {
   navigation: any;
@@ -28,6 +29,15 @@ const AddEditAccountScreen: React.FC<AddEditAccountScreenProps> = ({ navigation,
 
   // Get display currency from Redux store
   const { displayCurrency } = useTypedSelector((state) => state.user);
+
+  // Get user profile and stats for limit checking
+  const { profile } = useTypedSelector((state) => state.user);
+  const userStats = profile?.stats || {
+    total_transactions: 0,
+    total_accounts: 0,
+    total_categories: 0,
+    total_goals: 0,
+  };
 
   const [formData, setFormData] = useState({
     name: '',
@@ -103,6 +113,19 @@ const AddEditAccountScreen: React.FC<AddEditAccountScreenProps> = ({ navigation,
 
   const handleSave = async () => {
     if (!validateForm()) return;
+
+    // Check account creation limit for new accounts only
+    if (!isEditing) {
+      const limitExceeded = checkAccountCreationLimit(
+        userStats.total_accounts,
+        profile,
+        navigation
+      );
+      
+      if (limitExceeded) {
+        return; // Stop execution if limit exceeded
+      }
+    }
 
     setIsLoading(true);
 

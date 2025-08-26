@@ -3,7 +3,6 @@ import {
   View,
   Text,
   StyleSheet,
-  SafeAreaView,
   FlatList,
   TouchableOpacity,
   RefreshControl,
@@ -13,12 +12,11 @@ import { useAppDispatch } from '../../hooks/useAppDispatch';
 import { useTypedSelector } from '../../hooks/useTypedSelector';
 import { fetchAccounts } from '../../store/slices/accountsSlice';
 import { fetchUserProfile } from '../../store/slices/userSlice';
-import { showPremiumModal } from '../../store/slices/uiSlice';
-import { AccountCard } from '../../components/common/AccountCard';
-import { BalanceCard } from '../../components/common/BalanceCard';
-import { LoadingSpinner } from '../../components/common/LoadingSpinner';
+
+import { AccountCard, BalanceCard, LoadingSpinner } from '../../components/common';
 import { colors, typography, spacing } from '../../constants/colors';
-import { SUBSCRIPTION_TIERS } from '../../config/api';
+
+
 
 interface AccountsListScreenProps {
   navigation: any;
@@ -76,31 +74,8 @@ const AccountsListScreen: React.FC<AccountsListScreenProps> = ({ navigation }) =
     return accounts.filter(account => account.is_active);
   };
 
-  const canAddAccount = () => {
-    if (!profile) return false;
-    
-    const isFreeTier = profile.subscription_tier === 'free';
-    const accountLimit = SUBSCRIPTION_TIERS.FREE.accounts;
-    
-    return !isFreeTier || accounts.length < accountLimit;
-  };
-
   const handleAddAccount = () => {
-    if (canAddAccount()) {
-      navigation.navigate('AddEditAccount');
-    } else {
-      Alert.alert(
-        'Account Limit Reached',
-        `Free tier allows up to ${SUBSCRIPTION_TIERS.FREE.accounts} accounts. Upgrade to Premium for unlimited accounts.`,
-        [
-          { text: 'Cancel', style: 'cancel' },
-          {
-            text: 'Upgrade',
-            onPress: () => dispatch(showPremiumModal()),
-          },
-        ]
-      );
-    }
+    navigation.navigate('AddEditAccount');
   };
 
   const handleAccountPress = (account: any) => {
@@ -126,7 +101,7 @@ const AccountsListScreen: React.FC<AccountsListScreenProps> = ({ navigation }) =
       <View style={styles.sectionHeader}>
         <Text style={styles.sectionTitle}>Your Accounts</Text>
         <Text style={styles.accountCount}>
-          {accounts.length} {profile?.subscription_tier === 'free' ? `/ ${SUBSCRIPTION_TIERS.FREE.accounts}` : ''}
+          {accounts.length}
         </Text>
       </View>
     </View>
@@ -157,12 +132,7 @@ const AccountsListScreen: React.FC<AccountsListScreenProps> = ({ navigation }) =
     <SafeAreaView style={styles.container}>
       <View style={styles.headerBar}>
         <Text style={styles.screenTitle}>Accounts</Text>
-        <TouchableOpacity
-          style={styles.menuButton}
-          onPress={() => navigation.openDrawer()}
-        >
-          <Text style={styles.menuIcon}>☰</Text>
-        </TouchableOpacity>
+        <View style={styles.menuButton} />
       </View>
 
       <FlatList
@@ -180,16 +150,13 @@ const AccountsListScreen: React.FC<AccountsListScreenProps> = ({ navigation }) =
 
       {/* Floating Action Button */}
       <TouchableOpacity
-        style={[
-          styles.fab,
-          !canAddAccount() && styles.fabDisabled,
-        ]}
+        style={styles.fab}
         onPress={handleAddAccount}
       >
-        <Text style={styles.fabIcon}>+</Text>
-      </TouchableOpacity>
-    </SafeAreaView>
-  );
+                 <Text style={styles.fabIcon}>+</Text>
+       </TouchableOpacity>
+     </SafeAreaView>
+   );
 };
 
 const styles = StyleSheet.create({

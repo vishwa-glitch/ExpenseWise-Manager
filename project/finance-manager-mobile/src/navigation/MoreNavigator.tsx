@@ -3,12 +3,10 @@ import { createStackNavigator } from '@react-navigation/stack';
 import MoreScreen from '../screens/more/MoreScreen';
 import CategoriesScreen from '../screens/categories/CategoriesScreen';
 import AddEditCategoryScreen from '../screens/categories/AddEditCategoryScreen';
-import BudgetsScreen from '../screens/budgets/BudgetsScreen';
 import AnalyticsNavigator from './AnalyticsNavigator';
-import BudgetsListScreen from '../screens/budgets/BudgetsListScreen';
-import BudgetDetailScreen from '../screens/budgets/BudgetDetailScreen';
-import CreateEditBudgetScreen from '../screens/budgets/CreateEditBudgetScreen';
 import BillsScreen from '../screens/bills/BillsScreen';
+import ExportNavigator from './ExportNavigator';
+import HelpSupportScreen from '../screens/help/HelpSupportScreen';
 
 const Stack = createStackNavigator();
 
@@ -22,13 +20,10 @@ const MoreNavigator: React.FC = () => {
       <Stack.Screen name="MoreMain" component={MoreScreen} />
       <Stack.Screen name="Categories" component={CategoriesScreen} />
       <Stack.Screen name="AddEditCategory" component={AddEditCategoryScreen} />
-      <Stack.Screen name="Budgets" component={BudgetsScreen} />
-      <Stack.Screen name="BudgetsList" component={BudgetsListScreen} />
-      <Stack.Screen name="BudgetDetail" component={BudgetDetailScreen} />
-      <Stack.Screen name="CreateBudget" component={CreateEditBudgetScreen} />
-      <Stack.Screen name="EditBudget" component={CreateEditBudgetScreen} />
       <Stack.Screen name="Analytics" component={AnalyticsNavigator} />
       <Stack.Screen name="Bills" component={BillsScreen} />
+      <Stack.Screen name="Export" component={ExportNavigator} />
+      <Stack.Screen name="HelpSupport" component={HelpSupportScreen} />
     </Stack.Navigator>
   );
 };

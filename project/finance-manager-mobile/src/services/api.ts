@@ -47,12 +47,31 @@ class ApiService {
       async (config) => {
         console.log(`🔍 Making API request to: ${config.url}`);
         
+        // Skip adding authorization header for authentication endpoints and public endpoints
+        const publicEndpoints = [
+          API_ENDPOINTS.AUTH.LOGIN,
+          API_ENDPOINTS.AUTH.REGISTER,
+          API_ENDPOINTS.AUTH.REFRESH,
+          API_ENDPOINTS.AUTH.LOGOUT,
+          '/currency/supported', // Public currency endpoint
+        ];
+        
+        const isPublicEndpoint = publicEndpoints.some(endpoint => 
+          config.url?.includes(endpoint)
+        );
+        
+        if (isPublicEndpoint) {
+          console.log(`🔓 Skipping authorization for public endpoint: ${config.url}`);
+          return config;
+        }
+        
         const token = await SecureStore.getItemAsync('access_token');
         console.log(`🔑 Token retrieved from SecureStore: ${token ? 'present' : 'missing'}`);
         
         if (token) {
           config.headers.Authorization = `Bearer ${token}`;
           console.log(`✅ Setting Authorization header for request to: ${config.url}`);
+          console.log(`🔑 Authorization header value: Bearer ${token.substring(0, 20)}...`);
         } else {
           console.log(`❌ No token available for request to: ${config.url}`);
         }
@@ -76,7 +95,20 @@ class ApiService {
         
         const originalRequest = error.config;
 
-        if (error.response?.status === 401 && !originalRequest._retry) {
+        // Skip token refresh for authentication endpoints and public endpoints
+        const publicEndpoints = [
+          API_ENDPOINTS.AUTH.LOGIN,
+          API_ENDPOINTS.AUTH.REGISTER,
+          API_ENDPOINTS.AUTH.REFRESH,
+          API_ENDPOINTS.AUTH.LOGOUT,
+          '/currency/supported', // Public currency endpoint
+        ];
+        
+        const isPublicEndpoint = publicEndpoints.some(endpoint => 
+          originalRequest.url?.includes(endpoint)
+        );
+
+        if (error.response?.status === 401 && !originalRequest._retry && !isPublicEndpoint) {
           console.log('🔄 Attempting token refresh due to 401 error');
           originalRequest._retry = true;
 
@@ -85,9 +117,17 @@ class ApiService {
             originalRequest.headers.Authorization = `Bearer ${newToken}`;
             console.log('✅ Token refreshed, retrying original request');
             return this.api(originalRequest);
-          } catch (refreshError) {
-            console.error('❌ Token refresh failed, logging out user');
-            await this.logout();
+          } catch (refreshError: any) {
+            console.error('❌ Token refresh failed');
+            
+            // Only logout if refresh token is actually invalid (401/403)
+            if (refreshError.response?.status === 401 || refreshError.response?.status === 403) {
+              console.log('❌ Refresh token invalid, logging out user');
+              await this.logout();
+            } else {
+              console.log('❌ Token refresh failed due to network/server error, not logging out');
+            }
+            
             throw refreshError;
           }
         }
@@ -107,6 +147,7 @@ class ApiService {
       try {
         const refreshToken = await SecureStore.getItemAsync('refresh_token');
         if (!refreshToken) {
+          console.error('❌ No refresh token available for token refresh');
           throw new Error('No refresh token available');
         }
 
@@ -127,8 +168,15 @@ class ApiService {
           if (typeof access_token === 'string' && access_token.length > 0) {
             await SecureStore.setItemAsync('access_token', access_token);
             console.log('✅ New access token stored successfully');
+            
+            // Also store refresh token if provided in response
+            const new_refresh_token = response.data.tokens?.refresh_token || response.data.refresh_token;
+            if (new_refresh_token && typeof new_refresh_token === 'string' && new_refresh_token.length > 0) {
+              await SecureStore.setItemAsync('refresh_token', new_refresh_token);
+              console.log('✅ New refresh token stored successfully');
+            }
           } else {
-            await SecureStore.deleteItemAsync('access_token');
+            console.error('❌ Invalid access token received from refresh endpoint');
             throw new Error('Invalid access token received from refresh endpoint');
           }
           
@@ -146,6 +194,13 @@ class ApiService {
             console.error('❌ Refresh endpoint error details:', refreshRequestError.response.data);
           }
           
+          // Only clear tokens if it's a 401 or 403 error (token invalid)
+          if (refreshRequestError.response?.status === 401 || refreshRequestError.response?.status === 403) {
+            console.log('❌ Refresh token is invalid, clearing tokens');
+            await SecureStore.deleteItemAsync('access_token').catch(() => {});
+            await SecureStore.deleteItemAsync('refresh_token').catch(() => {});
+          }
+          
           // Re-throw the error to maintain existing error flow
           throw refreshRequestError;
         }
@@ -160,6 +215,11 @@ class ApiService {
   // Authentication methods
   async login(email: string, password: string) {
     console.log('🔐 Attempting login for:', email);
+    
+    // Clear any existing tokens before login to ensure clean state
+    await SecureStore.deleteItemAsync('access_token').catch(() => {});
+    await SecureStore.deleteItemAsync('refresh_token').catch(() => {});
+    console.log('🧹 Cleared existing tokens before login');
     
     try {
       const response = await this.api.post(API_ENDPOINTS.AUTH.LOGIN, {
@@ -248,6 +308,11 @@ class ApiService {
 
   async register(userData: any) {
     console.log('📝 Attempting registration for:', userData.email);
+    
+    // Clear any existing tokens before registration to ensure clean state
+    await SecureStore.deleteItemAsync('access_token').catch(() => {});
+    await SecureStore.deleteItemAsync('refresh_token').catch(() => {});
+    console.log('🧹 Cleared existing tokens before registration');
     
     try {
       const response = await this.api.post(API_ENDPOINTS.AUTH.REGISTER, userData);
@@ -526,9 +591,61 @@ class ApiService {
 
   // Export transactions with date range support
   async exportTransactions(format = 'excel', startDate?: string, endDate?: string) {
+    // Always use blob response type for binary files (PDF, Excel, CSV)
     const response = await this.api.get(API_ENDPOINTS.TRANSACTIONS.EXPORT(format, startDate, endDate), {
       responseType: 'blob',
     });
+    
+    console.log('📄 Export response received:', {
+      status: response.status,
+      dataType: typeof response.data,
+      dataLength: response.data?.length || 'unknown',
+      isBlob: response.data instanceof Blob,
+      hasArrayBuffer: typeof response.data?.arrayBuffer === 'function',
+      blobSize: response.data instanceof Blob ? response.data.size : 'N/A',
+      blobType: response.data instanceof Blob ? response.data.type : 'N/A',
+    });
+    
+    // Validate that we received a proper Blob
+    if (!response.data || !(response.data instanceof Blob)) {
+      console.error('❌ Invalid export response:', {
+        hasData: !!response.data,
+        dataType: typeof response.data,
+        isBlob: response.data instanceof Blob,
+        responseHeaders: response.headers,
+      });
+      throw new Error('Invalid response: Expected Blob data for file export');
+    }
+    
+    // Additional validation for blob
+    if (response.data.size === 0) {
+      console.warn('⚠️ Export blob is empty (size: 0)');
+    }
+    
+    return response.data;
+  }
+
+  // Check export eligibility with reward ads options
+  async checkExportEligibility() {
+    const response = await this.api.get(API_ENDPOINTS.USER.EXPORT_ELIGIBILITY);
+    return response.data;
+  }
+
+  // Process reward ad completion
+  async processRewardAd(featureType: 'export' | 'upload' | 'goal', adData: any) {
+    const response = await this.api.post(API_ENDPOINTS.USER.REWARD_AD_COMPLETED, {
+      feature_type: featureType,
+      ad_network: 'admob',
+      ad_unit_id: adData.adUnitId || 'test_ad_unit_id',
+      reward_amount: adData.rewardAmount || 1,
+      reward_type: `${featureType}_unlock`
+    });
+    return response.data;
+  }
+
+  // Get user usage statistics
+  async getUserUsage() {
+    const response = await this.api.get(API_ENDPOINTS.USER.USAGE);
     return response.data;
   }
 
@@ -637,6 +754,11 @@ class ApiService {
     return response.data;
   }
 
+  async createGoal(goalData: any) {
+    const response = await this.api.post(API_ENDPOINTS.GOALS.CREATE, goalData);
+    return response.data;
+  }
+
   async getGoalProgress(id: string) {
     const response = await this.api.get(API_ENDPOINTS.GOALS.PROGRESS(id));
     return response.data;
@@ -644,15 +766,15 @@ class ApiService {
 
   async contributeToGoal(id: string, amount: number, accountId: string, description?: string) {
     // First create a transaction for the contribution
-    const transactionData = {
+    const transactionData: any = {
       account_id: accountId,
       amount: amount,
       type: 'expense' as const, // Goal contributions are typically expenses
       description: description || 'Goal contribution',
       transaction_date: new Date().toISOString().split('T')[0],
-      // We'll need to get a default category or create one for goal contributions
-      category_id: null, // Will be handled by the backend
     };
+
+    // Note: category_id is omitted for goal contributions - backend will handle default category
 
     console.log('🎯 Creating transaction for goal contribution:', transactionData);
     
@@ -772,16 +894,19 @@ class ApiService {
         data: error.response?.data,
         url: error.config?.url,
       });
-      console.log(`📊 Spending trends API not available for months=${months}, using fallback data`);
-      // Determine period based on months for more accurate mock data
-      const period = months === 1 ? 'monthly' : months === 6 ? '6months' : 'yearly';
-      return this.generateMockSpendingTrends(period);
+      console.log(`📊 Spending trends API not available for months=${months}, returning null`);
+      return null;
     }
   }
 
   async getCategoryBreakdown(startDate: string, endDate: string) {
-    const response = await this.api.get(API_ENDPOINTS.ANALYTICS.CATEGORY_BREAKDOWN(startDate, endDate));
-    return response.data;
+    try {
+      const response = await this.api.get(API_ENDPOINTS.ANALYTICS.CATEGORY_BREAKDOWN(startDate, endDate));
+      return response.data;
+    } catch (error: any) {
+      console.error('❌ Failed to fetch category breakdown:', error);
+      throw error; // Let the calling code handle the error
+    }
   }
 
   // Enhanced analytics methods with time period support
@@ -791,8 +916,8 @@ class ApiService {
       const response = await this.api.get(`${API_ENDPOINTS.ANALYTICS.SPENDING_TRENDS(months)}?period=${period}`);
       return response.data;
     } catch (error: any) {
-      console.log(`📊 Spending trends API not available for ${period}, using fallback data`);
-      return this.generateMockSpendingTrends(period);
+      console.log(`📊 Spending trends API not available for ${period}, returning null`);
+      return null;
     }
   }
 
@@ -801,8 +926,8 @@ class ApiService {
       const response = await this.api.get(`${API_ENDPOINTS.ANALYTICS.CATEGORY_BREAKDOWN(startDate, endDate)}?period=${period}`);
       return response.data;
     } catch (error: any) {
-      console.log(`📊 Category breakdown API not available for ${period}, using fallback data`);
-      return this.generateMockCategoryBreakdown(period);
+      console.log(`📊 Category breakdown API not available for ${period}, returning null`);
+      return null;
     }
   }
 
@@ -811,117 +936,22 @@ class ApiService {
       const response = await this.api.get(`${API_ENDPOINTS.INSIGHTS.DASHBOARD}?period=${period}`);
       return response.data;
     } catch (error: any) {
-      console.log(`📊 Dashboard insights API not available for ${period}, using fallback data`);
-      return this.generateMockDashboardInsights(period);
+      console.log(`📊 Dashboard insights API not available for ${period}, returning null`);
+      return null;
     }
   }
 
-  // Mock data generators for development and fallback
-  private generateMockSpendingTrends(period: 'weekly' | 'monthly' | '6months' | 'yearly') {
-    const baseAmount = 25000;
-    const variation = 0.3;
-    
-    let labels: string[] = [];
-    let dataPoints: number[] = [];
-    
-    switch (period) {
-      case 'weekly':
-        labels = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
-        dataPoints = labels.map(() => 
-          Math.round(baseAmount * 0.2 * (1 + (Math.random() - 0.5) * variation))
-        );
-        break;
-      case 'monthly':
-        labels = ['Week 1', 'Week 2', 'Week 3', 'Week 4'];
-        dataPoints = labels.map(() => 
-          Math.round(baseAmount * (1 + (Math.random() - 0.5) * variation))
-        );
-        break;
-      case '6months':
-        labels = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'];
-        dataPoints = labels.map(() => 
-          Math.round(baseAmount * 2 * (1 + (Math.random() - 0.5) * variation))
-        );
-        break;
-      case 'yearly':
-        labels = ['Q1', 'Q2', 'Q3', 'Q4'];
-        dataPoints = labels.map(() => 
-          Math.round(baseAmount * 6 * (1 + (Math.random() - 0.5) * variation))
-        );
-        break;
-    }
-    
-    return {
-      trends: dataPoints.map((amount, index) => ({
-        period: labels[index],
-        amount,
-        date: new Date().toISOString().split('T')[0],
-      })),
-      total: dataPoints.reduce((sum, amount) => sum + amount, 0),
-      average: Math.round(dataPoints.reduce((sum, amount) => sum + amount, 0) / dataPoints.length),
-    };
-  }
 
-  private generateMockCategoryBreakdown(period: 'weekly' | 'monthly' | '6months' | 'yearly') {
-    const categories = [
-      { name: 'Food & Dining', baseAmount: 15000, color: '#FF6B35' },
-      { name: 'Transportation', baseAmount: 8000, color: '#4ECDC4' },
-      { name: 'Shopping', baseAmount: 5000, color: '#45B7D1' },
-      { name: 'Entertainment', baseAmount: 3000, color: '#96CEB4' },
-      { name: 'Utilities', baseAmount: 4000, color: '#FFEAA7' },
-    ];
-    
-    const multiplier = period === 'weekly' ? 0.25 : 
-                     period === 'monthly' ? 1 : 
-                     period === '6months' ? 6 : 12;
-    
-    const breakdown = categories.map(category => ({
-      name: category.name,
-      amount: Math.round(category.baseAmount * multiplier * (0.8 + Math.random() * 0.4)),
-      color: category.color,
-    }));
-    
-    const total = breakdown.reduce((sum, item) => sum + item.amount, 0);
-    
-    return {
-      breakdown: breakdown.map(item => ({
-        ...item,
-        percentage: Math.round((item.amount / total) * 100),
-      })),
-      total,
-      period,
-    };
-  }
-
-  private generateMockDashboardInsights(period: 'weekly' | 'monthly' | '6months' | 'yearly') {
-    const multiplier = period === 'weekly' ? 0.25 : 
-                     period === 'monthly' ? 1 : 
-                     period === '6months' ? 6 : 12;
-    
-    return {
-      overview: {
-        total_income: Math.round(50000 * multiplier),
-        total_expenses: Math.round(35000 * multiplier),
-        total_savings: Math.round(15000 * multiplier),
-        savings_rate: 30,
-        active_recommendations: 3,
-        active_goals: 2,
-        active_budgets: 4,
-      },
-      spending_trend: {
-        change_percentage: Math.round((Math.random() - 0.5) * 20),
-        trend_direction: Math.random() > 0.5 ? 'increasing' : 'decreasing',
-      },
-      top_categories: this.generateMockCategoryBreakdown(period).breakdown.slice(0, 5),
-      upcoming_bills: [],
-      period,
-    };
-  }
 
   // Insights methods
   async getDashboardInsights() {
-    const response = await this.api.get(API_ENDPOINTS.INSIGHTS.DASHBOARD);
-    return response.data;
+    try {
+      const response = await this.api.get(API_ENDPOINTS.INSIGHTS.DASHBOARD);
+      return response.data;
+    } catch (error: any) {
+      console.log('📊 Dashboard insights API not available, returning null');
+      return null;
+    }
   }
 
   async getWeeklyReport() {
@@ -935,80 +965,89 @@ class ApiService {
       return response.data;
     } catch (error: any) {
       if (error.response?.status === 404) {
-        console.log('📊 Weekly health report endpoint not available (404) - using fallback data');
-        // Try to get dashboard insights as fallback
+        console.log('📊 Weekly health report endpoint not available (404) - returning null');
+        return null;
+      }
+      throw error;
+    }
+  }
+
+  // Currency methods
+  async getSupportedCurrencies() {
+    const response = await this.api.get('/currency/supported');
+    return response.data;
+  }
+
+  async getExchangeRates(baseCurrency = 'USD') {
+    const response = await this.api.get(`/currency/rates/${baseCurrency}`);
+    return response.data;
+  }
+
+  async convertCurrency(amount: number, fromCurrency: string, toCurrency: string) {
+    const response = await this.api.post('/currency/convert', {
+      amount,
+      from: fromCurrency,
+      to: toCurrency,
+    });
+    return response.data;
+  }
+
+  async changeUserCurrency(newCurrency: string, convertData = true) {
+    console.log('💰 Changing user currency to:', newCurrency);
+    
+    try {
+      // Check if we have a valid token before making the request
+      const token = await SecureStore.getItemAsync('access_token');
+      console.log('🔑 Token for currency change:', token ? 'present' : 'missing');
+      
+      if (!token) {
+        throw new Error('No access token available for currency change');
+      }
+      
+      // Log token details for debugging
+      console.log('🔍 Token details:', {
+        length: token.length,
+        start: token.substring(0, 20) + '...',
+        end: '...' + token.substring(token.length - 10)
+      });
+      
+      const response = await this.api.post('/user/change-currency', {
+        new_currency: newCurrency,
+        convert_existing_data: convertData,
+      });
+      
+      console.log('✅ Currency change successful');
+      
+      // Store the new currency preference locally
+      try {
+        await SecureStore.setItemAsync('user_currency', newCurrency);
+        console.log('✅ User currency preference stored locally:', newCurrency);
+      } catch (error) {
+        console.error('❌ Failed to store currency preference locally:', error);
+      }
+      
+      return response.data;
+    } catch (error: any) {
+      console.error('❌ Currency change failed:', error.response?.data || error.message);
+      
+      // If it's a 401 error, try to refresh token and retry once
+      if (error.response?.status === 401) {
+        console.log('🔄 401 error, attempting token refresh and retry...');
         try {
-          const dashboardResponse = await this.getDashboardInsights();
-          
-          // Transform dashboard insights to weekly health format
-          const overview = dashboardResponse.overview || {};
-          const monthlyExpenses = overview.monthly_expenses || 0;
-          const weeklySpending = Math.round(monthlyExpenses / 4);
-          const monthlyBudget = monthlyExpenses * 1.2; // Assume 20% buffer
-          const weeklyBudget = Math.round(monthlyBudget / 4);
-          
-          // Generate basic health score based on spending vs budget
-          const spendingRatio = weeklyBudget > 0 ? weeklySpending / weeklyBudget : 0;
-          const overallScore = Math.max(0, Math.min(100, Math.round((1 - Math.max(0, spendingRatio - 1)) * 100)));
-          
-          const achievements: any[] = [];
-          const warnings: any[] = [];
-          const issues: any[] = [];
-          
-          if (spendingRatio <= 0.8) {
-            achievements.push({
-              type: 'success',
-              text: 'Staying within budget this week',
-              amount: weeklyBudget - weeklySpending,
-            });
-          } else if (spendingRatio <= 1.0) {
-            warnings.push({
-              type: 'warning',
-              text: 'Close to budget limit',
-              amount: weeklyBudget - weeklySpending,
-            });
-          } else {
-            issues.push({
-              type: 'error',
-              text: 'Over budget this week',
-              amount: weeklySpending - weeklyBudget,
-            });
-          }
-          
-          return {
-            financial_health: {
-              overall_score: overallScore,
-              max_score: 100,
-              achievements,
-              warnings,
-              issues,
-              weekly_stats: {
-                thisWeek: weeklySpending,
-                budget: weeklyBudget,
-                lastWeek: Math.round(weeklySpending * (0.9 + Math.random() * 0.2)),
-                monthlyAvg: weeklySpending,
-                overBudget: Math.max(0, weeklySpending - weeklyBudget),
-                changeFromLastWeek: Math.round((Math.random() - 0.5) * 20),
-                changeFromMonthlyAvg: 0,
-              },
-              next_week_goal: Math.round(weeklyBudget * 0.9),
-              data_availability: {
-                hasTransactions: monthlyExpenses > 0,
-                hasBudgets: overview.active_budgets > 0,
-                hasGoals: overview.active_goals > 0,
-              },
-            },
-            week_period: {
-              start_date: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-              end_date: new Date().toISOString().split('T')[0],
-            },
-            generated_at: new Date().toISOString(),
-          };
-        } catch (dashboardError: any) {
-          console.log('📊 Dashboard insights also not available - using minimal fallback data');
-          return null;
+          await this.refreshToken();
+          // Retry the currency change
+          const retryResponse = await this.api.post('/user/change-currency', {
+            new_currency: newCurrency,
+            convert_existing_data: convertData,
+          });
+          console.log('✅ Currency change successful after token refresh');
+          return retryResponse.data;
+        } catch (refreshError) {
+          console.error('❌ Token refresh failed during currency change:', refreshError);
+          throw refreshError;
         }
       }
+      
       throw error;
     }
   }
@@ -1045,6 +1084,185 @@ class ApiService {
   // Generic request method
   async request<T = any>(config: AxiosRequestConfig): Promise<AxiosResponse<T>> {
     return this.api.request(config);
+  }
+
+  // Debug method to check token status
+  async checkTokenStatus() {
+    const accessToken = await SecureStore.getItemAsync('access_token');
+    const refreshToken = await SecureStore.getItemAsync('refresh_token');
+    
+    console.log('🔍 Token Status Check:', {
+      accessToken: accessToken ? `present (${accessToken.substring(0, 20)}...)` : 'missing',
+      refreshToken: refreshToken ? `present (${refreshToken.substring(0, 20)}...)` : 'missing',
+    });
+    
+    return { accessToken, refreshToken };
+  }
+
+  // Method to check if user is authenticated
+  async isAuthenticated(): Promise<boolean> {
+    try {
+      const accessToken = await SecureStore.getItemAsync('access_token');
+      const refreshToken = await SecureStore.getItemAsync('refresh_token');
+      
+      // User is authenticated if they have either access token or refresh token
+      const hasTokens = !!(accessToken || refreshToken);
+      console.log(`🔐 Authentication check: ${hasTokens ? 'Authenticated' : 'Not authenticated'}`);
+      
+      return hasTokens;
+    } catch (error) {
+      console.error('❌ Error checking authentication status:', error);
+      return false;
+    }
+  }
+
+  // Method to attempt token restoration
+  async attemptTokenRestoration(): Promise<boolean> {
+    try {
+      const refreshToken = await SecureStore.getItemAsync('refresh_token');
+      
+      if (!refreshToken) {
+        console.log('❌ No refresh token available for restoration');
+        return false;
+      }
+
+      console.log('🔄 Attempting token restoration...');
+      const newToken = await this.refreshToken();
+      
+      if (newToken) {
+        console.log('✅ Token restoration successful');
+        return true;
+      }
+      
+      return false;
+    } catch (error) {
+      console.error('❌ Token restoration failed:', error);
+      return false;
+    }
+  }
+
+  // Test method to verify token refresh works
+  async testTokenRefresh() {
+    try {
+      console.log('🧪 Testing token refresh...');
+      const result = await this.refreshToken();
+      console.log('✅ Token refresh test successful:', result ? 'Token obtained' : 'No token');
+      return result;
+    } catch (error) {
+      console.error('❌ Token refresh test failed:', error);
+      throw error;
+    }
+  }
+
+  // Test method to verify authentication flow
+  async testAuthenticationFlow() {
+    try {
+      console.log('🧪 Testing authentication flow...');
+      
+      // Check current token status
+      const tokenStatus = await this.checkTokenStatus();
+      console.log('📊 Current token status:', tokenStatus);
+      
+      // Check if authenticated
+      const isAuth = await this.isAuthenticated();
+      console.log('🔐 Is authenticated:', isAuth);
+      
+      // Try to restore tokens if needed
+      if (!tokenStatus.accessToken && tokenStatus.refreshToken) {
+        console.log('🔄 Attempting token restoration...');
+        const restored = await this.attemptTokenRestoration();
+        console.log('✅ Token restoration result:', restored);
+      }
+      
+      return {
+        tokenStatus,
+        isAuthenticated: isAuth,
+        hasAccessToken: !!tokenStatus.accessToken,
+        hasRefreshToken: !!tokenStatus.refreshToken
+      };
+    } catch (error) {
+      console.error('❌ Authentication flow test failed:', error);
+      throw error;
+    }
+  }
+
+  // Direct API call method that bypasses interceptors for critical operations
+  async directApiCall(endpoint: string, method: 'GET' | 'POST' | 'PUT' | 'DELETE', data?: any, token?: string) {
+    console.log(`🔧 Making direct API call to: ${endpoint}`);
+    
+    const config = {
+      method,
+      url: `${API_CONFIG.BASE_URL}${API_CONFIG.API_PREFIX}${endpoint}`,
+      headers: {
+        'Content-Type': 'application/json',
+        ...(token && { 'Authorization': `Bearer ${token}` }),
+      },
+      ...(data && { data }),
+    };
+    
+    try {
+      const response = await axios(config);
+      console.log(`✅ Direct API call successful: ${endpoint}`);
+      return response.data;
+    } catch (error: any) {
+      console.error(`❌ Direct API call failed: ${endpoint}`, error.response?.data || error.message);
+      throw error;
+    }
+  }
+
+  // Method to handle pending currency changes
+  async handlePendingCurrencyChange() {
+    try {
+      const pendingCurrency = await SecureStore.getItemAsync('selected_currency');
+      if (pendingCurrency) {
+        console.log('🔄 Found pending currency change:', pendingCurrency);
+        
+        // Try to set the currency
+        await this.changeUserCurrency(pendingCurrency, false);
+        
+        // Clear the pending currency
+        await SecureStore.deleteItemAsync('selected_currency');
+        console.log('✅ Pending currency change completed');
+        
+        return true;
+      }
+      return false;
+    } catch (error) {
+      console.error('❌ Failed to handle pending currency change:', error);
+      return false;
+    }
+  }
+
+  // Method to get user's current currency preference
+  async getUserCurrencyPreference(): Promise<string> {
+    try {
+      // First try to get from secure store
+      const storedCurrency = await SecureStore.getItemAsync('user_currency');
+      if (storedCurrency) {
+        return storedCurrency;
+      }
+      
+      // If not in secure store, try to get from user profile
+      const userProfile = await this.getUserProfile();
+      const displayCurrency = userProfile.user?.preferred_currency || userProfile.user?.display_currency;
+      
+      console.log('🔍 User profile currency fields:', {
+        preferred_currency: userProfile.user?.preferred_currency,
+        display_currency: userProfile.user?.display_currency,
+        selected: displayCurrency
+      });
+      
+      if (displayCurrency) {
+        // Store it locally for future use
+        await SecureStore.setItemAsync('user_currency', displayCurrency);
+        return displayCurrency;
+      }
+      
+      return 'USD'; // Default fallback
+    } catch (error) {
+      console.error('❌ Failed to get user currency preference:', error);
+      return 'USD'; // Default fallback
+    }
   }
 }
 
