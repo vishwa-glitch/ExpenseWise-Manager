@@ -6,6 +6,7 @@ import { useTypedSelector } from '../hooks/useTypedSelector';
 import { useAppDispatch } from '../hooks/useAppDispatch';
 import { checkAuthStatus, completeCurrencySelection } from '../store/slices/authSlice';
 import { fetchUserProfile, loadUserCurrency, setDisplayCurrency } from '../store/slices/userSlice';
+import { checkOnboardingStatus } from '../store/slices/onboardingSlice';
 import { apiService } from '../services/api';
 import { LoadingSpinner } from '../components/common/LoadingSpinner';
 
@@ -19,12 +20,14 @@ const Stack = createStackNavigator();
 const AppNavigator: React.FC = () => {
   const dispatch = useAppDispatch();
   const { isAuthenticated, isLoading, needsCurrencySelection } = useTypedSelector((state) => state.auth);
+  const { isOnboardingComplete, isLoading: isOnboardingLoading } = useTypedSelector((state) => state.onboarding);
 
   useEffect(() => {
     const initializeApp = async () => {
       console.log('🚀 Initializing app...');
       try {
         await dispatch(checkAuthStatus());
+        await dispatch(checkOnboardingStatus());
       } catch (error) {
         console.error('❌ Error during app initialization:', error);
       }
@@ -77,18 +80,20 @@ const AppNavigator: React.FC = () => {
     console.log('🧭 Navigation state changed:', {
       isAuthenticated,
       needsCurrencySelection,
-      isLoading
+      isLoading,
+      isOnboardingComplete
     });
-  }, [isAuthenticated, needsCurrencySelection, isLoading]);
+  }, [isAuthenticated, needsCurrencySelection, isLoading, isOnboardingComplete]);
 
-  if (isLoading) {
+  if (isLoading || isOnboardingLoading) {
     return <LoadingSpinner />;
   }
 
   console.log('🧭 Rendering AppNavigator with state:', {
     isAuthenticated,
     needsCurrencySelection,
-    isLoading
+    isLoading,
+    isOnboardingComplete
   });
 
   return (
@@ -101,7 +106,7 @@ const AppNavigator: React.FC = () => {
             name="CurrencySelection" 
             component={CurrencySelectionScreen}
           />
-        ) : (
+                        ) : (
           <Stack.Screen name="Main" component={MainNavigator} />
         )}
       </Stack.Navigator>

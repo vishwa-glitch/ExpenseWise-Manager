@@ -24,6 +24,8 @@ interface BudgetCardProps {
 
 export const BudgetCard: React.FC<BudgetCardProps> = ({ budget, onPress, onEdit, onDelete }) => {
   const { displayCurrency } = useTypedSelector((state) => state.user);
+  const { categories } = useTypedSelector((state) => state.categories);
+
   const formatAmount = (amount: number) => {
     const currency = budget.currency || displayCurrency || 'USD';
     return formatCurrency(amount, currency, { maximumFractionDigits: 0 });
@@ -64,19 +66,52 @@ export const BudgetCard: React.FC<BudgetCardProps> = ({ budget, onPress, onEdit,
   const getCategoryIcon = (categoryName?: string) => {
     if (!categoryName) return '💰';
     
-    const iconMap: { [key: string]: string } = {
-      'food & dining': '🍽️',
-      'transportation': '🚗',
-      'shopping': '🛍️',
-      'entertainment': '🎬',
-      'utilities': '⚡',
-      'healthcare': '🏥',
-      'education': '📚',
-      'travel': '✈️',
-      'other': '💰',
-    };
+    // First, try to find the category in the categories store
+    const category = categories.find(cat => cat.name.toLowerCase() === categoryName.toLowerCase());
     
-    return iconMap[categoryName.toLowerCase()] || '💰';
+    // If category has an icon property, map it to emoji
+    if (category?.icon) {
+      const iconMap: { [key: string]: string } = {
+        'utensils': '🍽️',
+        'car': '🚗',
+        'shopping-bag': '🛍️',
+        'film': '🎬',
+        'zap': '⚡',
+        'heart': '🏥',
+        'book': '📚',
+        'plane': '✈️',
+        'briefcase': '💼',
+        'trending-up': '📈',
+        'home': '🏠',
+        'phone': '📱',
+        'gift': '🎁',
+        'coffee': '☕',
+        'music': '🎵',
+        'camera': '📷',
+        'gamepad': '🎮',
+        'dumbbell': '🏋️',
+        'palette': '🎨',
+        'tool': '🔧',
+        'tag': '🏷️',
+      };
+      
+      return iconMap[category.icon] || '🏷️';
+    }
+    
+    // Fallback to name-based icons for default categories
+    const name = categoryName.toLowerCase();
+    if (name.includes('food') || name.includes('dining')) return '🍽️';
+    if (name.includes('transport') || name.includes('car')) return '🚗';
+    if (name.includes('shop') || name.includes('retail')) return '🛍️';
+    if (name.includes('entertainment') || name.includes('movie')) return '🎬';
+    if (name.includes('utilities') || name.includes('electric')) return '⚡';
+    if (name.includes('health') || name.includes('medical')) return '🏥';
+    if (name.includes('education') || name.includes('school')) return '📚';
+    if (name.includes('travel') || name.includes('vacation')) return '✈️';
+    if (name.includes('salary') || name.includes('income')) return '💼';
+    if (name.includes('investment') || name.includes('stock')) return '📈';
+    
+    return '💰'; // Default fallback
   };
 
   const formatDate = (dateString: string) => {

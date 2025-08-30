@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { createMaterialTopTabNavigator } from '@react-navigation/material-top-tabs';
 import { createStackNavigator } from '@react-navigation/stack';
 import { View, Text, StyleSheet, SafeAreaView, TouchableOpacity } from 'react-native';
@@ -11,11 +11,31 @@ import BudgetDetailScreen from '../screens/budgets/BudgetDetailScreen';
 import CreateEditBudgetScreen from '../screens/budgets/CreateEditBudgetScreen';
 import BudgetAnalyticsScreen from '../screens/budgets/BudgetAnalyticsScreen';
 import { colors, typography, spacing } from '../constants/colors';
+import { useTypedSelector } from '../hooks/useTypedSelector';
 
 const Tab = createMaterialTopTabNavigator();
 const Stack = createStackNavigator();
 
 const GoalsTopTabs: React.FC<{ navigation: any }> = ({ navigation }) => {
+  const { currentStep } = useTypedSelector((state) => state.onboarding);
+  
+  // Auto-switch tabs based on onboarding step
+  useEffect(() => {
+    if (currentStep === 4) {
+      // Step 4 (budgets) - show Budget tab
+      const timer = setTimeout(() => {
+        navigation.navigate('Budget');
+      }, 100);
+      return () => clearTimeout(timer);
+    } else if (currentStep === 5) {
+      // Step 5 (goals) - show GoalsList tab
+      const timer = setTimeout(() => {
+        navigation.navigate('GoalsList');
+      }, 100);
+      return () => clearTimeout(timer);
+    }
+  }, [currentStep, navigation]);
+
   return (
     <View style={styles.container}>
       <SafeAreaView style={styles.headerContainer}>

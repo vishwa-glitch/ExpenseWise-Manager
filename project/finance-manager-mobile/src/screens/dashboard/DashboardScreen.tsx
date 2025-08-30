@@ -31,6 +31,10 @@ import { formatCurrency } from '../../utils/currency';
 import { SmartAlertCard } from '../../components/dashboard/widgets/SmartAlertCard';
 import { GoalProgressCard } from '../../components/dashboard/widgets/GoalProgressCard';
 import { CategoryBreakdownSection } from '../../components/dashboard/CategoryBreakdownSection';
+import OnboardingOverlay from '../../components/common/OnboardingOverlay';
+import { useOnboardingOverlay } from '../../hooks/useOnboardingOverlay';
+// AdaptiveBannerAd import removed for now - files kept for future use
+// See BANNER_ADS_IMPLEMENTATION.md for re-enabling instructions
 
 
 interface DashboardScreenProps {
@@ -43,6 +47,9 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
   const [refreshing, setRefreshing] = useState(false);
   const [isExpanded, setIsExpanded] = useState(false);
   const [animation] = useState(new Animated.Value(0));
+  
+  // Onboarding overlay hook
+  const onboardingOverlay = useOnboardingOverlay();
 
   const { user, isAuthenticated } = useTypedSelector((state) => state.auth);
   const { accounts } = useTypedSelector((state) => state.accounts);
@@ -565,6 +572,9 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
            </View>
          ) : null}
 
+        {/* Banner Ad Section - Removed for now, files kept for future use */}
+        {/* See BANNER_ADS_IMPLEMENTATION.md for re-enabling instructions */}
+
         {/* Bottom Spacing */}
         <View style={styles.bottomSpacing} />
       </ScrollView>
@@ -576,6 +586,19 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
       >
         <Text style={styles.fabIcon}>+</Text>
       </TouchableOpacity>
+
+      {/* Onboarding Overlay - show for step 0 (welcome) and step 7 (complete) */}
+      {onboardingOverlay.isVisible && (onboardingOverlay.currentStep === 0 || onboardingOverlay.currentStep === 7) && (
+        <OnboardingOverlay
+          isVisible={onboardingOverlay.isVisible}
+          currentStep={onboardingOverlay.currentStep}
+          totalSteps={onboardingOverlay.totalSteps}
+          steps={onboardingOverlay.steps}
+          onNext={onboardingOverlay.handleNext}
+          onSkip={onboardingOverlay.handleSkip}
+          onComplete={onboardingOverlay.handleComplete}
+        />
+      )}
     </SafeAreaView>
   );
 };
@@ -833,9 +856,11 @@ const styles = StyleSheet.create({
    color: colors.background,
    fontWeight: 'bold',
  },
- bottomSpacing: {
-   height: spacing.lg,
- },
+   bottomSpacing: {
+    height: spacing.lg,
+  },
+  // bannerAdSection style removed for now - files kept for future use
+  // See BANNER_ADS_IMPLEMENTATION.md for re-enabling instructions
 });
 
 export default DashboardScreen;

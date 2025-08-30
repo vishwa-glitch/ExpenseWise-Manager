@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -8,6 +8,8 @@ import {
   Platform,
   ScrollView,
   Alert,
+  Keyboard,
+  TouchableWithoutFeedback,
 } from 'react-native';
 import { useAppDispatch } from '../../hooks/useAppDispatch';
 import { useTypedSelector } from '../../hooks/useTypedSelector';
@@ -24,9 +26,10 @@ interface LoginScreenProps {
 const LoginScreen: React.FC<LoginScreenProps> = ({ navigation, route }) => {
   const dispatch = useAppDispatch();
   const { isLoading, error } = useTypedSelector((state) => state.auth);
+  const scrollViewRef = useRef<ScrollView>(null);
 
-  const [email, setEmail] = useState('test@example.com');
-  const [password, setPassword] = useState('testpassword123');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [emailError, setEmailError] = useState('');
   const [passwordError, setPasswordError] = useState('');
 
@@ -61,8 +64,8 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ navigation, route }) => {
     if (!password.trim()) {
       setPasswordError('Password is required');
       hasError = true;
-    } else if (password.length < 6) {
-      setPasswordError('Password must be at least 6 characters');
+    } else if (password.length < 8) {
+      setPasswordError('Password must be at least 8 characters');
       hasError = true;
     }
 
@@ -92,71 +95,82 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ navigation, route }) => {
     }
   };
 
+  const dismissKeyboard = () => {
+    Keyboard.dismiss();
+  };
+
+  const handleInputFocus = () => {
+    // Scroll to ensure the focused input is visible
+    setTimeout(() => {
+      scrollViewRef.current?.scrollToEnd({ animated: true });
+    }, 300);
+  };
+
   return (
     <SafeAreaView style={styles.container}>
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         style={styles.keyboardAvoid}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
       >
-        <ScrollView contentContainerStyle={styles.scrollContent}>
-          <View style={styles.header}>
-            <Text style={styles.logo}>💰</Text>
-            <Text style={styles.title}>Finance Manager</Text>
-            <Text style={styles.subtitle}>Welcome back! Sign in to continue</Text>
-          </View>
+        <TouchableWithoutFeedback onPress={dismissKeyboard}>
+          <ScrollView
+            ref={scrollViewRef}
+            style={styles.scrollView}
+            contentContainerStyle={styles.scrollContent}
+            showsVerticalScrollIndicator={false}
+            keyboardShouldPersistTaps="handled"
+          >
+            <View style={styles.content}>
+              <View style={styles.header}>
+                <Text style={styles.logo}>💰</Text>
+                <Text style={styles.title}>Finance Manager</Text>
+                <Text style={styles.subtitle}>Welcome back! Sign in to continue</Text>
+              </View>
 
-          <View style={styles.form}>
-            <CustomTextInput
-              label="Email Address"
-              value={email}
-              onChangeText={setEmail}
-              placeholder="Enter your email"
-              keyboardType="email-address"
-              error={emailError}
-              leftIcon={<Text style={styles.inputIcon}>📧</Text>}
-            />
+              <View style={styles.form}>
+                <CustomTextInput
+                  label="Email Address"
+                  value={email}
+                  onChangeText={setEmail}
+                  placeholder="Enter your email"
+                  keyboardType="email-address"
+                  error={emailError}
+                  leftIcon={<Text style={styles.inputIcon}>📧</Text>}
+                  onFocus={handleInputFocus}
+                />
 
-            <CustomTextInput
-              label="Password"
-              value={password}
-              onChangeText={setPassword}
-              placeholder="Enter your password"
-              secureTextEntry
-              error={passwordError}
-              leftIcon={<Text style={styles.inputIcon}>🔒</Text>}
-            />
+                <CustomTextInput
+                  label="Password"
+                  value={password}
+                  onChangeText={setPassword}
+                  placeholder="Enter your password"
+                  secureTextEntry
+                  error={passwordError}
+                  leftIcon={<Text style={styles.inputIcon}>🔒</Text>}
+                  onFocus={handleInputFocus}
+                />
 
-            <CustomButton
-              title="Sign In"
-              onPress={handleLogin}
-              loading={isLoading}
-              style={styles.loginButton}
-            />
+                <CustomButton
+                  title="Sign In"
+                  onPress={handleLogin}
+                  loading={isLoading}
+                  style={styles.loginButton}
+                />
+              </View>
 
-            <CustomButton
-              title="Forgot Password?"
-              onPress={() => navigation.navigate('ForgotPassword')}
-              variant="outline"
-              style={styles.forgotButton}
-            />
-          </View>
-
-          <View style={styles.footer}>
-            <Text style={styles.footerText}>Don't have an account?</Text>
-            <CustomButton
-              title="Create Account"
-              onPress={() => navigation.navigate('Register')}
-              variant="secondary"
-              style={styles.registerButton}
-            />
-          </View>
-
-          <View style={styles.demoCredentials}>
-            <Text style={styles.demoTitle}>Demo Credentials:</Text>
-            <Text style={styles.demoText}>Email: test@example.com</Text>
-            <Text style={styles.demoText}>Password: testpassword123</Text>
-          </View>
-        </ScrollView>
+              <View style={styles.footer}>
+                <Text style={styles.footerText}>Don't have an account?</Text>
+                <CustomButton
+                  title="Create Account"
+                  onPress={() => navigation.navigate('Register')}
+                  variant="secondary"
+                  style={styles.registerButton}
+                />
+              </View>
+            </View>
+          </ScrollView>
+        </TouchableWithoutFeedback>
       </KeyboardAvoidingView>
     </SafeAreaView>
   );
@@ -170,14 +184,22 @@ const styles = StyleSheet.create({
   keyboardAvoid: {
     flex: 1,
   },
+  scrollView: {
+    flex: 1,
+  },
   scrollContent: {
     flexGrow: 1,
-    justifyContent: 'center',
+    paddingBottom: spacing.xl * 2,
+  },
+  content: {
+    flex: 1,
     padding: spacing.lg,
+    minHeight: '100%',
   },
   header: {
     alignItems: 'center',
-    marginBottom: spacing.xxl,
+    marginTop: spacing.md,
+    marginBottom: spacing.lg,
   },
   logo: {
     fontSize: 64,
@@ -195,46 +217,26 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   form: {
-    marginBottom: spacing.xl,
+    flex: 1,
+    marginBottom: spacing.lg,
   },
   inputIcon: {
-    fontSize: 20,
+    fontSize: 18,
   },
   loginButton: {
     marginTop: spacing.lg,
-    marginBottom: spacing.md,
-  },
-  forgotButton: {
-    marginBottom: spacing.lg,
   },
   footer: {
     alignItems: 'center',
-    marginBottom: spacing.xl,
+    marginTop: spacing.lg,
   },
   footerText: {
     ...typography.body,
     color: colors.textSecondary,
-    marginBottom: spacing.md,
-  },
-  registerButton: {
-    minWidth: 200,
-  },
-  demoCredentials: {
-    backgroundColor: colors.surface,
-    padding: spacing.md,
-    borderRadius: 8,
-    alignItems: 'center',
-  },
-  demoTitle: {
-    ...typography.caption,
-    color: colors.text,
-    fontWeight: '600',
     marginBottom: spacing.sm,
   },
-  demoText: {
-    ...typography.small,
-    color: colors.textSecondary,
-    marginBottom: spacing.xs,
+  registerButton: {
+    minWidth: 180,
   },
 });
 

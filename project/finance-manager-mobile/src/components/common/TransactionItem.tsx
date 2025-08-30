@@ -4,6 +4,8 @@ import { Swipeable } from 'react-native-gesture-handler';
 import { colors, typography, spacing } from '../../constants/colors';
 import { formatCurrency } from '../../utils/currency';
 import { Transaction } from '../../types/transaction';
+import { useTypedSelector } from '../../hooks/useTypedSelector';
+import { isGoalContribution, getGoalContributionDisplayName, getGoalContributionIcon, getGoalContributionColor } from '../../utils/goalUtils';
 
 // Extend the Transaction interface to include the runningBalance prop
 interface TransactionWithRunningBalance extends Transaction {
@@ -29,6 +31,8 @@ export const TransactionItem: React.FC<TransactionItemProps> = ({
   showAccount = true,
   runningBalance,
 }) => {
+  const { displayCurrency } = useTypedSelector((state) => state.user);
+  const { categories } = useTypedSelector((state) => state.categories);
 
   const formatAmount = (amount: number, type: string) => {
     // Use account_currency as primary, fallback to currency, then to 'USD'
@@ -59,21 +63,58 @@ export const TransactionItem: React.FC<TransactionItemProps> = ({
   const getCategoryIcon = (categoryName?: string) => {
     if (!categoryName) return '💰';
     
-    const iconMap: { [key: string]: string } = {
-      'food & dining': '🍽️',
-      'transportation': '🚗',
-      'shopping': '🛍️',
-      'entertainment': '🎬',
-      'utilities': '⚡',
-      'healthcare': '🏥',
-      'education': '📚',
-      'travel': '✈️',
-      'salary': '💼',
-      'investment': '📈',
-      'other': '💰',
-    };
+    // Handle Goal Contribution category with special icon
+    // Use the full isGoalContribution function to check all criteria (tags, description, category)
+    if (isGoalContribution(transaction)) {
+      return getGoalContributionIcon();
+    }
     
-    return iconMap[categoryName.toLowerCase()] || '💰';
+    // First, try to find the category in the categories store
+    const category = categories.find(cat => cat.name.toLowerCase() === categoryName.toLowerCase());
+    
+    // If category has an icon property, map it to emoji
+    if (category?.icon) {
+      const iconMap: { [key: string]: string } = {
+        'utensils': '🍽️',
+        'car': '🚗',
+        'shopping-bag': '🛍️',
+        'film': '🎬',
+        'zap': '⚡',
+        'heart': '🏥',
+        'book': '📚',
+        'plane': '✈️',
+        'briefcase': '💼',
+        'trending-up': '📈',
+        'home': '🏠',
+        'phone': '📱',
+        'gift': '🎁',
+        'coffee': '☕',
+        'music': '🎵',
+        'camera': '📷',
+        'gamepad': '🎮',
+        'dumbbell': '🏋️',
+        'palette': '🎨',
+        'tool': '🔧',
+        'tag': '🏷️',
+      };
+      
+      return iconMap[category.icon] || '🏷️';
+    }
+    
+    // Fallback to name-based icons for default categories
+    const name = categoryName.toLowerCase();
+    if (name.includes('food') || name.includes('dining')) return '🍽️';
+    if (name.includes('transport') || name.includes('car')) return '🚗';
+    if (name.includes('shop') || name.includes('retail')) return '🛍️';
+    if (name.includes('entertainment') || name.includes('movie')) return '🎬';
+    if (name.includes('utilities') || name.includes('electric')) return '⚡';
+    if (name.includes('health') || name.includes('medical')) return '🏥';
+    if (name.includes('education') || name.includes('school')) return '📚';
+    if (name.includes('travel') || name.includes('vacation')) return '✈️';
+    if (name.includes('salary') || name.includes('income')) return '💼';
+    if (name.includes('investment') || name.includes('stock')) return '📈';
+    
+    return '💰'; // Default fallback
   };
 
   const getAmountColor = () => {
@@ -140,7 +181,16 @@ export const TransactionItem: React.FC<TransactionItemProps> = ({
       activeOpacity={0.8}
     >
       <View style={styles.leftSection}>
-        <View style={[styles.iconContainer, { backgroundColor: transaction.type.toLowerCase() === 'income' ? colors.income + '20' : colors.expense + '20' }]}>
+        <View style={[
+          styles.iconContainer, 
+          { 
+            backgroundColor: isGoalContribution(transaction) 
+              ? getGoalContributionColor() + '20' 
+              : transaction.type.toLowerCase() === 'income' 
+                ? colors.income + '20' 
+                : colors.expense + '20' 
+          }
+        ]}>
           <Text style={styles.icon}>
             {getCategoryIcon(transaction.category_name)}
           </Text>
@@ -149,10 +199,13 @@ export const TransactionItem: React.FC<TransactionItemProps> = ({
           <Text style={styles.description} numberOfLines={1}>
             {getDisplayDescription()}
           </Text>
-          <View style={styles.metadata}>
-            <Text style={styles.category}>
-              {transaction.category_name || 'Uncategorized'}
-            </Text>
+                      <View style={styles.metadata}>
+              <Text style={[
+                styles.category,
+                isGoalContribution(transaction) && { color: getGoalContributionColor() }
+              ]}>
+                {getGoalContributionDisplayName(transaction)}
+              </Text>
             {showAccount && transaction.account_name && (
               <>
                 <Text style={styles.separator}>•</Text>

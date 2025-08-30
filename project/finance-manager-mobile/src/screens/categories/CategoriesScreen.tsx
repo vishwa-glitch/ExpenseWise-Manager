@@ -18,6 +18,8 @@ import { LoadingSpinner } from '../../components/common/LoadingSpinner';
 import { CustomButton } from '../../components/common/CustomButton';
 import { colors, typography, spacing } from '../../constants/colors';
 import { FREE_TIER_LIMITS } from '../../utils/subscriptionUtils';
+import OnboardingOverlay from '../../components/common/OnboardingOverlay';
+import { useOnboardingOverlay } from '../../hooks/useOnboardingOverlay';
 
 
 
@@ -28,6 +30,9 @@ interface CategoriesScreenProps {
 const CategoriesScreen: React.FC<CategoriesScreenProps> = ({ navigation }) => {
   const dispatch = useAppDispatch();
   const [refreshing, setRefreshing] = useState(false);
+  
+  // Onboarding overlay hook
+  const onboardingOverlay = useOnboardingOverlay();
 
   const { categories, isLoading } = useTypedSelector((state) => state.categories);
   const { profile } = useTypedSelector((state) => state.user);
@@ -375,6 +380,19 @@ const CategoriesScreen: React.FC<CategoriesScreenProps> = ({ navigation }) => {
                  contentContainerStyle={styles.listContent}
          showsVerticalScrollIndicator={false}
        />
+
+       {/* Onboarding Overlay - show for step 6 (categories) */}
+       {onboardingOverlay.isVisible && onboardingOverlay.currentStep === 6 && (
+         <OnboardingOverlay
+           isVisible={onboardingOverlay.isVisible}
+           currentStep={onboardingOverlay.currentStep}
+           totalSteps={onboardingOverlay.totalSteps}
+           steps={onboardingOverlay.steps}
+           onNext={onboardingOverlay.handleNext}
+           onSkip={onboardingOverlay.handleSkip}
+           onComplete={onboardingOverlay.handleComplete}
+         />
+       )}
      </SafeAreaView>
    );
 };

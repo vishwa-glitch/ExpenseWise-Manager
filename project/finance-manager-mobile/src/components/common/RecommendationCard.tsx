@@ -110,7 +110,7 @@ export const RecommendationCard: React.FC<RecommendationCardProps> = ({
         <View style={styles.savingsContainer}>
           <Text style={styles.savingsLabel}>Potential Savings:</Text>
           <Text style={styles.savingsAmount}>
-            {formatAmount(recommendation.potential_savings) || '$0'}
+            {formatAmount(recommendation.potential_savings) || formatCurrency(0, displayCurrency)}
           </Text>
         </View>
       ) : null}

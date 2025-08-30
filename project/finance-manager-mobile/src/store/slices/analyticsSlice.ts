@@ -291,7 +291,8 @@ const analyticsSlice = createSlice({
       })
       // Fetch category breakdown
       .addCase(fetchCategoryBreakdown.fulfilled, (state, action) => {
-        state.categoryBreakdown = action.payload.breakdown || [];
+        // Handle both new API structure (data array) and legacy structure (breakdown property)
+        state.categoryBreakdown = action.payload.data || action.payload.breakdown || [];
       })
       // Fetch dashboard insights
       .addCase(fetchDashboardInsights.pending, (state) => {
@@ -300,7 +301,8 @@ const analyticsSlice = createSlice({
       })
       .addCase(fetchDashboardInsights.fulfilled, (state, action) => {
         state.isLoading = false;
-        state.dashboardInsights = action.payload;
+        // Handle both new API structure (data property) and legacy structure (direct payload)
+        state.dashboardInsights = action.payload.data || action.payload;
       })
       .addCase(fetchDashboardInsights.rejected, (state, action) => {
         state.isLoading = false;
@@ -337,7 +339,8 @@ const analyticsSlice = createSlice({
       .addCase(fetchCategoryBreakdownByPeriod.fulfilled, (state, action) => {
         state.isLoading = false;
         const { period, data } = action.payload;
-        state.categoryBreakdownByPeriod[period] = data;
+        // Handle both new API structure (data.data) and legacy structure (data)
+        state.categoryBreakdownByPeriod[period] = data.data || data;
       })
       .addCase(fetchCategoryBreakdownByPeriod.rejected, (state, action) => {
         state.isLoading = false;

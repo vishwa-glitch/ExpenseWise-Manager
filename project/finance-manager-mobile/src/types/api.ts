@@ -101,3 +101,116 @@ export interface ApiResponse<T> {
   success: boolean;
   message?: string;
 }
+
+// Budget Analytics Types
+export interface BudgetAnalyticsResponse {
+  summary: {
+    total_budgets: number;
+    active_budgets: number;
+    total_budget_amount: number;
+    total_spent_amount: number;
+    total_remaining_amount: number;
+    avg_alert_threshold: number;
+  };
+  category_performance: Array<{
+    id: string;
+    budget_amount: number;
+    category_name: string;
+    category_color: string;
+    spent_amount: number;
+    remaining_amount: number;
+    percentage_used: number;
+    variance: number;
+    variance_percentage: number;
+    status: 'under_budget' | 'on_track' | 'approaching_limit' | 'over_budget';
+    alert_threshold: number;
+  }>;
+  monthly_trends: Array<{
+    month: string;
+    budget_count: number;
+    total_budget_amount: number;
+    total_spent_amount: number;
+    total_remaining_amount: number;
+    percentage_used: number;
+    avg_alert_threshold: number;
+  }>;
+  efficiency_metrics: {
+    overall_efficiency: number;
+    budgets_on_track: number;
+    budgets_at_risk: number;
+    budgets_over_limit: number;
+    avg_variance_percentage: number;
+  };
+  period: string;
+  analysis_date: string;
+}
+
+export interface BudgetVarianceReportResponse {
+  period: {
+    start_date: string;
+    end_date: string;
+    days: number;
+  };
+  summary: {
+    total_budgets: number;
+    total_budget_amount: number;
+    total_actual_spent: number;
+    total_variance: number;
+    overall_efficiency: number;
+    variance_distribution: {
+      under_budget: number;
+      on_budget: number;
+      over_budget: number;
+      high_variance: number;
+      medium_variance: number;
+      low_variance: number;
+    };
+  };
+  detailed_analysis: Array<{
+    budget_id: string;
+    category_id: string;
+    category_name: string;
+    category_color: string;
+    period: string;
+    start_date: string;
+    end_date: string;
+    budget_amount: number;
+    actual_spent: number;
+    variance: number;
+    variance_percentage: number;
+    efficiency_percentage: number;
+    variance_severity: 'high' | 'medium' | 'low' | 'none';
+    alert_threshold: number;
+    is_active: boolean;
+    transaction_count: number;
+    avg_transaction_amount: number;
+    min_transaction_amount: number;
+    max_transaction_amount: number;
+  }>;
+  top_over_budgets: Array<{
+    budget_id: string;
+    category_name: string;
+    budget_amount: number;
+    actual_spent: number;
+    variance: number;
+    variance_percentage: number;
+  }>;
+  top_under_budgets: Array<{
+    budget_id: string;
+    category_name: string;
+    budget_amount: number;
+    actual_spent: number;
+    variance: number;
+    variance_percentage: number;
+  }>;
+  category_summary: Array<{
+    category_name: string;
+    category_color: string;
+    budget_count: number;
+    total_budget_amount: number;
+    total_actual_spent: number;
+    total_variance: number;
+    avg_efficiency: number;
+  }>;
+  report_generated: string;
+}

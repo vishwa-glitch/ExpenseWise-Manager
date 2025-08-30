@@ -14,6 +14,7 @@ import { ChartLoadingSkeleton } from '../common/LoadingSkeleton';
 import { colors, typography, spacing } from '../../constants/colors';
 import { fetchCategoryBreakdown } from '../../store/slices/analyticsSlice';
 import { formatCurrency } from '../../utils/currency';
+import { getGoalContributionColor } from '../../utils/goalUtils';
 
 interface CategoryBreakdownSectionProps {
   dashboardInsights: any;
@@ -66,73 +67,86 @@ export const CategoryBreakdownSection: React.FC<CategoryBreakdownSectionProps> =
 
   const getCategoryBreakdownData = (): CategoryData[] => {
     try {
-      // Check if we have dashboard insights with categories
-      if (dashboardInsights?.top_categories && Array.isArray(dashboardInsights.top_categories)) {
-        const validCategories = dashboardInsights.top_categories.filter(
-          (category: any) => category && typeof category.amount === 'number' && category.amount > 0
-        );
+      // Helper function to process category data with proper goal contribution handling
+      const processCategoryData = (categories: any[]): CategoryData[] => {
+              const validCategories = categories.filter(
+        (category: any) => {
+          const amount = category?.total_amount || category?.amount;
+          return category && 
+                 (typeof amount === 'number' || typeof amount === 'string') && 
+                 parseFloat(amount) > 0;
+        }
+      );
         
         if (validCategories.length > 0) {
-          return validCategories.map((category: any, index: number) => ({
-            name: category?.name || 'Unknown',
-            amount: category?.amount || 0,
-            color: colors.categories[index % colors.categories.length],
-            legendFontColor: colors.text,
-            legendFontSize: 12,
-          }));
+          return validCategories.map((category: any, index: number) => {
+            // Handle both new API structure (category_name, total_amount) and legacy structure (name, amount)
+            let categoryName = category?.category_name || category?.name || 'Unknown';
+            let categoryAmount = category?.total_amount || category?.amount || 0;
+            let categoryColor = category?.color || colors.categories[index % colors.categories.length];
+            
+            // Handle Goal Contribution category with special color
+            if (categoryName.toLowerCase() === 'goal contribution' || 
+                categoryName.toLowerCase().includes('goal contribution')) {
+              categoryName = 'Goal Contribution';
+              categoryColor = getGoalContributionColor();
+            }
+            // Handle Uncategorized category with gray color
+            else if (categoryName.toLowerCase().includes('uncategorized') || 
+                     categoryName.toLowerCase().includes('unknown') ||
+                     categoryName === 'null' ||
+                     categoryName === '') {
+              categoryName = 'Uncategorized';
+              categoryColor = '#9E9E9E'; // Gray color for uncategorized
+            }
+            
+            return {
+              name: categoryName,
+              amount: typeof categoryAmount === 'string' ? parseFloat(categoryAmount) : categoryAmount,
+              color: categoryColor,
+              legendFontColor: colors.text,
+              legendFontSize: 12,
+            };
+          });
         }
+        return [];
+      };
+
+      // Check if we have dashboard insights with categories (new API structure)
+      if (dashboardInsights?.data?.top_categories && Array.isArray(dashboardInsights.data.top_categories)) {
+        const processedData = processCategoryData(dashboardInsights.data.top_categories);
+        if (processedData.length > 0) return processedData;
       }
       
-      // Check if we have category breakdown data
+      // Check if we have dashboard insights with categories (legacy structure)
+      if (dashboardInsights?.top_categories && Array.isArray(dashboardInsights.top_categories)) {
+        const processedData = processCategoryData(dashboardInsights.top_categories);
+        if (processedData.length > 0) return processedData;
+      }
+      
+      // Check if we have category breakdown data (new API structure)
+      if (categoryBreakdown?.data && Array.isArray(categoryBreakdown.data)) {
+        const processedData = processCategoryData(categoryBreakdown.data);
+        if (processedData.length > 0) return processedData;
+      }
+      
+      // Check if we have category breakdown data (legacy structure)
       if (categoryBreakdown && Array.isArray(categoryBreakdown)) {
-        const validCategories = categoryBreakdown.filter(
-          (category: any) => category && typeof category.amount === 'number' && category.amount > 0
-        );
-        
-        if (validCategories.length > 0) {
-          return validCategories.map((category: any, index: number) => ({
-            name: category?.name || 'Unknown',
-            amount: category?.amount || 0,
-            color: colors.categories[index % colors.categories.length],
-            legendFontColor: colors.text,
-            legendFontSize: 12,
-          }));
-        }
+        const processedData = processCategoryData(categoryBreakdown);
+        if (processedData.length > 0) return processedData;
       }
       
       // Check if categoryBreakdown is an object with breakdown property
       if (categoryBreakdown && typeof categoryBreakdown === 'object' && !Array.isArray(categoryBreakdown) && (categoryBreakdown as any).breakdown) {
         const breakdownArray = Array.isArray((categoryBreakdown as any).breakdown) ? (categoryBreakdown as any).breakdown : [];
-        const validCategories = breakdownArray.filter(
-          (category: any) => category && typeof category.amount === 'number' && category.amount > 0
-        );
-        
-        if (validCategories.length > 0) {
-          return validCategories.map((category: any, index: number) => ({
-            name: category?.name || 'Unknown',
-            amount: category?.amount || 0,
-            color: colors.categories[index % colors.categories.length],
-            legendFontColor: colors.text,
-            legendFontSize: 12,
-          }));
-        }
+        const processedData = processCategoryData(breakdownArray);
+        if (processedData.length > 0) return processedData;
       }
       
       // Check if dashboardInsights has categories in a different structure
       if (dashboardInsights?.categories && Array.isArray(dashboardInsights.categories)) {
-        const validCategories = dashboardInsights.categories.filter(
-          (category: any) => category && typeof category.amount === 'number' && category.amount > 0
-        );
-        
-        if (validCategories.length > 0) {
-          return validCategories.map((category: any, index: number) => ({
-            name: category?.name || 'Unknown',
-            amount: category?.amount || 0,
-            color: colors.categories[index % colors.categories.length],
-            legendFontColor: colors.text,
-            legendFontSize: 12,
-          }));
-        }
+        const processedData = processCategoryData(dashboardInsights.categories);
+        if (processedData.length > 0) return processedData;
       }
       
       // Return empty array if no real data available

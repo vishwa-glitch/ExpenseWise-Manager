@@ -41,7 +41,7 @@ const TabBarIcon: React.FC<{ name: string; focused: boolean }> = ({ name, focuse
   const iconMap: { [key: string]: string } = {
     Dashboard: '🏠',
     Transactions: '📋',
-    Goals: '🎯',
+    'Goals & Budget': '🎯',
     More: '☰',
   };
 
@@ -152,7 +152,7 @@ const TabNavigator: React.FC = () => {
       <Tab.Screen 
         name="Goals" 
         component={GoalsNavigator}
-        options={{ tabBarLabel: 'Goals' }}
+        options={{ tabBarLabel: 'Goals & Budget' }}
       />
       <Tab.Screen 
         name="More" 

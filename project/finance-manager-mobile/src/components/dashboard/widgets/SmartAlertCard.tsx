@@ -160,19 +160,20 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     alignSelf: 'flex-start',
-    backgroundColor: colors.warning,
+    backgroundColor: colors.primary,
     paddingVertical: spacing.sm,
     paddingHorizontal: spacing.md,
     borderRadius: 7,
   },
   detailsButtonText: {
     ...typography.caption,
-    color: colors.text,
+    color: colors.background,
     fontWeight: '600',
     fontSize: 11,
   },
   arrowIcon: {
     fontSize: 14,
     marginLeft: spacing.xs,
+    color: colors.background,
   },
 });

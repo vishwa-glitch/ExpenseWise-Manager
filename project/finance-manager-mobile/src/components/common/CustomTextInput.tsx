@@ -21,9 +21,12 @@ interface CustomTextInputProps {
   multiline?: boolean;
   numberOfLines?: number;
   style?: ViewStyle;
+  inputStyle?: ViewStyle;
   leftIcon?: React.ReactNode;
   rightIcon?: React.ReactNode;
   onRightIconPress?: () => void;
+  onFocus?: () => void;
+  onBlur?: () => void;
 }
 
 export const CustomTextInput: React.FC<CustomTextInputProps> = ({
@@ -38,11 +41,24 @@ export const CustomTextInput: React.FC<CustomTextInputProps> = ({
   multiline = false,
   numberOfLines = 1,
   style,
+  inputStyle,
   leftIcon,
   rightIcon,
   onRightIconPress,
+  onFocus,
+  onBlur,
 }) => {
   const [isFocused, setIsFocused] = useState(false);
+
+  const handleFocus = () => {
+    setIsFocused(true);
+    onFocus?.();
+  };
+
+  const handleBlur = () => {
+    setIsFocused(false);
+    onBlur?.();
+  };
 
   return (
     <View style={[styles.container, style]}>
@@ -61,6 +77,7 @@ export const CustomTextInput: React.FC<CustomTextInputProps> = ({
             styles.input,
             leftIcon && styles.inputWithLeftIcon,
             rightIcon && styles.inputWithRightIcon,
+            inputStyle,
           ]}
           value={value}
           onChangeText={onChangeText}
@@ -71,8 +88,8 @@ export const CustomTextInput: React.FC<CustomTextInputProps> = ({
           editable={!disabled}
           multiline={multiline}
           numberOfLines={numberOfLines}
-          onFocus={() => setIsFocused(true)}
-          onBlur={() => setIsFocused(false)}
+          onFocus={handleFocus}
+          onBlur={handleBlur}
         />
         {rightIcon && (
           <TouchableOpacity
@@ -107,6 +124,7 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     backgroundColor: colors.background,
     minHeight: 48,
+    width: '100%',
   },
   focused: {
     borderColor: colors.primary,
@@ -125,6 +143,7 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.sm,
     ...typography.body,
     color: colors.text,
+    width: '100%',
   },
   inputWithLeftIcon: {
     paddingLeft: spacing.xs,

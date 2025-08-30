@@ -15,6 +15,7 @@ import { CustomButton } from '../../components/common/CustomButton';
 import { LoadingSpinner } from '../../components/common/LoadingSpinner';
 import { colors, typography, spacing } from '../../constants/colors';
 import { formatCurrency } from '../../utils/currency';
+import { isGoalContribution, getGoalContributionDisplayName, getGoalContributionIcon } from '../../utils/goalUtils';
 
 interface TransactionDetailScreenProps {
   navigation: any;
@@ -48,15 +49,21 @@ const TransactionDetailScreen: React.FC<TransactionDetailScreenProps> = ({ navig
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
     return date.toLocaleDateString('en-IN', {
-      weekday: 'long',
+      weekday: 'short',
       year: 'numeric',
-      month: 'long',
+      month: 'short',
       day: 'numeric',
     });
   };
 
   const getCategoryIcon = (categoryName?: string) => {
     if (!categoryName) return '💰';
+    
+    // Handle Goal Contribution category with special icon
+    if (categoryName.toLowerCase() === 'goal contribution' || 
+        categoryName.toLowerCase().includes('goal contribution')) {
+      return getGoalContributionIcon();
+    }
     
     const iconMap: { [key: string]: string } = {
       'food & dining': '🍽️',
@@ -139,7 +146,7 @@ const TransactionDetailScreen: React.FC<TransactionDetailScreenProps> = ({ navig
             </Text>
           </View>
           <View style={styles.headerInfo}>
-            <Text style={styles.description}>{transaction.description}</Text>
+            <Text style={styles.description}>{transaction.category_name || 'Uncategorized'}</Text>
             <Text style={[styles.amount, { color: getAmountColor() }]}>
               {formatAmount(transaction.amount, transaction.type)}
             </Text>
@@ -179,7 +186,7 @@ const TransactionDetailScreen: React.FC<TransactionDetailScreenProps> = ({ navig
                 {getCategoryIcon(transaction.category_name)}
               </Text>
               <Text style={styles.detailValue}>
-                {transaction.category_name || 'Uncategorized'}
+                {getGoalContributionDisplayName(transaction)}
               </Text>
             </View>
           </View>
@@ -225,13 +232,13 @@ const TransactionDetailScreen: React.FC<TransactionDetailScreenProps> = ({ navig
           
           <View style={styles.actionButtons}>
             <CustomButton
-              title="Edit Transaction"
+              title="Edit"
               onPress={handleEdit}
               variant="outline"
               style={styles.actionButton}
             />
             <CustomButton
-              title="Delete Transaction"
+              title="Delete"
               onPress={handleDelete}
               variant="danger"
               style={styles.actionButton}
@@ -254,112 +261,114 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.md,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
     borderBottomWidth: 1,
     borderBottomColor: colors.border,
   },
   backButton: {
-    padding: spacing.sm,
+    padding: spacing.xs,
   },
   backIcon: {
-    fontSize: 24,
+    fontSize: 20,
     color: colors.text,
   },
   headerTitle: {
-    ...typography.h3,
+    fontSize: 18,
+    fontWeight: '600',
     color: colors.text,
     flex: 1,
     textAlign: 'center',
   },
   editButton: {
-    padding: spacing.sm,
+    padding: spacing.xs,
   },
   editIcon: {
-    fontSize: 20,
+    fontSize: 16,
   },
   scrollView: {
     flex: 1,
   },
   scrollContent: {
-    padding: spacing.lg,
+    padding: spacing.md,
   },
   transactionHeader: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: colors.card,
-    borderRadius: 16,
-    padding: spacing.xl,
-    marginBottom: spacing.lg,
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 4,
-    },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 8,
-  },
-  iconContainer: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
-    backgroundColor: colors.surface,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: spacing.lg,
-  },
-  categoryIcon: {
-    fontSize: 28,
-  },
-  headerInfo: {
-    flex: 1,
-  },
-  description: {
-    ...typography.h2,
-    color: colors.text,
-    marginBottom: spacing.sm,
-  },
-  amount: {
-    ...typography.h1,
-    fontWeight: 'bold',
-  },
-  detailsSection: {
-    backgroundColor: colors.card,
     borderRadius: 12,
-    padding: spacing.lg,
-    marginBottom: spacing.lg,
+    padding: spacing.md,
+    marginBottom: spacing.md,
     shadowColor: '#000',
     shadowOffset: {
       width: 0,
       height: 2,
     },
     shadowOpacity: 0.1,
-    shadowRadius: 3.84,
-    elevation: 5,
+    shadowRadius: 4,
+    elevation: 4,
+  },
+  iconContainer: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: colors.surface,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: spacing.md,
+  },
+  categoryIcon: {
+    fontSize: 20,
+  },
+  headerInfo: {
+    flex: 1,
+  },
+  description: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: colors.text,
+    marginBottom: spacing.xs,
+  },
+  amount: {
+    fontSize: 22,
+    fontWeight: 'bold',
+  },
+  detailsSection: {
+    backgroundColor: colors.card,
+    borderRadius: 8,
+    padding: spacing.md,
+    marginBottom: spacing.md,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 1,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+    elevation: 2,
   },
   sectionTitle: {
-    ...typography.h3,
+    fontSize: 16,
+    fontWeight: '600',
     color: colors.text,
-    marginBottom: spacing.lg,
-    fontWeight: 'bold',
+    marginBottom: spacing.sm,
   },
   detailItem: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingVertical: spacing.md,
+    paddingVertical: spacing.sm,
     borderBottomWidth: 1,
     borderBottomColor: colors.border,
   },
   detailLabel: {
-    ...typography.body,
+    fontSize: 14,
     color: colors.textSecondary,
-    fontWeight: '600',
+    fontWeight: '500',
     flex: 1,
   },
   detailValue: {
-    ...typography.body,
+    fontSize: 14,
     color: colors.text,
     flex: 2,
     textAlign: 'right',
@@ -371,8 +380,8 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-end',
   },
   typeIcon: {
-    fontSize: 16,
-    marginRight: spacing.sm,
+    fontSize: 14,
+    marginRight: spacing.xs,
   },
   categoryContainer: {
     flexDirection: 'row',
@@ -388,40 +397,40 @@ const styles = StyleSheet.create({
   },
   tag: {
     backgroundColor: colors.surface,
-    paddingHorizontal: spacing.sm,
-    paddingVertical: spacing.xs,
-    borderRadius: 12,
+    paddingHorizontal: spacing.xs,
+    paddingVertical: 2,
+    borderRadius: 8,
     marginLeft: spacing.xs,
     marginBottom: spacing.xs,
   },
   tagText: {
-    ...typography.small,
+    fontSize: 10,
     color: colors.text,
     fontWeight: '500',
   },
   actionsSection: {
     backgroundColor: colors.card,
-    borderRadius: 12,
-    padding: spacing.lg,
+    borderRadius: 8,
+    padding: spacing.md,
     shadowColor: '#000',
     shadowOffset: {
       width: 0,
-      height: 2,
+      height: 1,
     },
     shadowOpacity: 0.1,
-    shadowRadius: 3.84,
-    elevation: 5,
+    shadowRadius: 2,
+    elevation: 2,
   },
   actionButtons: {
     flexDirection: 'row',
     justifyContent: 'space-between',
+    gap: spacing.sm,
   },
   actionButton: {
     flex: 1,
-    marginHorizontal: spacing.xs,
   },
   bottomSpacing: {
-    height: spacing.xl,
+    height: spacing.md,
   },
 });
 

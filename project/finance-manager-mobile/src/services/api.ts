@@ -308,6 +308,12 @@ class ApiService {
 
   async register(userData: any) {
     console.log('📝 Attempting registration for:', userData.email);
+    console.log('🌐 API Configuration:', {
+      baseURL: this.api.defaults.baseURL,
+      timeout: this.api.defaults.timeout,
+      headers: this.api.defaults.headers
+    });
+    console.log('📤 Registration data:', userData);
     
     // Clear any existing tokens before registration to ensure clean state
     await SecureStore.deleteItemAsync('access_token').catch(() => {});
@@ -315,6 +321,7 @@ class ApiService {
     console.log('🧹 Cleared existing tokens before registration');
     
     try {
+      console.log('🚀 Making API request to:', `${this.api.defaults.baseURL}${API_ENDPOINTS.AUTH.REGISTER}`);
       const response = await this.api.post(API_ENDPOINTS.AUTH.REGISTER, userData);
       
       console.log('📥 Registration response received:', {
@@ -377,7 +384,19 @@ class ApiService {
       return response.data;
     } catch (error: any) {
       console.error('❌ Registration error:', error);
-      console.error('❌ Registration error response:', error.response?.data);
+      console.error('❌ Registration error details:', {
+        message: error.message,
+        code: error.code,
+        status: error.response?.status,
+        statusText: error.response?.statusText,
+        data: error.response?.data,
+        config: {
+          url: error.config?.url,
+          method: error.config?.method,
+          timeout: error.config?.timeout,
+          headers: error.config?.headers
+        }
+      });
       
       // Handle specific error cases
       if (error.response?.status === 409) {
@@ -687,8 +706,13 @@ class ApiService {
   }
 
   async createBudget(budgetData: any) {
-    const response = await this.api.post(API_ENDPOINTS.BUDGETS.CREATE, budgetData);
-    return response.data;
+    try {
+      const response = await this.api.post(API_ENDPOINTS.BUDGETS.CREATE, budgetData);
+      return response.data;
+    } catch (error: any) {
+      // Re-throw the error so it can be handled by the Redux slice
+      throw error;
+    }
   }
 
   async updateBudget(id: string, budgetData: any) {
@@ -743,6 +767,17 @@ class ApiService {
     }
   }
 
+  // Budget Analytics methods
+  async getBudgetAnalytics(period = "current_month", months = 6) {
+    const response = await this.api.get(API_ENDPOINTS.BUDGETS.ANALYTICS(period, months));
+    return response.data;
+  }
+
+  async getBudgetVarianceReport(startDate?: string, endDate?: string, includeInactive = false) {
+    const response = await this.api.get(API_ENDPOINTS.BUDGETS.VARIANCE_REPORT(startDate, endDate, includeInactive));
+    return response.data;
+  }
+
   // Goal methods
   async getGoals() {
     const response = await this.api.get(API_ENDPOINTS.GOALS.LIST);
@@ -772,6 +807,7 @@ class ApiService {
       type: 'expense' as const, // Goal contributions are typically expenses
       description: description || 'Goal contribution',
       transaction_date: new Date().toISOString().split('T')[0],
+      tags: ['goal-contribution'], // Add special tag to identify goal contributions
     };
 
     // Note: category_id is omitted for goal contributions - backend will handle default category

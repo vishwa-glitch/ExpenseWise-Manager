@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { createMaterialTopTabNavigator } from '@react-navigation/material-top-tabs';
 import { createStackNavigator } from '@react-navigation/stack';
 import { View, Text, StyleSheet, SafeAreaView, TouchableOpacity } from 'react-native';
@@ -8,12 +8,26 @@ import AddEditTransactionScreen from '../screens/transactions/AddEditTransaction
 import TransactionCalendarScreen from '../screens/transactions/TransactionCalendarScreen';
 import StatementImportScreen from '../screens/statements/StatementImportScreen';
 import { colors, typography, spacing } from '../constants/colors';
+import { useTypedSelector } from '../hooks/useTypedSelector';
 
 const Tab = createMaterialTopTabNavigator();
 const Stack = createStackNavigator();
 
 // Top Tab Navigator for main transaction views
 const TransactionTopTabs: React.FC<{ navigation: any }> = ({ navigation }) => {
+  const { currentStep } = useTypedSelector((state) => state.onboarding);
+  
+  // Auto-switch to Calendar tab when onboarding step is 3 (calendar)
+  useEffect(() => {
+    if (currentStep === 3) {
+      // Small delay to ensure navigation is ready
+      const timer = setTimeout(() => {
+        navigation.navigate('Calendar');
+      }, 100);
+      return () => clearTimeout(timer);
+    }
+  }, [currentStep, navigation]);
+
   return (
     <View style={styles.container}>
       {/* Custom Header */}

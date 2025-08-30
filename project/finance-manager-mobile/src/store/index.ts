@@ -8,7 +8,9 @@ import budgetsSlice from './slices/budgetsSlice';
 import goalsSlice from './slices/goalsSlice';
 import recommendationsSlice from './slices/recommendationsSlice';
 import analyticsSlice from './slices/analyticsSlice';
+import budgetAnalyticsSlice from './slices/budgetAnalyticsSlice';
 import uiSlice from './slices/uiSlice';
+import onboardingSlice from './slices/onboardingSlice';
 
 export const store = configureStore({
   reducer: {
@@ -21,7 +23,9 @@ export const store = configureStore({
     goals: goalsSlice,
     recommendations: recommendationsSlice,
     analytics: analyticsSlice,
+    budgetAnalytics: budgetAnalyticsSlice,
     ui: uiSlice,
+    onboarding: onboardingSlice,
   },
   middleware: (getDefaultMiddleware) =>
     getDefaultMiddleware({

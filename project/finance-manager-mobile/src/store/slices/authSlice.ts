@@ -1,6 +1,7 @@
 import { createSlice, createAsyncThunk, PayloadAction } from '@reduxjs/toolkit';
 import { apiService } from '../../services/api';
 import * as SecureStore from 'expo-secure-store';
+import { resetOnboarding } from './onboardingSlice';
 
 interface AuthState {
   isAuthenticated: boolean;
@@ -36,8 +37,12 @@ export const login = createAsyncThunk(
 
 export const register = createAsyncThunk(
   'auth/register',
-  async (userData: any) => {
+  async (userData: any, { dispatch }) => {
     const response = await apiService.register(userData);
+    
+    // Reset onboarding for new users
+    dispatch(resetOnboarding());
+    
     return { ...response, registrationData: userData };
   }
 );

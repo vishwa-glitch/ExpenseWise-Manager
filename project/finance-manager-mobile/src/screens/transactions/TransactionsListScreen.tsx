@@ -21,6 +21,8 @@ import { colors, spacing } from "../../constants/colors";
 import { formatCurrency } from "../../utils/currency";
 import { Transaction } from "../../types/transaction";
 import { ExportSection } from "../../components/export";
+import OnboardingOverlay from "../../components/common/OnboardingOverlay";
+import { useOnboardingOverlay } from "../../hooks/useOnboardingOverlay";
 
 // Enhanced filter components
 import SearchBar from "../../components/transactions/SearchBar";
@@ -41,6 +43,9 @@ const TransactionsListScreen: React.FC<TransactionsListScreenProps> = ({
   route,
 }) => {
   const dispatch = useAppDispatch();
+  
+  // Onboarding overlay hook
+  const onboardingOverlay = useOnboardingOverlay();
 
   const [refreshing, setRefreshing] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
@@ -69,6 +74,19 @@ const TransactionsListScreen: React.FC<TransactionsListScreenProps> = ({
     hasActiveFilters: hasActiveFiltersFromHook,
     getFilterDescription,
   } = useTransactionFilters();
+
+  // Apply route parameters to filters when they change
+  useEffect(() => {
+    if (filterDate) {
+      // Single date filter - set custom date range for the same day
+      setCustomDateRange(filterDate, filterDate);
+      setTimePeriod('custom');
+    } else if (startDate && endDate) {
+      // Date range filter
+      setCustomDateRange(startDate, endDate);
+      setTimePeriod('custom');
+    }
+  }, [filterDate, startDate, endDate, setCustomDateRange, setTimePeriod]);
 
   // Debounced search
   const { searchQuery, setSearchQuery: setLocalSearchQuery } =
@@ -753,22 +771,36 @@ const TransactionsListScreen: React.FC<TransactionsListScreenProps> = ({
         <Text style={styles.fabIcon}>+</Text>
       </TouchableOpacity>
 
-             {/* Filters Modal */}
-       {renderFiltersModal()}
-     </View>
-   );
+      {/* Onboarding Overlay - show for step 2 (transactions) only */}
+      {onboardingOverlay.isVisible && onboardingOverlay.currentStep === 2 && (
+        <OnboardingOverlay
+          isVisible={onboardingOverlay.isVisible}
+          currentStep={onboardingOverlay.currentStep}
+          totalSteps={onboardingOverlay.totalSteps}
+          steps={onboardingOverlay.steps}
+          onNext={onboardingOverlay.handleNext}
+          onSkip={onboardingOverlay.handleSkip}
+          onComplete={onboardingOverlay.handleComplete}
+        />
+      )}
+
+      {/* Filters Modal */}
+      {renderFiltersModal()}
+    </View>
+  );
 };
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.background,
+    backgroundColor: colors.background
   },
   listContent: {
     flexGrow: 1,
   },
   header: {
     padding: spacing.md,
+    paddingTop: spacing.lg, // Extra top padding for header
     backgroundColor: colors.background,
   },
   searchSection: {

@@ -119,7 +119,7 @@ interface Budget {
   user_id: string;
   category_id: string;
   amount: number;
-  period: 'weekly' | 'monthly' | 'yearly';
+  period: 'weekly' | 'monthly' | 'yearly' | 'custom';
   start_date: string;
   end_date: string;
   alert_threshold: number; // 0.0 to 1.0
@@ -711,13 +711,348 @@ const createBudget = async (accessToken, budgetData) => {
     body: JSON.stringify({
       category_id: "uuid",
       amount: 600.00,
-      period: "monthly", // weekly, monthly, yearly
+      period: "monthly", // weekly, monthly, yearly, custom
       start_date: "2024-02-01",
       end_date: "2024-02-29",
       alert_threshold: 0.8 // 80%
     })
   });
+  
+  const result = await response.json();
+  
+  // Handle duplicate category prevention
+  if (response.status === 409) {
+    console.log('Duplicate budget prevented:', result.error);
+    console.log('Existing budget ID:', result.existing_budget_id);
+  }
+  
+  return result;
+};
+```
+
+### Get Budget Analytics
+```javascript
+// GET /api/budgets/analytics?period=current_month&months=6
+const getBudgetAnalytics = async (accessToken, period = 'current_month', months = 6) => {
+  const params = new URLSearchParams({
+    period: period,
+    months: months.toString()
+  });
+
+  const response = await fetch(`${API_BASE_URL}/budgets/analytics?${params}`, {
+    headers: { 'Authorization': `Bearer ${accessToken}` }
+  });
   return response.json();
+};
+
+// Response
+{
+  "summary": {
+    "total_budgets": 5,
+    "active_budgets": 4,
+    "total_budget_amount": 2500.00,
+    "total_spent_amount": 1800.50,
+    "total_remaining_amount": 699.50,
+    "avg_alert_threshold": 0.8
+  },
+  "category_performance": [
+    {
+      "category_id": "uuid",
+      "category_name": "Food & Dining",
+      "category_color": "#FF6B6B",
+      "budget_count": 1,
+      "total_budget_amount": 500.00,
+      "total_spent_amount": 320.50,
+      "total_remaining_amount": 179.50,
+      "percentage_used": 64.1,
+      "variance": -179.50,
+      "variance_percentage": -35.9,
+      "status": "on_track",
+      "avg_alert_threshold": 0.8,
+      "earliest_start": "2024-01-01T00:00:00.000Z",
+      "latest_end": "2024-01-31T00:00:00.000Z"
+    }
+  ],
+  "monthly_trends": [
+    {
+      "month": "2024-12-01T00:00:00.000Z",
+      "budget_count": 4,
+      "total_budget_amount": 2000.00,
+      "total_spent_amount": 1500.00,
+      "total_remaining_amount": 500.00,
+      "percentage_used": 75.0,
+      "avg_alert_threshold": 0.8
+    }
+  ],
+  "efficiency_metrics": {
+    "overall_efficiency": 72.0,
+    "budgets_on_track": 3,
+    "budgets_at_risk": 1,
+    "budgets_over_limit": 0,
+    "avg_variance_percentage": -15.2
+  },
+  "period": "current_month",
+  "analysis_date": "2024-12-20T10:30:00.000Z"
+}
+```
+
+### Get Budget Variance Report
+```javascript
+// GET /api/budgets/variance-report?start_date=2024-12-01&end_date=2024-12-31&include_inactive=false
+const getBudgetVarianceReport = async (accessToken, startDate, endDate, includeInactive = false) => {
+  const params = new URLSearchParams({
+    start_date: startDate,
+    end_date: endDate,
+    include_inactive: includeInactive.toString()
+  });
+
+  const response = await fetch(`${API_BASE_URL}/budgets/variance-report?${params}`, {
+    headers: { 'Authorization': `Bearer ${accessToken}` }
+  });
+  return response.json();
+};
+
+// Response
+{
+  "period": {
+    "start_date": "2024-12-01",
+    "end_date": "2024-12-31",
+    "days": 31
+  },
+  "summary": {
+    "total_budgets": 4,
+    "total_budget_amount": 2000.00,
+    "total_actual_spent": 1800.50,
+    "total_variance": -199.50,
+    "overall_efficiency": 90.0,
+    "variance_distribution": {
+      "under_budget": 2,
+      "on_budget": 1,
+      "over_budget": 1,
+      "high_variance": 0,
+      "medium_variance": 1,
+      "low_variance": 2
+    }
+  },
+  "detailed_analysis": [
+    {
+      "budget_id": "uuid",
+      "category_id": "uuid",
+      "category_name": "Food & Dining",
+      "category_color": "#FF6B6B",
+      "period": "monthly",
+      "start_date": "2024-12-01",
+      "end_date": "2024-12-31",
+      "budget_amount": 500.00,
+      "actual_spent": 320.50,
+      "variance": -179.50,
+      "variance_percentage": -35.9,
+```
+
+### Get Budget Variance Report
+```javascript
+// GET /api/budgets/variance-report?start_date=2024-12-01&end_date=2024-12-31&include_inactive=false
+const getBudgetVarianceReport = async (accessToken, startDate, endDate, includeInactive = false) => {
+  const params = new URLSearchParams({
+    start_date: startDate,
+    end_date: endDate,
+    include_inactive: includeInactive.toString()
+  });
+
+  const response = await fetch(`${API_BASE_URL}/budgets/variance-report?${params}`, {
+    headers: { 'Authorization': `Bearer ${accessToken}` }
+  });
+  return response.json();
+};
+
+// Response
+{
+  "period": {
+    "start_date": "2024-12-01",
+    "end_date": "2024-12-31",
+    "days": 31
+  },
+  "summary": {
+    "total_budgets": 4,
+    "total_budget_amount": 2000.00,
+    "total_actual_spent": 1800.50,
+    "total_variance": -199.50,
+    "overall_efficiency": 90.0,
+    "variance_distribution": {
+      "under_budget": 2,
+      "on_budget": 1,
+      "over_budget": 1,
+      "high_variance": 0,
+      "medium_variance": 1,
+      "low_variance": 2
+    }
+  },
+  "detailed_analysis": [
+    {
+      "budget_id": "uuid",
+      "category_id": "uuid",
+      "category_name": "Food & Dining",
+      "category_color": "#FF6B6B",
+      "period": "monthly",
+      "start_date": "2024-12-01",
+      "end_date": "2024-12-31",
+      "budget_amount": 500.00,
+      "actual_spent": 320.50,
+      "variance": -179.50,
+      "variance_percentage": -35.9,
+      "efficiency_percentage": 64.1,
+      "variance_severity": "medium",
+      "alert_threshold": 0.8,
+      "is_active": true,
+      "transaction_count": 15,
+      "avg_transaction_amount": 21.37,
+      "min_transaction_amount": 5.00,
+      "max_transaction_amount": 85.00
+    }
+  ],
+  "top_over_budgets": [
+    {
+      "budget_id": "uuid",
+      "category_name": "Entertainment",
+      "budget_amount": 200.00,
+      "actual_spent": 250.00,
+      "variance": 50.00,
+      "variance_percentage": 25.0
+    }
+  ],
+  "top_under_budgets": [
+    {
+      "budget_id": "uuid",
+      "category_name": "Food & Dining",
+      "budget_amount": 500.00,
+      "actual_spent": 320.50,
+      "variance": -179.50,
+      "variance_percentage": -35.9
+    }
+  ],
+  "category_summary": [
+    {
+      "category_name": "Food & Dining",
+      "category_color": "#FF6B6B",
+      "budget_count": 1,
+      "total_budget_amount": 500.00,
+      "total_actual_spent": 320.50,
+      "total_variance": -179.50,
+      "avg_efficiency": 64.1
+    }
+  ],
+  "report_generated": "2024-12-20T10:30:00.000Z"
+}
+```
+
+## 🔒 Budget Duplicate Prevention
+
+The budget system now prevents users from creating multiple active budgets for the same category. This ensures data integrity and provides a better user experience.
+
+### Duplicate Prevention Logic
+
+1. **Active Budget Check**: When creating a budget, the system checks if an active budget already exists for the same category
+2. **Smart Reactivation**: If an inactive budget exists for the category, it's reactivated instead of creating a new one
+3. **Clear Error Messages**: Users receive helpful feedback when duplicate creation is attempted
+
+### Error Response (409 Conflict)
+```javascript
+{
+  "error": "You already have an active budget for this category. Please update the existing budget instead of creating a new one.",
+  "existing_budget_id": "uuid"
+}
+```
+
+### Frontend Handling
+```javascript
+const handleBudgetCreation = async (budgetData) => {
+  try {
+    const result = await createBudget(accessToken, budgetData);
+    console.log('Budget created successfully:', result);
+  } catch (error) {
+    if (error.response?.status === 409) {
+      // Handle duplicate budget
+      const existingBudgetId = error.response.data.existing_budget_id;
+      console.log('Duplicate prevented. Existing budget ID:', existingBudgetId);
+      
+      // Option 1: Show message to user
+      showMessage('You already have a budget for this category. Please update the existing one.');
+      
+      // Option 2: Redirect to existing budget
+      navigateToBudget(existingBudgetId);
+      
+      // Option 3: Pre-fill update form
+      loadBudgetForUpdate(existingBudgetId);
+    }
+  }
+};
+```
+
+## 📊 Budget Analytics Improvements
+
+The budget analytics system has been enhanced to provide better data aggregation and chart-ready information.
+
+### Key Improvements
+
+1. **Category Aggregation**: Budgets are now aggregated by category instead of individual budget records
+2. **Unique Categories**: Each category appears only once in analytics responses
+3. **Chart-Ready Data**: Perfect format for frontend charts and visualizations
+4. **Comprehensive Metrics**: Enhanced efficiency metrics and variance analysis
+
+### Analytics Data Structure
+
+The `category_performance` array now contains aggregated data:
+```javascript
+{
+  "category_id": "uuid",
+  "category_name": "Food & Dining",
+  "category_color": "#FF6B6B",
+  "budget_count": 1,                    // Number of budgets for this category
+  "total_budget_amount": 500.00,        // Combined budget amount
+  "total_spent_amount": 320.50,         // Combined spent amount
+  "total_remaining_amount": 179.50,     // Combined remaining amount
+  "percentage_used": 64.1,              // Overall percentage used
+  "variance": -179.50,                  // Overall variance
+  "variance_percentage": -35.9,         // Overall variance percentage
+  "status": "on_track",                 // Overall status
+  "avg_alert_threshold": 0.8,           // Average alert threshold
+  "earliest_start": "2024-01-01T00:00:00.000Z",
+  "latest_end": "2024-01-31T00:00:00.000Z"
+}
+```
+
+### Frontend Chart Integration
+
+```javascript
+// Example: Creating a pie chart with category performance data
+const createBudgetChart = (categoryPerformance) => {
+  const chartData = categoryPerformance.map(category => ({
+    name: category.category_name,
+    value: category.total_spent_amount,
+    color: category.category_color,
+    percentage: category.percentage_used,
+    remaining: category.total_remaining_amount
+  }));
+  
+  return {
+    type: 'pie',
+    data: chartData,
+    options: {
+      // Chart configuration
+    }
+  };
+};
+
+// Example: Creating a progress bar chart
+const createProgressChart = (categoryPerformance) => {
+  return categoryPerformance.map(category => ({
+    category: category.category_name,
+    spent: category.total_spent_amount,
+    budget: category.total_budget_amount,
+    percentage: category.percentage_used,
+    status: category.status,
+    color: category.category_color
+  }));
 };
 ```
 

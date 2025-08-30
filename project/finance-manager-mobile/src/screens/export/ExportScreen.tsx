@@ -28,8 +28,8 @@ import {
   validateExportBlob, 
   generateExportFileName 
 } from '../../utils/exportUtils';
-import { useExportLimits } from '../../hooks/useExportLimits';
-import AdPromptModal from '../../components/common/AdPromptModal';
+// useExportLimits hook removed - simplified export functionality
+// AdPromptModal component removed - no ad functionality needed
 
 interface ExportScreenProps {
   navigation: any;
@@ -53,23 +53,13 @@ const ExportScreen: React.FC<ExportScreenProps> = ({ navigation }) => {
     startDate: new Date(new Date().getFullYear(), new Date().getMonth(), 1), // First day of current month
     endDate: new Date(), // Today
   });
-  const [showAdModal, setShowAdModal] = useState(false);
+  // showAdModal state removed - no ad functionality needed
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [isSelectingStartDate, setIsSelectingStartDate] = useState(true);
 
-  // Export limits and ad management
-  const {
-    canExport,
-    getRemainingExports,
-    recordExport,
-    showRewardedAd,
-    getExportLimitInfo,
-    getLimitStatus,
-    getCurrentUnlockToken,
-    getExportOptions,
-    isAdReady,
-    isLoadingAd,
-  } = useExportLimits();
+  // Simplified export functionality - no limits or ads
+  const canExport = true; // All users can export
+  const getExportLimitInfo = () => 'Unlimited exports available';
 
   useEffect(() => {
     loadUserProfile();
@@ -177,8 +167,7 @@ const ExportScreen: React.FC<ExportScreenProps> = ({ navigation }) => {
         dialogTitle: `Export Transactions (${selectedFormat.toUpperCase()})`,
       });
 
-      // Record the export and refresh stats
-      await recordExport();
+      // Export completed successfully
 
     } catch (error: any) {
       console.error('Export error:', error);
@@ -514,18 +503,7 @@ const ExportScreen: React.FC<ExportScreenProps> = ({ navigation }) => {
         </View>
       </Modal>
 
-      {/* Ad Prompt Modal */}
-      <AdPromptModal
-        visible={showAdModal}
-        onClose={() => setShowAdModal(false)}
-        onWatchAd={showRewardedAd}
-        onUpgrade={() => {
-          setShowAdModal(false);
-        }}
-        onExportAfterAd={handleExportAfterAd}
-        isLoadingAd={isLoadingAd}
-        exportOptions={getExportOptions()}
-      />
+      {/* Ad Prompt Modal removed - no ad functionality needed */}
     </SafeAreaView>
   );
 };
@@ -534,13 +512,15 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.background,
+    paddingTop: Platform.OS === 'ios' ? 50 : 23, // Add extra top padding for camera notch
   },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
+    paddingVertical: spacing.lg, // Increased vertical padding
+    paddingTop: spacing.xl, // Extra top padding for header
     borderBottomWidth: 1,
     borderBottomColor: colors.border,
   },

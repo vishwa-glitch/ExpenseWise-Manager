@@ -30,6 +30,7 @@ export const formatCurrency = (
   }
 
   try {
+    // First try with symbol display
     const formatted = new Intl.NumberFormat(undefined, {
       style: 'currency',
       currency: currency,
@@ -37,8 +38,44 @@ export const formatCurrency = (
       ...options,
     }).format(amount);
 
-    // Remove currency code like 'US' from the beginning of the string
-    return formatted.replace(/^[A-Z]{2,3}/, '');
+    // Clean up any remaining currency codes that might appear
+    // Remove common currency codes that might still appear
+    let cleaned = formatted
+      // Remove currency codes at the beginning
+      .replace(/^US\s*/, '') // Remove "US " prefix
+      .replace(/^EUR\s*/, '') // Remove "EUR " prefix
+      .replace(/^GBP\s*/, '') // Remove "GBP " prefix
+      .replace(/^JPY\s*/, '') // Remove "JPY " prefix
+      .replace(/^INR\s*/, '') // Remove "INR " prefix
+      .replace(/^CAD\s*/, '') // Remove "CAD " prefix
+      .replace(/^AUD\s*/, '') // Remove "AUD " prefix
+      .replace(/^CHF\s*/, '') // Remove "CHF " prefix
+      .replace(/^CNY\s*/, '') // Remove "CNY " prefix
+      .replace(/^SEK\s*/, '') // Remove "SEK " prefix
+      .replace(/^[A-Z]{2,3}\s*/, '') // Remove any other 2-3 letter currency codes
+      // Remove currency codes at the end (like $US)
+      .replace(/\s*US$/, '') // Remove " US" suffix
+      .replace(/\s*EUR$/, '') // Remove " EUR" suffix
+      .replace(/\s*GBP$/, '') // Remove " GBP" suffix
+      .replace(/\s*JPY$/, '') // Remove " JPY" suffix
+      .replace(/\s*INR$/, '') // Remove " INR" suffix
+      .replace(/\s*CAD$/, '') // Remove " CAD" suffix
+      .replace(/\s*AUD$/, '') // Remove " AUD" suffix
+      .replace(/\s*CHF$/, '') // Remove " CHF" suffix
+      .replace(/\s*CNY$/, '') // Remove " CNY" suffix
+      .replace(/\s*SEK$/, '') // Remove " SEK" suffix
+      .replace(/\s*[A-Z]{2,3}$/, '') // Remove any other 2-3 letter currency codes at the end
+      // Remove currency codes in the middle (like $US)
+      .replace(/\$\s*US\s*/g, '$') // Remove "$ US" pattern
+      .replace(/\€\s*EUR\s*/g, '€') // Remove "€ EUR" pattern
+      .replace(/\£\s*GBP\s*/g, '£') // Remove "£ GBP" pattern
+      .replace(/\¥\s*JPY\s*/g, '¥') // Remove "¥ JPY" pattern
+      .replace(/\₹\s*INR\s*/g, '₹') // Remove "₹ INR" pattern
+      .replace(/\$\s*CAD\s*/g, 'C$') // Remove "$ CAD" pattern
+      .replace(/\$\s*AUD\s*/g, 'A$') // Remove "$ AUD" pattern
+      .replace(/\s*[A-Z]{2,3}\s*/g, ''); // Remove any other currency codes in the middle
+
+    return cleaned;
   } catch (error) {
     // Handle invalid currency codes that might still be passed
     console.warn(`Invalid currency code '${currency}' provided to formatCurrency. Formatting as decimal.`);

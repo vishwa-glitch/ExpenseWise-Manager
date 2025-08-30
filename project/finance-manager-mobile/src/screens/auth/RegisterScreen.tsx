@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import {
   View,
   Text,
@@ -6,9 +6,12 @@ import {
   SafeAreaView,
   KeyboardAvoidingView,
   Platform,
-  ScrollView,
   Alert,
   TouchableOpacity,
+  ScrollView,
+  Keyboard,
+  TouchableWithoutFeedback,
+  KeyboardEvent,
 } from 'react-native';
 import { useAppDispatch } from '../../hooks/useAppDispatch';
 import { useTypedSelector } from '../../hooks/useTypedSelector';
@@ -16,6 +19,7 @@ import { register } from '../../store/slices/authSlice';
 import { CustomTextInput } from '../../components/common/CustomTextInput';
 import { CustomButton } from '../../components/common/CustomButton';
 import { colors, typography, spacing } from '../../constants/colors';
+import { ENV } from '../../config/environment';
 
 interface RegisterScreenProps {
   navigation: any;
@@ -24,6 +28,7 @@ interface RegisterScreenProps {
 const RegisterScreen: React.FC<RegisterScreenProps> = ({ navigation }) => {
   const dispatch = useAppDispatch();
   const { isLoading } = useTypedSelector((state) => state.auth);
+  const scrollViewRef = useRef<ScrollView>(null);
 
   const [formData, setFormData] = useState({
     email: '',
@@ -53,9 +58,6 @@ const RegisterScreen: React.FC<RegisterScreenProps> = ({ navigation }) => {
   const validatePassword = (password: string) => {
     const requirements = {
       length: password.length >= 8,
-      uppercase: /[A-Z]/.test(password),
-      lowercase: /[a-z]/.test(password),
-      number: /\d/.test(password),
     };
     
     return {
@@ -121,6 +123,14 @@ const RegisterScreen: React.FC<RegisterScreenProps> = ({ navigation }) => {
   const handleRegister = async () => {
     if (!validateForm()) return;
 
+    console.log('🎯 Starting registration process...');
+    console.log('📋 Form data:', {
+      email: formData.email.trim(),
+      first_name: formData.firstName.trim(),
+      last_name: formData.lastName.trim() || undefined,
+      password_length: formData.password.length
+    });
+
     try {
       await dispatch(register({
         email: formData.email.trim(),
@@ -155,7 +165,7 @@ const RegisterScreen: React.FC<RegisterScreenProps> = ({ navigation }) => {
         // Show password requirements dialog
         Alert.alert(
           'Password Requirements',
-          'Your password must meet the following requirements:\n\n• At least 8 characters long\n• Contains uppercase letter (A-Z)\n• Contains lowercase letter (a-z)\n• Contains number (0-9)',
+          'Your password must be at least 8 characters long.',
           [{ text: 'OK' }]
         );
         setShowPasswordRequirements(true);
@@ -190,22 +200,10 @@ const RegisterScreen: React.FC<RegisterScreenProps> = ({ navigation }) => {
       <View style={styles.passwordRequirements}>
         <Text style={styles.requirementsTitle}>Password Requirements:</Text>
         <View style={styles.requirementsList}>
-          <RequirementItem 
-            text="At least 8 characters" 
-            met={validation.requirements.length} 
-          />
-          <RequirementItem 
-            text="Uppercase letter (A-Z)" 
-            met={validation.requirements.uppercase} 
-          />
-          <RequirementItem 
-            text="Lowercase letter (a-z)" 
-            met={validation.requirements.lowercase} 
-          />
-          <RequirementItem 
-            text="Number (0-9)" 
-            met={validation.requirements.number} 
-          />
+                     <RequirementItem 
+             text="At least 8 characters" 
+             met={validation.requirements.length} 
+           />
         </View>
       </View>
     );
@@ -222,6 +220,16 @@ const RegisterScreen: React.FC<RegisterScreenProps> = ({ navigation }) => {
     </View>
   );
 
+  const dismissKeyboard = () => {
+    Keyboard.dismiss();
+  };
+
+  const handleInputFocus = () => {
+    // Scroll to ensure the focused input is visible
+    setTimeout(() => {
+      scrollViewRef.current?.scrollToEnd({ animated: true });
+    }, 300);
+  };
 
 
   return (
@@ -229,99 +237,113 @@ const RegisterScreen: React.FC<RegisterScreenProps> = ({ navigation }) => {
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         style={styles.keyboardAvoid}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
       >
-        <ScrollView contentContainerStyle={styles.scrollContent}>
-          <View style={styles.header}>
-            <Text style={styles.logo}>💰</Text>
-            <Text style={styles.title}>Create Account</Text>
-            <Text style={styles.subtitle}>Join Finance Manager today</Text>
-          </View>
+        <TouchableWithoutFeedback onPress={dismissKeyboard}>
+          <ScrollView
+            ref={scrollViewRef}
+            style={styles.scrollView}
+            contentContainerStyle={styles.scrollContent}
+            showsVerticalScrollIndicator={false}
+            keyboardShouldPersistTaps="handled"
+          >
+            <View style={styles.content}>
+              <View style={styles.header}>
+                <Text style={styles.logo}>💰</Text>
+                <Text style={styles.title}>Create Account</Text>
+                <Text style={styles.subtitle}>Join Finance Manager today</Text>
+              </View>
 
-          <View style={styles.form}>
-            <View style={styles.nameRow}>
-              <CustomTextInput
-                label="First Name"
-                value={formData.firstName}
-                onChangeText={(value) => updateFormData('firstName', value)}
-                placeholder="First name"
-                error={errors.firstName}
-                style={styles.nameInput}
-                leftIcon={<Text style={styles.inputIcon}>👤</Text>}
-              />
-              <CustomTextInput
-                label="Last Name"
-                value={formData.lastName}
-                onChangeText={(value) => updateFormData('lastName', value)}
-                placeholder="Last name"
-                error={errors.lastName}
-                style={styles.nameInput}
-                leftIcon={<Text style={styles.inputIcon}>👤</Text>}
-              />
+              <View style={styles.form}>
+                <View style={styles.nameRow}>
+                  <CustomTextInput
+                    label="First Name"
+                    value={formData.firstName}
+                    onChangeText={(value) => updateFormData('firstName', value)}
+                    placeholder="First name"
+                    error={errors.firstName}
+                    style={styles.nameInput}
+                    leftIcon={<Text style={styles.inputIcon}>👤</Text>}
+                    onFocus={handleInputFocus}
+                  />
+                  <CustomTextInput
+                    label="Last Name"
+                    value={formData.lastName}
+                    onChangeText={(value) => updateFormData('lastName', value)}
+                    placeholder="Last name"
+                    error={errors.lastName}
+                    style={styles.nameInput}
+                    leftIcon={<Text style={styles.inputIcon}>👤</Text>}
+                    onFocus={handleInputFocus}
+                  />
+                </View>
+
+                <CustomTextInput
+                  label="Email Address"
+                  value={formData.email}
+                  onChangeText={(value) => updateFormData('email', value)}
+                  placeholder="Enter your email"
+                  keyboardType="email-address"
+                  error={errors.email}
+                  leftIcon={<Text style={styles.inputIcon}>📧</Text>}
+                  onFocus={handleInputFocus}
+                />
+
+                <CustomTextInput
+                  label="Password"
+                  value={formData.password}
+                  onChangeText={(value) => updateFormData('password', value)}
+                  placeholder="Create a password"
+                  secureTextEntry
+                  error={errors.password}
+                  leftIcon={<Text style={styles.inputIcon}>🔒</Text>}
+                  onFocus={handleInputFocus}
+                />
+
+                {renderPasswordRequirements()}
+
+                <CustomTextInput
+                  label="Confirm Password"
+                  value={formData.confirmPassword}
+                  onChangeText={(value) => updateFormData('confirmPassword', value)}
+                  placeholder="Confirm your password"
+                  secureTextEntry
+                  error={errors.confirmPassword}
+                  leftIcon={<Text style={styles.inputIcon}>🔒</Text>}
+                  onFocus={handleInputFocus}
+                />
+
+                <CustomButton
+                  title="Create Account"
+                  onPress={handleRegister}
+                  loading={isLoading}
+                  style={styles.registerButton}
+                />
+
+                {/* Terms and Privacy Notice */}
+                <View style={styles.termsContainer}>
+                  <Text style={styles.termsText}>
+                    By creating an account, you agree to our{' '}
+                    <Text style={styles.termsLink}>Terms of Service</Text>
+                    {' '}and{' '}
+                    <Text style={styles.termsLink}>Privacy Policy</Text>
+                  </Text>
+                </View>
+              </View>
+
+              <View style={styles.footer}>
+                <Text style={styles.footerText}>Already have an account?</Text>
+                <CustomButton
+                  title="Sign In"
+                  onPress={() => navigation.navigate('Login')}
+                  variant="outline"
+                  style={styles.loginButton}
+                />
+              </View>
             </View>
-
-            <CustomTextInput
-              label="Email Address"
-              value={formData.email}
-              onChangeText={(value) => updateFormData('email', value)}
-              placeholder="Enter your email"
-              keyboardType="email-address"
-              error={errors.email}
-              leftIcon={<Text style={styles.inputIcon}>📧</Text>}
-            />
-
-            <CustomTextInput
-              label="Password"
-              value={formData.password}
-              onChangeText={(value) => updateFormData('password', value)}
-              placeholder="Create a password"
-              secureTextEntry
-              error={errors.password}
-              leftIcon={<Text style={styles.inputIcon}>🔒</Text>}
-            />
-
-            {renderPasswordRequirements()}
-
-            <CustomTextInput
-              label="Confirm Password"
-              value={formData.confirmPassword}
-              onChangeText={(value) => updateFormData('confirmPassword', value)}
-              placeholder="Confirm your password"
-              secureTextEntry
-              error={errors.confirmPassword}
-              leftIcon={<Text style={styles.inputIcon}>🔒</Text>}
-            />
-
-            <CustomButton
-              title="Create Account"
-              onPress={handleRegister}
-              loading={isLoading}
-              style={styles.registerButton}
-            />
-
-            {/* Terms and Privacy Notice */}
-            <View style={styles.termsContainer}>
-              <Text style={styles.termsText}>
-                By creating an account, you agree to our{' '}
-                <Text style={styles.termsLink}>Terms of Service</Text>
-                {' '}and{' '}
-                <Text style={styles.termsLink}>Privacy Policy</Text>
-              </Text>
-            </View>
-          </View>
-
-          <View style={styles.footer}>
-            <Text style={styles.footerText}>Already have an account?</Text>
-            <CustomButton
-              title="Sign In"
-              onPress={() => navigation.navigate('Login')}
-              variant="outline"
-              style={styles.loginButton}
-            />
-          </View>
-        </ScrollView>
+          </ScrollView>
+        </TouchableWithoutFeedback>
       </KeyboardAvoidingView>
-
-
     </SafeAreaView>
   );
 };
@@ -334,56 +356,69 @@ const styles = StyleSheet.create({
   keyboardAvoid: {
     flex: 1,
   },
+  scrollView: {
+    flex: 1,
+  },
   scrollContent: {
     flexGrow: 1,
-    justifyContent: 'center',
+    paddingBottom: spacing.xl * 2,
+  },
+  content: {
+    flex: 1,
     padding: spacing.lg,
+    minHeight: '100%',
   },
   header: {
     alignItems: 'center',
-    marginBottom: spacing.xl,
+    marginTop: spacing.md,
+    marginBottom: spacing.lg,
   },
   logo: {
-    fontSize: 64,
-    marginBottom: spacing.md,
+    fontSize: 48,
+    marginBottom: spacing.sm,
   },
   title: {
     ...typography.h1,
     color: colors.text,
-    marginBottom: spacing.sm,
+    marginBottom: spacing.xs,
     textAlign: 'center',
+    fontSize: 24,
   },
   subtitle: {
     ...typography.body,
     color: colors.textSecondary,
     textAlign: 'center',
+    fontSize: 14,
   },
   form: {
-    marginBottom: spacing.xl,
+    flex: 1,
+    marginBottom: spacing.lg,
   },
   nameRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
+    marginBottom: spacing.sm,
   },
   nameInput: {
     flex: 1,
     marginHorizontal: spacing.xs,
   },
   inputIcon: {
-    fontSize: 20,
+    fontSize: 18,
   },
   passwordRequirements: {
     backgroundColor: colors.surface,
-    borderRadius: 8,
-    padding: spacing.md,
-    marginTop: spacing.sm,
-    marginBottom: spacing.md,
+    borderRadius: 6,
+    padding: spacing.sm,
+    marginTop: spacing.xs,
+    marginBottom: spacing.sm,
   },
   requirementsTitle: {
     ...typography.caption,
     color: colors.text,
     fontWeight: '600',
-    marginBottom: spacing.sm,
+    marginBottom: spacing.xs,
+    fontSize: 12,
   },
   requirementsList: {
     gap: spacing.xs,
@@ -393,29 +428,31 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   requirementIcon: {
-    fontSize: 12,
+    fontSize: 10,
     marginRight: spacing.sm,
-    width: 16,
+    width: 14,
   },
   requirementText: {
     ...typography.small,
     flex: 1,
-    fontSize: 11,
-    lineHeight: 16,
+    fontSize: 10,
+    lineHeight: 14,
   },
   registerButton: {
-    marginTop: spacing.lg,
+    marginTop: spacing.md,
+    marginBottom: spacing.sm,
   },
   termsContainer: {
-    paddingHorizontal: spacing.md,
+    paddingHorizontal: spacing.sm,
     alignItems: 'center',
-    marginTop: spacing.md,
+    marginTop: spacing.sm,
   },
   termsText: {
     ...typography.small,
     color: colors.textSecondary,
     textAlign: 'center',
-    lineHeight: 18,
+    lineHeight: 16,
+    fontSize: 10,
   },
   termsLink: {
     color: colors.primary,
@@ -423,15 +460,16 @@ const styles = StyleSheet.create({
   },
   footer: {
     alignItems: 'center',
-    marginBottom: spacing.lg,
+    marginTop: spacing.lg,
   },
   footerText: {
     ...typography.body,
     color: colors.textSecondary,
-    marginBottom: spacing.md,
+    marginBottom: spacing.sm,
+    fontSize: 14,
   },
   loginButton: {
-    minWidth: 200,
+    minWidth: 180,
   },
 });
 

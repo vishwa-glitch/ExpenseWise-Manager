@@ -55,6 +55,7 @@ const GoalDetailScreen: React.FC<GoalDetailScreenProps> = ({ navigation, route }
       setShowContributeModal(true);
     }
   }, [openContribution, selectedGoal, accounts]);
+  
   const loadData = async () => {
     try {
       await Promise.all([
@@ -175,6 +176,8 @@ const GoalDetailScreen: React.FC<GoalDetailScreenProps> = ({ navigation, route }
             placeholder="0.00"
             keyboardType="numeric"
             leftIcon={<Text style={styles.inputIcon}>💰</Text>}
+            inputStyle={styles.amountInput}
+            style={styles.amountInputContainer}
           />
 
           <View style={styles.accountSelector}>
@@ -273,8 +276,8 @@ const GoalDetailScreen: React.FC<GoalDetailScreenProps> = ({ navigation, route }
         <View style={styles.progressSection}>
           <ProgressDonut
             progress={selectedGoal.progress_percentage || 0}
-            size={150}
-            strokeWidth={12}
+            size={80}
+            strokeWidth={6}
             color={colors.primary}
             centerText={`${(selectedGoal.progress_percentage || 0).toFixed(1)}%`}
             centerSubtext="Complete"
@@ -283,13 +286,13 @@ const GoalDetailScreen: React.FC<GoalDetailScreenProps> = ({ navigation, route }
           
           <View style={styles.amountInfo}>
             <View style={styles.amountRow}>
-              <Text style={styles.amountLabel}>Current Amount:</Text>
+              <Text style={styles.amountLabel}>Current:</Text>
               <Text style={styles.currentAmount}>
                 {formatAmount(selectedGoal.current_amount || 0)}
               </Text>
             </View>
             <View style={styles.amountRow}>
-              <Text style={styles.amountLabel}>Target Amount:</Text>
+              <Text style={styles.amountLabel}>Target:</Text>
               <Text style={styles.targetAmount}>
                 {formatAmount(selectedGoal.target_amount || 0)}
               </Text>
@@ -328,7 +331,7 @@ const GoalDetailScreen: React.FC<GoalDetailScreenProps> = ({ navigation, route }
 
           {selectedGoal.monthly_savings_needed && (
             <View style={styles.detailItem}>
-              <Text style={styles.detailLabel}>Monthly Savings Needed:</Text>
+              <Text style={styles.detailLabel}>Monthly Savings:</Text>
               <Text style={styles.detailValue}>
                 {formatAmount(selectedGoal.monthly_savings_needed)}
               </Text>
@@ -398,188 +401,189 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.md,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
     borderBottomWidth: 1,
     borderBottomColor: colors.border,
   },
   backButton: {
-    padding: spacing.sm,
+    padding: spacing.xs,
   },
   backIcon: {
-    fontSize: 24,
+    fontSize: 20,
     color: colors.text,
   },
   headerTitle: {
-    ...typography.h3,
+    fontSize: 18,
+    fontWeight: '600',
     color: colors.text,
     flex: 1,
     textAlign: 'center',
   },
   editButton: {
-    padding: spacing.sm,
+    padding: spacing.xs,
   },
   editIcon: {
-    fontSize: 20,
+    fontSize: 16,
   },
   scrollView: {
     flex: 1,
   },
   scrollContent: {
-    padding: spacing.lg,
+    padding: spacing.md,
   },
   goalHeader: {
     backgroundColor: colors.card,
-    borderRadius: 16,
-    padding: spacing.xl,
-    marginBottom: spacing.lg,
+    borderRadius: 8,
+    padding: spacing.md,
+    marginBottom: spacing.md,
     shadowColor: '#000',
     shadowOffset: {
       width: 0,
-      height: 4,
+      height: 1,
     },
     shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 8,
+    shadowRadius: 2,
+    elevation: 2,
   },
   goalInfo: {
     flexDirection: 'row',
     alignItems: 'center',
   },
   goalIcon: {
-    fontSize: 48,
-    marginRight: spacing.lg,
+    fontSize: 28,
+    marginRight: spacing.md,
   },
   goalDetails: {
     flex: 1,
   },
   goalTitle: {
-    ...typography.h2,
+    fontSize: 18,
+    fontWeight: '600',
     color: colors.text,
-    fontWeight: 'bold',
-    marginBottom: spacing.sm,
+    marginBottom: spacing.xs,
   },
   goalCategory: {
-    ...typography.caption,
+    fontSize: 12,
     color: colors.textSecondary,
     textTransform: 'capitalize',
   },
   progressSection: {
     backgroundColor: colors.card,
-    borderRadius: 16,
-    padding: spacing.xl,
-    marginBottom: spacing.lg,
+    borderRadius: 8,
+    padding: spacing.md,
+    marginBottom: spacing.md,
     alignItems: 'center',
     shadowColor: '#000',
     shadowOffset: {
       width: 0,
-      height: 2,
+      height: 1,
     },
     shadowOpacity: 0.1,
-    shadowRadius: 3.84,
-    elevation: 5,
+    shadowRadius: 2,
+    elevation: 2,
   },
   amountInfo: {
-    marginTop: spacing.lg,
+    marginTop: spacing.sm,
     alignSelf: 'stretch',
   },
   amountRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: spacing.md,
+    marginBottom: spacing.xs,
   },
   amountLabel: {
-    ...typography.body,
+    fontSize: 14,
     color: colors.textSecondary,
-    fontWeight: '600',
+    fontWeight: '500',
   },
   currentAmount: {
-    ...typography.h3,
+    fontSize: 16,
     color: colors.primary,
-    fontWeight: 'bold',
+    fontWeight: '600',
   },
   targetAmount: {
-    ...typography.h3,
+    fontSize: 16,
     color: colors.text,
-    fontWeight: 'bold',
+    fontWeight: '600',
   },
   remainingAmount: {
-    ...typography.h3,
+    fontSize: 16,
     color: colors.warning,
-    fontWeight: 'bold',
+    fontWeight: '600',
   },
   detailsSection: {
     backgroundColor: colors.card,
-    borderRadius: 12,
-    padding: spacing.lg,
-    marginBottom: spacing.lg,
+    borderRadius: 8,
+    padding: spacing.md,
+    marginBottom: spacing.md,
     shadowColor: '#000',
     shadowOffset: {
       width: 0,
-      height: 2,
+      height: 1,
     },
     shadowOpacity: 0.1,
-    shadowRadius: 3.84,
-    elevation: 5,
+    shadowRadius: 2,
+    elevation: 2,
   },
   sectionTitle: {
-    ...typography.h3,
+    fontSize: 16,
+    fontWeight: '600',
     color: colors.text,
-    fontWeight: 'bold',
-    marginBottom: spacing.lg,
+    marginBottom: spacing.sm,
   },
   detailItem: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingVertical: spacing.md,
+    paddingVertical: spacing.sm,
     borderBottomWidth: 1,
     borderBottomColor: colors.border,
   },
   detailLabel: {
-    ...typography.body,
+    fontSize: 14,
     color: colors.textSecondary,
-    fontWeight: '600',
+    fontWeight: '500',
   },
   detailValue: {
-    ...typography.body,
+    fontSize: 14,
     color: colors.text,
-    fontWeight: 'bold',
+    fontWeight: '500',
     textAlign: 'right',
     flex: 1,
     marginLeft: spacing.md,
   },
   descriptionContainer: {
-    marginTop: spacing.md,
+    marginTop: spacing.sm,
   },
   description: {
-    ...typography.body,
+    fontSize: 14,
     color: colors.text,
-    lineHeight: 22,
-    marginTop: spacing.sm,
+    lineHeight: 18,
+    marginTop: spacing.xs,
   },
   actionsSection: {
     backgroundColor: colors.card,
-    borderRadius: 12,
-    padding: spacing.lg,
+    borderRadius: 8,
+    padding: spacing.md,
     shadowColor: '#000',
     shadowOffset: {
       width: 0,
-      height: 2,
+      height: 1,
     },
     shadowOpacity: 0.1,
-    shadowRadius: 3.84,
-    elevation: 5,
+    shadowRadius: 2,
+    elevation: 2,
   },
   actionButtons: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginBottom: spacing.md,
+    marginBottom: spacing.sm,
+    gap: spacing.sm,
   },
   actionButton: {
     flex: 1,
-    marginHorizontal: spacing.xs,
   },
   deleteButton: {
     marginTop: spacing.sm,
@@ -592,71 +596,92 @@ const styles = StyleSheet.create({
   },
   modalContent: {
     backgroundColor: colors.background,
-    borderRadius: 16,
-    padding: spacing.xl,
+    borderRadius: 12,
+    padding: spacing.md,
     width: '90%',
     maxWidth: 400,
   },
   modalTitle: {
-    ...typography.h2,
+    fontSize: 18,
+    fontWeight: '600',
     color: colors.text,
-    fontWeight: 'bold',
     textAlign: 'center',
-    marginBottom: spacing.lg,
+    marginBottom: spacing.md,
   },
   inputIcon: {
-    fontSize: 20,
+    fontSize: 18,
   },
   accountSelector: {
-    marginBottom: spacing.lg,
+    marginBottom: spacing.md,
   },
   accountSelectorLabel: {
-    ...typography.caption,
+    fontSize: 12,
     color: colors.text,
-    fontWeight: '600',
+    fontWeight: '500',
     marginBottom: spacing.sm,
   },
   accountOption: {
     backgroundColor: colors.surface,
-    borderRadius: 8,
-    padding: spacing.md,
+    borderRadius: 6,
+    padding: spacing.sm,
     marginRight: spacing.sm,
     borderWidth: 2,
     borderColor: 'transparent',
-    minWidth: 120,
+    minWidth: 100,
   },
   accountOptionSelected: {
     backgroundColor: colors.primary + '20',
     borderColor: colors.primary,
   },
   accountOptionText: {
-    ...typography.body,
+    fontSize: 14,
     color: colors.text,
-    fontWeight: '600',
+    fontWeight: '500',
     marginBottom: spacing.xs,
   },
   accountBalance: {
-    ...typography.small,
+    fontSize: 10,
     color: colors.textSecondary,
   },
   modalActions: {
     flexDirection: 'row',
     justifyContent: 'space-between',
+    marginTop: spacing.sm,
+    gap: spacing.sm,
   },
   modalButton: {
     flex: 1,
-    marginHorizontal: spacing.xs,
+  },
+  amountInput: {
+    height: 80,
+    fontSize: 24,
+    paddingVertical: spacing.md,
+    paddingHorizontal: spacing.md,
+    borderRadius: 12,
+    backgroundColor: colors.surface,
+    borderWidth: 2,
+    borderColor: colors.primary,
+    marginVertical: spacing.md,
+    minHeight: 80,
+    textAlign: 'center',
+    width: '100%',
+    flex: 1,
+  },
+  amountInputContainer: {
+    width: '100%',
+    marginBottom: spacing.md,
   },
   errorContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    padding: spacing.lg,
+    padding: spacing.md,
   },
   errorText: {
-    ...typography.h3,
+    fontSize: 18,
+    fontWeight: '600',
     color: colors.error,
-    marginBottom: spacing.lg,
+    marginBottom: spacing.md,
     textAlign: 'center',
   },
 });

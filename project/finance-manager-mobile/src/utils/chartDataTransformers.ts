@@ -1,4 +1,5 @@
 import { colors } from '../constants/colors';
+import { formatCurrency, getCurrencySymbol } from './currency';
 
 export type TimePeriod = 'weekly' | 'monthly' | '6months' | 'yearly';
 
@@ -169,24 +170,27 @@ export const calculateDateRange = (period: TimePeriod): { startDate: Date; endDa
 /**
  * Format currency values for display
  */
-export const formatChartCurrency = (amount: number, currency = '$'): string => {
+export const formatChartCurrency = (amount: number, currencyCode = 'USD'): string => {
   try {
     if (typeof amount !== 'number' || isNaN(amount)) {
-      return `${currency}0`;
+      return formatCurrency(0, currencyCode);
     }
 
+    // For chart display, we want to show abbreviated amounts (K, M) but with proper currency symbol
+    const currencySymbol = getCurrencySymbol(currencyCode);
+    
     if (amount >= 10000000) { // 10 million
-      return `${currency}${(amount / 1000000).toFixed(1)}M`;
+      return `${currencySymbol}${(amount / 1000000).toFixed(1)}M`;
     } else if (amount >= 100000) { // 100 thousand
-      return `${currency}${(amount / 1000).toFixed(1)}K`;
+      return `${currencySymbol}${(amount / 1000).toFixed(1)}K`;
     } else if (amount >= 1000) { // 1 thousand
-      return `${currency}${(amount / 1000).toFixed(1)}K`;
+      return `${currencySymbol}${(amount / 1000).toFixed(1)}K`;
     } else {
-      return `${currency}${amount.toFixed(0)}`;
+      return formatCurrency(amount, currencyCode, { maximumFractionDigits: 0 });
     }
   } catch (error) {
     console.error('Error formatting chart currency:', error);
-    return `${currency}0`;
+    return formatCurrency(0, currencyCode);
   }
 };
 

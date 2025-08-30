@@ -16,6 +16,7 @@ import { CustomButton } from '../../components/common/CustomButton';
 import { colors, typography, spacing } from '../../constants/colors';
 
 import { getCurrencySymbol, getDefaultCurrency } from '../../utils/currency';
+import { checkGoalCreationLimit } from '../../utils/subscriptionUtils';
 
 interface AddManualGoalScreenProps {
   navigation: any;
@@ -27,9 +28,8 @@ const AddManualGoalScreen: React.FC<AddManualGoalScreenProps> = ({ navigation, r
   const { goalId, goal } = route.params || {};
   const isEditing = !!goalId;
 
-  // Get user profile and stats for limit checking
-  const userProfile = useTypedSelector(getUserProfile);
-  const userStats = useTypedSelector(getUserStats);
+  // Get user profile for limit checking
+  const { profile } = useTypedSelector((state) => state.user);
 
   const { preferredCurrency } = useTypedSelector((state) => state.user);
 
@@ -152,13 +152,16 @@ const AddManualGoalScreen: React.FC<AddManualGoalScreenProps> = ({ navigation, r
 
     // Check goal creation limit for new goals only
     if (!isEditing) {
-      const limitExceeded = checkGoalCreationLimit(
-        userStats.active_goal_count,
-        userProfile,
-        navigation
-      );
+      const limitExceeded = checkGoalCreationLimit();
       
       if (limitExceeded) {
+        Alert.alert(
+          'Goal Limit Reached',
+          'Upgrade to Premium for unlimited goals.',
+          [
+            { text: 'Cancel', style: 'cancel' },
+          ]
+        );
         return; // Stop execution if limit exceeded
       }
     }

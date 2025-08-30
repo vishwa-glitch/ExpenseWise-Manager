@@ -6,8 +6,14 @@ export const ADMOB_CONFIG = {
   // Test Ad Unit IDs - Replace with your actual ad unit IDs in production
   REWARDED_AD_UNIT_ID: 'ca-app-pub-3940256099942544/5224354917', // Test rewarded ad ID
   
+  // Banner Ad Unit IDs
+  BANNER_AD_UNIT_ID: 'ca-app-pub-3940256099942544/6300978111', // Test fixed size banner
+  ADAPTIVE_BANNER_AD_UNIT_ID: 'ca-app-pub-3940256099942544/9214589741', // Test adaptive banner
+  
   // Production Ad Unit IDs (uncomment and use these in production)
   // REWARDED_AD_UNIT_ID: 'ca-app-pub-XXXXXXXXXXXXXXXX/XXXXXXXXXX',
+  // BANNER_AD_UNIT_ID: 'ca-app-pub-XXXXXXXXXXXXXXXX/XXXXXXXXXX',
+  // ADAPTIVE_BANNER_AD_UNIT_ID: 'ca-app-pub-XXXXXXXXXXXXXXXX/XXXXXXXXXX',
   
   // Ad Request Configuration
   AD_REQUEST_CONFIG: {
@@ -26,7 +32,7 @@ export const ADMOB_CONFIG = {
 };
 
 // Helper function to get the appropriate ad unit ID based on environment
-export const getAdUnitId = (adType: 'rewarded'): string => {
+export const getAdUnitId = (adType: 'rewarded' | 'banner' | 'adaptive_banner'): string => {
   // In production, you might want to use different ad unit IDs based on environment
   const isProduction = __DEV__ ? false : true;
   
@@ -35,16 +41,24 @@ export const getAdUnitId = (adType: 'rewarded'): string => {
     switch (adType) {
       case 'rewarded':
         return ADMOB_CONFIG.REWARDED_AD_UNIT_ID;
+      case 'banner':
+        return ADMOB_CONFIG.BANNER_AD_UNIT_ID;
+      case 'adaptive_banner':
+        return ADMOB_CONFIG.ADAPTIVE_BANNER_AD_UNIT_ID;
       default:
-        return ADMOB_CONFIG.REWARDED_AD_UNIT_ID;
+        return ADMOB_CONFIG.BANNER_AD_UNIT_ID;
     }
   } else {
     // Return test ad unit IDs for development
     switch (adType) {
       case 'rewarded':
         return ADMOB_CONFIG.REWARDED_AD_UNIT_ID;
+      case 'banner':
+        return ADMOB_CONFIG.BANNER_AD_UNIT_ID;
+      case 'adaptive_banner':
+        return ADMOB_CONFIG.ADAPTIVE_BANNER_AD_UNIT_ID;
       default:
-        return ADMOB_CONFIG.REWARDED_AD_UNIT_ID;
+        return ADMOB_CONFIG.BANNER_AD_UNIT_ID;
     }
   }
 };

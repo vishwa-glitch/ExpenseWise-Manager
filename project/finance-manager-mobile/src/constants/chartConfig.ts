@@ -79,13 +79,22 @@ export const chartColors = {
 // Utility functions for chart data formatting
 export const chartUtils = {
   // Format currency values for chart labels
-  formatCurrency: (value: number, suffix = '₹') => {
+  formatCurrency: (value: number, currencyCode = 'INR') => {
+    // Import the main formatCurrency function dynamically
+    const { formatCurrency: mainFormatCurrency } = require('../utils/currency');
+    
     if (value >= 100000) {
-      return `${suffix}${(value / 100000).toFixed(1)}L`;
+      // For large values, use abbreviated format but with proper currency symbol
+      const { getCurrencySymbol } = require('../utils/currency');
+      const symbol = getCurrencySymbol(currencyCode);
+      return `${symbol}${(value / 100000).toFixed(1)}L`;
     } else if (value >= 1000) {
-      return `${suffix}${(value / 1000).toFixed(1)}K`;
+      const { getCurrencySymbol } = require('../utils/currency');
+      const symbol = getCurrencySymbol(currencyCode);
+      return `${symbol}${(value / 1000).toFixed(1)}K`;
     }
-    return `${suffix}${value.toFixed(0)}`;
+    // For smaller values, use the main formatCurrency function
+    return mainFormatCurrency(value, currencyCode, { maximumFractionDigits: 0 });
   },
 
   // Format percentage values

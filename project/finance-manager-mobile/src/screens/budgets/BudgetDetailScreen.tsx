@@ -123,9 +123,9 @@ const BudgetDetailScreen: React.FC<BudgetDetailScreenProps> = ({ navigation, rou
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
     return date.toLocaleDateString('en-IN', {
-      weekday: 'long',
+      weekday: 'short',
       year: 'numeric',
-      month: 'long',
+      month: 'short',
       day: 'numeric',
     });
   };
@@ -165,7 +165,7 @@ const BudgetDetailScreen: React.FC<BudgetDetailScreenProps> = ({ navigation, rou
         <View style={styles.progressContainer}>
           <ProgressDonut
             progress={getProgressPercentage()}
-            size={120}
+            size={80}
             color={getProgressColor()}
             centerText={`${getProgressPercentage().toFixed(1)}%`}
             centerSubtext="Used"
@@ -347,6 +347,7 @@ const BudgetDetailScreen: React.FC<BudgetDetailScreenProps> = ({ navigation, rou
 
       <ScrollView
         style={styles.scrollView}
+        contentContainerStyle={styles.scrollContent}
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
         }
@@ -397,107 +398,110 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.md,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
     borderBottomWidth: 1,
     borderBottomColor: colors.border,
   },
   backButton: {
-    padding: spacing.sm,
+    padding: spacing.xs,
   },
   backIcon: {
-    fontSize: 24,
+    fontSize: 20,
     color: colors.text,
   },
   headerTitle: {
-    ...typography.h3,
+    fontSize: 18,
+    fontWeight: '600',
     color: colors.text,
     flex: 1,
     textAlign: 'center',
   },
   editButton: {
-    padding: spacing.sm,
+    padding: spacing.xs,
   },
   editIcon: {
-    fontSize: 20,
+    fontSize: 16,
   },
   scrollView: {
     flex: 1,
   },
+  scrollContent: {
+    padding: spacing.md,
+  },
   overviewSection: {
     backgroundColor: colors.card,
-    borderRadius: 10, // Reduced from 12
-    padding: spacing.md, // Reduced from spacing.lg
-    margin: spacing.md, // Reduced from spacing.lg
+    borderRadius: 8,
+    padding: spacing.md,
+    marginBottom: spacing.md,
     shadowColor: '#000',
     shadowOffset: {
       width: 0,
-      height: 2,
+      height: 1,
     },
     shadowOpacity: 0.1,
-    shadowRadius: 3.84,
-    elevation: 5,
+    shadowRadius: 2,
+    elevation: 2,
   },
   sectionTitle: {
-    ...typography.h3,
+    fontSize: 16,
+    fontWeight: '600',
     color: colors.text,
-    marginBottom: spacing.md, // Reduced from spacing.lg
-    fontWeight: 'bold',
+    marginBottom: spacing.sm,
   },
   overviewContent: {
     flexDirection: 'row',
     alignItems: 'center',
   },
   progressContainer: {
-    marginRight: spacing.xl,
+    marginRight: spacing.md,
   },
   overviewStats: {
     flex: 1,
   },
   statItem: {
-    marginBottom: spacing.md,
+    marginBottom: spacing.sm,
   },
   statLabel: {
-    ...typography.caption,
+    fontSize: 12,
     color: colors.textSecondary,
     marginBottom: spacing.xs,
-    fontWeight: '600',
+    fontWeight: '500',
   },
   statValue: {
-    ...typography.body,
+    fontSize: 14,
     color: colors.text,
-    fontWeight: 'bold',
+    fontWeight: '600',
   },
   detailsSection: {
     backgroundColor: colors.card,
-    borderRadius: 10, // Reduced from 12
-    padding: spacing.md, // Reduced from spacing.lg
-    marginHorizontal: spacing.md, // Reduced from spacing.lg
-    marginBottom: spacing.md, // Reduced from spacing.lg
+    borderRadius: 8,
+    padding: spacing.md,
+    marginBottom: spacing.md,
     shadowColor: '#000',
     shadowOffset: {
       width: 0,
-      height: 2,
+      height: 1,
     },
     shadowOpacity: 0.1,
-    shadowRadius: 3.84,
-    elevation: 5,
+    shadowRadius: 2,
+    elevation: 2,
   },
   detailItem: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingVertical: spacing.md,
+    paddingVertical: spacing.sm,
     borderBottomWidth: 1,
     borderBottomColor: colors.border,
   },
   detailLabel: {
-    ...typography.body,
+    fontSize: 14,
     color: colors.textSecondary,
-    fontWeight: '600',
+    fontWeight: '500',
   },
   detailValue: {
-    ...typography.body,
+    fontSize: 14,
     color: colors.text,
     textAlign: 'right',
     flex: 1,
@@ -506,59 +510,57 @@ const styles = StyleSheet.create({
   statusBadge: {
     paddingHorizontal: spacing.sm,
     paddingVertical: spacing.xs,
-    borderRadius: 12,
+    borderRadius: 8,
   },
   statusText: {
-    ...typography.small,
-    fontWeight: 'bold',
+    fontSize: 10,
+    fontWeight: '600',
   },
   transactionsSection: {
-    paddingHorizontal: spacing.md, // Reduced from spacing.lg
-    marginBottom: spacing.md, // Reduced from spacing.lg
+    marginBottom: spacing.md,
   },
   sectionHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: spacing.md,
+    marginBottom: spacing.sm,
   },
   seeAllText: {
-    ...typography.caption,
+    fontSize: 12,
     color: colors.primary,
-    fontWeight: '600',
+    fontWeight: '500',
   },
   emptyTransactions: {
     backgroundColor: colors.surface,
-    borderRadius: 12,
-    padding: spacing.xl,
+    borderRadius: 8,
+    padding: spacing.md,
     alignItems: 'center',
   },
   emptyIcon: {
-    fontSize: 48,
-    marginBottom: spacing.md,
-  },
-  emptyTitle: {
-    ...typography.body,
-    color: colors.text,
+    fontSize: 32,
     marginBottom: spacing.sm,
   },
+  emptyTitle: {
+    fontSize: 14,
+    color: colors.text,
+    marginBottom: spacing.xs,
+  },
   emptySubtext: {
-    ...typography.caption,
+    fontSize: 12,
     color: colors.textSecondary,
     textAlign: 'center',
   },
   actionsSection: {
-    paddingHorizontal: spacing.md, // Reduced from spacing.lg
-    marginBottom: spacing.md, // Reduced from spacing.lg
+    marginBottom: spacing.md,
   },
   actionButtons: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginBottom: spacing.md,
+    marginBottom: spacing.sm,
+    gap: spacing.sm,
   },
   actionButton: {
     flex: 1,
-    marginHorizontal: spacing.xs,
   },
   deleteButton: {
     marginTop: spacing.sm,
@@ -567,16 +569,17 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    padding: spacing.lg,
+    padding: spacing.md,
   },
   errorText: {
-    ...typography.h3,
+    fontSize: 18,
+    fontWeight: '600',
     color: colors.error,
-    marginBottom: spacing.lg,
+    marginBottom: spacing.md,
     textAlign: 'center',
   },
   bottomSpacing: {
-    height: spacing.xl,
+    height: spacing.md,
   },
 });
 

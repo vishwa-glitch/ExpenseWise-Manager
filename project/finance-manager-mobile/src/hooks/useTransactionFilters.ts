@@ -177,6 +177,16 @@ export const useTransactionFilters = (): UseTransactionFiltersReturn => {
       }
     }
     
+    // Handle custom date range specifically
+    if (filterState.timePeriod === 'custom' && 
+        filterState.customDateRange.startDate && 
+        filterState.customDateRange.endDate) {
+      params.dateRange = {
+        startDate: filterState.customDateRange.startDate,
+        endDate: filterState.customDateRange.endDate,
+      };
+    }
+    
     // Categories
     if (!filterState.categories.includes('all-categories') && filterState.categories.length > 0) {
       // Map UI category IDs to backend category names/IDs
@@ -218,7 +228,10 @@ export const useTransactionFilters = (): UseTransactionFiltersReturn => {
     return (
       filterState.timePeriod !== 'all' ||
       !filterState.categories.includes('all-categories') ||
-      filterState.transactionType !== 'all-types'
+      filterState.transactionType !== 'all-types' ||
+      (filterState.timePeriod === 'custom' && 
+       filterState.customDateRange.startDate && 
+       filterState.customDateRange.endDate)
     );
   }, [filterState]);
 
@@ -227,15 +240,42 @@ export const useTransactionFilters = (): UseTransactionFiltersReturn => {
     
     // Time period
     if (filterState.timePeriod !== 'all') {
-      const periodLabels: Record<string, string> = {
-        'today': 'Today',
-        'week': 'This Week',
-        'month': 'This Month',
-        'quarter': 'This Quarter',
-        'year': 'This Year',
-        'custom': 'Custom Range',
-      };
-      descriptions.push(periodLabels[filterState.timePeriod] || filterState.timePeriod);
+      if (filterState.timePeriod === 'custom' && 
+          filterState.customDateRange.startDate && 
+          filterState.customDateRange.endDate) {
+        const startDate = new Date(filterState.customDateRange.startDate);
+        const endDate = new Date(filterState.customDateRange.endDate);
+        
+        if (filterState.customDateRange.startDate === filterState.customDateRange.endDate) {
+          // Single date
+          descriptions.push(startDate.toLocaleDateString('en-IN', {
+            weekday: 'long',
+            year: 'numeric',
+            month: 'long',
+            day: 'numeric',
+          }));
+        } else {
+          // Date range
+          descriptions.push(`${startDate.toLocaleDateString('en-IN', {
+            month: 'short',
+            day: 'numeric',
+          })} - ${endDate.toLocaleDateString('en-IN', {
+            month: 'short',
+            day: 'numeric',
+            year: 'numeric',
+          })}`);
+        }
+      } else {
+        const periodLabels: Record<string, string> = {
+          'today': 'Today',
+          'week': 'This Week',
+          'month': 'This Month',
+          'quarter': 'This Quarter',
+          'year': 'This Year',
+          'custom': 'Custom Range',
+        };
+        descriptions.push(periodLabels[filterState.timePeriod] || filterState.timePeriod);
+      }
     }
     
     // Categories

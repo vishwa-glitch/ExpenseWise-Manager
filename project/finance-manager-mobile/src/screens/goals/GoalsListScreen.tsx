@@ -8,15 +8,21 @@ import {
   TouchableOpacity,
   RefreshControl,
   Alert,
+  Modal,
+  ScrollView,
 } from 'react-native';
 import { useAppDispatch } from '../../hooks/useAppDispatch';
 import { useTypedSelector } from '../../hooks/useTypedSelector';
-import { fetchGoals, deleteGoal } from '../../store/slices/goalsSlice';
+import { fetchGoals, deleteGoal, contributeToGoal } from '../../store/slices/goalsSlice';
 import { fetchUserProfile } from '../../store/slices/userSlice';
+import { fetchAccounts } from '../../store/slices/accountsSlice';
 
 import { GoalCard, LoadingSpinner } from '../../components/common';
+import { CustomTextInput } from '../../components/common/CustomTextInput';
+import { CustomButton } from '../../components/common/CustomButton';
 import { colors, typography, spacing } from '../../constants/colors';
-
+import OnboardingOverlay from '../../components/common/OnboardingOverlay';
+import { useOnboardingOverlay } from '../../hooks/useOnboardingOverlay';
 
 import { RootState } from '../../store';
 import { formatCurrency } from '../../utils/currency';
@@ -36,11 +42,20 @@ interface Goal {
 const GoalsListScreen: React.FC<GoalsListScreenProps> = ({ navigation }) => {
   const dispatch = useAppDispatch();
   const [refreshing, setRefreshing] = useState(false);
+  const [showContributeModal, setShowContributeModal] = useState(false);
+  const [contributionAmount, setContributionAmount] = useState('');
+  const [selectedAccountId, setSelectedAccountId] = useState('');
+  const [isContributing, setIsContributing] = useState(false);
+  const [selectedGoalId, setSelectedGoalId] = useState<string | null>(null);
+  
+  // Onboarding overlay hook
+  const onboardingOverlay = useOnboardingOverlay();
 
   const { goals, isLoading } = useTypedSelector((state: RootState) => state.goals);
   const { profile } = useTypedSelector((state: RootState) => state.user);
   const { isAuthenticated } = useTypedSelector((state: RootState) => state.auth);
   const { displayCurrency } = useTypedSelector((state) => state.user);
+  const { accounts } = useTypedSelector((state) => state.accounts);
 
   useEffect(() => {
     if (isAuthenticated) {
@@ -59,6 +74,7 @@ const GoalsListScreen: React.FC<GoalsListScreenProps> = ({ navigation }) => {
       await Promise.all([
         dispatch(fetchGoals()),
         dispatch(fetchUserProfile()),
+        dispatch(fetchAccounts()),
       ]);
     } catch (error) {
       console.error('Error loading goals:', error);
@@ -84,9 +100,26 @@ const GoalsListScreen: React.FC<GoalsListScreenProps> = ({ navigation }) => {
     return goals.filter((goal: any) => goal.status === 'completed');
   };
 
+  const canCreateGoal = () => {
+    if (!profile) return false;
+    
+    // TEMPORARY: All users can create unlimited goals for app launch
+    return true;
+  };
 
-
-
+  const handleCreateGoal = () => {
+    if (canCreateGoal()) {
+      navigation.navigate('AddManualGoal');
+    } else {
+      Alert.alert(
+        'Goal Limit Reached',
+        'Upgrade to Premium for unlimited goals.',
+        [
+          { text: 'Cancel', style: 'cancel' },
+        ]
+      );
+    }
+  };
 
   const handleGoalPress = (goal: any) => {
     navigation.navigate('GoalDetail', { goalId: goal.id });
@@ -115,6 +148,51 @@ const GoalsListScreen: React.FC<GoalsListScreenProps> = ({ navigation }) => {
     );
   };
 
+  const handleContribute = (goalId: string) => {
+    setSelectedGoalId(goalId);
+    setShowContributeModal(true);
+  };
+
+  const handleContributeSubmit = async () => {
+    if (!contributionAmount || !selectedAccountId || !selectedGoalId) {
+      Alert.alert('Error', 'Please enter an amount and select an account.');
+      return;
+    }
+    
+    if (accounts.length === 0) {
+      Alert.alert('Error', 'You need to create an account first.');
+      return;
+    }
+
+    const amount = parseFloat(contributionAmount);
+    if (isNaN(amount) || amount <= 0) {
+      Alert.alert('Error', 'Please enter a valid amount.');
+      return;
+    }
+
+    setIsContributing(true);
+    try {
+      await dispatch(contributeToGoal({
+        id: selectedGoalId,
+        amount,
+        accountId: selectedAccountId,
+      })).unwrap();
+
+      Alert.alert('Success', 'Contribution added successfully!');
+      setShowContributeModal(false);
+      setContributionAmount('');
+      setSelectedAccountId('');
+      setSelectedGoalId(null);
+      
+      // Refresh the list
+      await loadData();
+    } catch (error: any) {
+      Alert.alert('Error', error.message || 'Failed to add contribution.');
+    } finally {
+      setIsContributing(false);
+    }
+  };
+
   const calculateTotalSavings = () => {
     return getActiveGoals().reduce((total: number, goal: any) => total + (goal.current_amount || 0), 0);
   };
@@ -131,6 +209,7 @@ const GoalsListScreen: React.FC<GoalsListScreenProps> = ({ navigation }) => {
     <GoalCard
       goal={item}
       onPress={() => handleGoalPress(item)}
+      onContribute={() => handleContribute(item.id)}
     />
   );
 
@@ -178,8 +257,8 @@ const GoalsListScreen: React.FC<GoalsListScreenProps> = ({ navigation }) => {
       {/* Section Headers with Filter */}
       <View style={styles.sectionHeader}>
         <Text style={styles.sectionTitle}>Your Goals</Text>
-        <TouchableOpacity style={styles.filterButton}>
-          <Text style={styles.filterIcon}>⚙️</Text>
+        <TouchableOpacity onPress={handleCreateGoal}>
+          <Text style={styles.addButtonText}>+ Add Goal</Text>
         </TouchableOpacity>
       </View>
     </View>
@@ -218,6 +297,72 @@ const GoalsListScreen: React.FC<GoalsListScreenProps> = ({ navigation }) => {
     </View>
   );
 
+  const renderContributeModal = () => (
+    <Modal
+      visible={showContributeModal}
+      transparent={true}
+      animationType="slide"
+      onRequestClose={() => setShowContributeModal(false)}
+    >
+      <View style={styles.modalOverlay}>
+        <View style={styles.modalContent}>
+          <Text style={styles.modalTitle}>Add Contribution</Text>
+          
+          <CustomTextInput
+            label="Amount"
+            value={contributionAmount}
+            onChangeText={setContributionAmount}
+            placeholder="0.00"
+            keyboardType="numeric"
+            leftIcon={<Text style={styles.inputIcon}>💰</Text>}
+            inputStyle={styles.amountInput}
+            style={styles.amountInputContainer}
+          />
+
+          <View style={styles.accountSelector}>
+            <Text style={styles.accountSelectorLabel}>Select Account:</Text>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+              {accounts.map((account) => (
+                <TouchableOpacity
+                  key={account.id}
+                  style={[
+                    styles.accountOption,
+                    selectedAccountId === account.id && styles.accountOptionSelected,
+                  ]}
+                  onPress={() => setSelectedAccountId(account.id)}
+                >
+                  <Text style={styles.accountOptionText}>{account.name}</Text>
+                  <Text style={styles.accountBalance}>
+                    {formatCurrency(account.balance, account.currency)}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+          </View>
+
+          <View style={styles.modalActions}>
+            <CustomButton
+              title="Cancel"
+              onPress={() => {
+                setShowContributeModal(false);
+                setContributionAmount('');
+                setSelectedAccountId('');
+                setSelectedGoalId(null);
+              }}
+              variant="outline"
+              style={styles.modalButton}
+            />
+            <CustomButton
+              title="Add Contribution"
+              onPress={handleContributeSubmit}
+              loading={isContributing}
+              style={styles.modalButton}
+            />
+          </View>
+        </View>
+      </View>
+    </Modal>
+  );
 
   if (!isAuthenticated || (isLoading && goals.length === 0)) {
     return <LoadingSpinner />;
@@ -235,10 +380,33 @@ const GoalsListScreen: React.FC<GoalsListScreenProps> = ({ navigation }) => {
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
         }
         contentContainerStyle={styles.listContent}
-                 showsVerticalScrollIndicator={false}
-       />
-     </SafeAreaView>
-   );
+        showsVerticalScrollIndicator={false}
+      />
+
+      {/* Floating Action Button */}
+      <TouchableOpacity
+        style={styles.fab}
+        onPress={handleCreateGoal}
+      >
+        <Text style={styles.fabIcon}>+</Text>
+      </TouchableOpacity>
+
+      {renderContributeModal()}
+
+      {/* Onboarding Overlay - show for step 5 (goals) */}
+      {onboardingOverlay.isVisible && onboardingOverlay.currentStep === 5 && (
+        <OnboardingOverlay
+          isVisible={onboardingOverlay.isVisible}
+          currentStep={onboardingOverlay.currentStep}
+          totalSteps={onboardingOverlay.totalSteps}
+          steps={onboardingOverlay.steps}
+          onNext={onboardingOverlay.handleNext}
+          onSkip={onboardingOverlay.handleSkip}
+          onComplete={onboardingOverlay.handleComplete}
+        />
+      )}
+    </SafeAreaView>
+  );
 };
 
 const styles = StyleSheet.create({
@@ -312,13 +480,10 @@ const styles = StyleSheet.create({
     color: colors.text,
     fontWeight: 'bold',
   },
-  filterButton: {
-    padding: spacing.sm,
-    borderRadius: 20,
-    backgroundColor: colors.surface,
-  },
-  filterIcon: {
-    fontSize: 16,
+  addButtonText: {
+    ...typography.body,
+    color: colors.primary,
+    fontWeight: '600',
   },
   emptyState: {
     flex: 1,
@@ -441,6 +606,99 @@ const styles = StyleSheet.create({
     fontSize: 24,
     color: colors.background,
     fontWeight: 'bold',
+  },
+  modalOverlay: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0,0,0,0.5)',
+  },
+  modalContent: {
+    backgroundColor: colors.background,
+    borderRadius: 16,
+    padding: spacing.lg,
+    width: '90%',
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 4,
+    },
+    shadowOpacity: 0.3,
+    shadowRadius: 6,
+    elevation: 10,
+  },
+  modalTitle: {
+    ...typography.h3,
+    color: colors.text,
+    marginBottom: spacing.md,
+    fontWeight: 'bold',
+  },
+  inputIcon: {
+    fontSize: 20,
+    marginRight: spacing.sm,
+  },
+  accountSelector: {
+    width: '100%',
+    marginBottom: spacing.md,
+  },
+  accountSelectorLabel: {
+    ...typography.caption,
+    color: colors.textSecondary,
+    marginBottom: spacing.xs,
+    fontWeight: '600',
+  },
+  accountOption: {
+    backgroundColor: colors.surface,
+    borderRadius: 12,
+    padding: spacing.md,
+    marginRight: spacing.sm,
+    borderWidth: 1,
+    borderColor: colors.border,
+    alignItems: 'center',
+  },
+  accountOptionSelected: {
+    borderColor: colors.primary,
+    borderWidth: 2,
+  },
+  accountOptionText: {
+    ...typography.body,
+    color: colors.text,
+    fontWeight: '600',
+    marginBottom: spacing.xs,
+  },
+  accountBalance: {
+    ...typography.small,
+    color: colors.textSecondary,
+  },
+  modalActions: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    width: '100%',
+    marginTop: spacing.md,
+  },
+  modalButton: {
+    flex: 1,
+    marginHorizontal: spacing.sm,
+  },
+  amountInput: {
+    height: 120,
+    fontSize: 28,
+    paddingVertical: spacing.xl,
+    paddingHorizontal: spacing.xl,
+    borderRadius: 20,
+    backgroundColor: colors.surface,
+    borderWidth: 4,
+    borderColor: colors.primary,
+    marginVertical: spacing.lg,
+    minHeight: 120,
+    textAlign: 'center',
+    width: '100%',
+    flex: 1,
+  },
+  amountInputContainer: {
+    width: '100%',
+    marginBottom: spacing.lg,
   },
 });
 

@@ -209,7 +209,7 @@ export const GoalCard: React.FC<GoalCardProps> = ({ goal, onPress, onContribute,
               onPress={onContribute}
               activeOpacity={0.8}
             >
-              <Text style={styles.contributeButtonText}>+ Add</Text>
+              <Text style={styles.contributeButtonText}>💰 Add Contribution</Text>
             </TouchableOpacity>
           )}
         </View>
@@ -415,12 +415,13 @@ const styles = StyleSheet.create({
     color: colors.text,
     fontWeight: '500',
     flex: 1,
-    lineHeight: 18,
+    lineHeight: 20,
+    fontSize: 13.2, // 10% bigger than the original small font size (12 * 1.1)
   },
   contributeButton: {
     backgroundColor: colors.primary,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.md,
     borderRadius: 20,
     shadowColor: '#000',
     shadowOffset: {
@@ -430,11 +431,14 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.2,
     shadowRadius: 3,
     elevation: 4,
+    minWidth: 140,
+    alignItems: 'center',
+    marginTop: spacing.sm,
   },
   contributeButtonText: {
     ...typography.caption,
     color: colors.background,
     fontWeight: 'bold',
-    fontSize: 12,
+    fontSize: 13,
   },
 });

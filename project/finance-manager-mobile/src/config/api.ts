@@ -1,7 +1,10 @@
+import { ENV } from './environment';
+
+// Environment-based API configuration
 export const API_CONFIG = {
-  BASE_URL: "http://192.168.11.131:3000",
-  API_PREFIX: "/api",
-  TIMEOUT: 10000,
+  BASE_URL: ENV.API_BASE_URL,
+  API_PREFIX: ENV.API_PREFIX,
+  TIMEOUT: ENV.API_TIMEOUT,
 
   // Rate Limits
   RATE_LIMITS: {
@@ -86,6 +89,14 @@ export const API_ENDPOINTS = {
     CREATE: "/budgets",
     UPDATE: (id: string) => `/budgets/${id}`,
     DELETE: (id: string) => `/budgets/${id}`,
+    ANALYTICS: (period = "current_month", months = 6) => 
+      `/budgets/analytics?period=${period}&months=${months}`,
+    VARIANCE_REPORT: (startDate?: string, endDate?: string, includeInactive = false) => {
+      let url = `/budgets/variance-report?include_inactive=${includeInactive}`;
+      if (startDate) url += `&start_date=${startDate}`;
+      if (endDate) url += `&end_date=${endDate}`;
+      return url;
+    },
   },
 
   // Bill Reminders

@@ -101,6 +101,15 @@ const CurrencySelectionScreen: React.FC<CurrencySelectionScreenProps> = ({ navig
             console.log('📡 Trying /user/change-currency endpoint...');
             await apiService.changeUserCurrency(selectedCurrency, false);
             console.log('✅ Currency change successful via dedicated endpoint');
+            
+            // The changeUserCurrency method already stores locally, but let's ensure it
+            try {
+              await SecureStore.setItemAsync('user_currency', selectedCurrency);
+              console.log('✅ User currency preference confirmed locally:', selectedCurrency);
+            } catch (storageError) {
+              console.error('❌ Failed to store currency preference locally:', storageError);
+            }
+            
             currencySet = true;
             break;
           } catch (currencyError: any) {
@@ -128,6 +137,15 @@ const CurrencySelectionScreen: React.FC<CurrencySelectionScreenProps> = ({ navig
               console.log('📡 Trying profile update with preferred_currency...');
               await apiService.updateUserProfile({ preferred_currency: selectedCurrency });
               console.log('✅ Currency set via profile update');
+              
+              // Store the currency locally after successful profile update
+              try {
+                await SecureStore.setItemAsync('user_currency', selectedCurrency);
+                console.log('✅ User currency preference stored locally after profile update:', selectedCurrency);
+              } catch (storageError) {
+                console.error('❌ Failed to store currency preference locally:', storageError);
+              }
+              
               currencySet = true;
               break;
             } catch (profileError: any) {
@@ -161,6 +179,15 @@ const CurrencySelectionScreen: React.FC<CurrencySelectionScreenProps> = ({ navig
                   convert_existing_data: false,
                 }, token);
                 console.log('✅ Currency change successful via direct API call');
+                
+                // Store the currency locally after successful direct API call
+                try {
+                  await SecureStore.setItemAsync('user_currency', selectedCurrency);
+                  console.log('✅ User currency preference stored locally after direct API call:', selectedCurrency);
+                } catch (storageError) {
+                  console.error('❌ Failed to store currency preference locally:', storageError);
+                }
+                
                 currencySet = true;
                 break;
               }
@@ -181,6 +208,15 @@ const CurrencySelectionScreen: React.FC<CurrencySelectionScreenProps> = ({ navig
               console.log('✅ Re-registration successful, retrying currency change...');
               await apiService.changeUserCurrency(selectedCurrency, false);
               console.log('✅ Currency change successful after re-registration');
+              
+              // Store the currency locally after successful re-registration
+              try {
+                await SecureStore.setItemAsync('user_currency', selectedCurrency);
+                console.log('✅ User currency preference stored locally after re-registration:', selectedCurrency);
+              } catch (storageError) {
+                console.error('❌ Failed to store currency preference locally:', storageError);
+              }
+              
               currencySet = true;
               break;
             } catch (reRegisterError) {
@@ -204,6 +240,15 @@ const CurrencySelectionScreen: React.FC<CurrencySelectionScreenProps> = ({ navig
               }, freshToken);
               
               console.log('✅ Currency change successful via direct API call');
+              
+              // Store the currency locally after successful direct API call with fresh token
+              try {
+                await SecureStore.setItemAsync('user_currency', selectedCurrency);
+                console.log('✅ User currency preference stored locally after direct API call with fresh token:', selectedCurrency);
+              } catch (storageError) {
+                console.error('❌ Failed to store currency preference locally:', storageError);
+              }
+              
               currencySet = true;
               break;
             } catch (directApiError) {
@@ -280,11 +325,8 @@ const CurrencySelectionScreen: React.FC<CurrencySelectionScreenProps> = ({ navig
     
     console.log('✅ Proceeding to main app with currency:', selectedCurrency);
     
-    // Navigate to main app
-    navigation.reset({
-      index: 0,
-      routes: [{ name: 'Main' }],
-    });
+    // No need to navigate - the AppNavigator will automatically show the Main screen
+    // when needsCurrencySelection becomes false
   };
 
   const renderCurrencyItem = ({ item: currency }: { item: Currency }) => (
@@ -328,7 +370,6 @@ const CurrencySelectionScreen: React.FC<CurrencySelectionScreenProps> = ({ navig
         onChangeText={setSearchQuery}
         style={styles.searchInput}
         leftIcon={<Text style={styles.searchIcon}>🔍</Text>}
-        autoFocus={false}
       />
       {searchQuery.length > 0 && (
         <Text style={styles.searchResults}>

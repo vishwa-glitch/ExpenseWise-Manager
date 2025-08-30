@@ -443,7 +443,7 @@ const WeeklyFinancialHealthSectionContent: React.FC<WeeklyFinancialHealthSection
                 ]}>
                   {formatCurrency(healthData.weeklyStats.budget, displayCurrency)} 
                   {healthData.weeklyStats.overBudget > 0 && 
-                    ` (${getCurrencySymbol(displayCurrency)}${healthData.weeklyStats.overBudget} over)`
+                    ` (${formatCurrency(healthData.weeklyStats.overBudget, displayCurrency)} over)`
                   }
                 </Text>
               </View>
@@ -557,7 +557,7 @@ const WeeklyFinancialHealthSectionContent: React.FC<WeeklyFinancialHealthSection
                 ]}>
                   {formatCurrency(healthData.weeklyStats.budget, displayCurrency)} 
                   {healthData.weeklyStats.overBudget > 0 && 
-                    ` (${getCurrencySymbol(displayCurrency)}${healthData.weeklyStats.overBudget} over)`
+                    ` (${formatCurrency(healthData.weeklyStats.overBudget, displayCurrency)} over)`
                   }
                 </Text>
               </View>

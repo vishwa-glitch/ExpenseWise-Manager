@@ -10,6 +10,8 @@ import {
   Alert,
 } from 'react-native';
 import { colors, typography, spacing } from '../../constants/colors';
+import { useAppDispatch } from '../../hooks/useAppDispatch';
+import { resetOnboardingAsync } from '../../store/slices/onboardingSlice';
 
 interface FAQItem {
   question: string;
@@ -17,83 +19,40 @@ interface FAQItem {
   category: string;
 }
 
-interface TutorialItem {
-  title: string;
-  description: string;
-  icon: string;
-  action: () => void;
-}
-
 const HelpSupportScreen: React.FC = () => {
   const [expandedFAQ, setExpandedFAQ] = useState<number | null>(null);
+  const dispatch = useAppDispatch();
 
   const faqs: FAQItem[] = [
     {
-      question: "How do I add a new transaction?",
-      answer: "Tap the '+' button on the main dashboard or go to Transactions > Add Transaction. Fill in the amount, category, date, and any notes, then save.",
-      category: "Transactions"
-    },
-    {
-      question: "How do I create a budget?",
-      answer: "Navigate to Budgets in the main menu, tap 'Create Budget', select a category, set your spending limit, and choose the time period.",
-      category: "Budgets"
-    },
-    {
-      question: "Can I export my financial data?",
-      answer: "Yes! Go to More > Export Data to download your transactions in Excel, CSV, or PDF format. Premium users get unlimited exports.",
-      category: "Data Management"
-    },
-    {
-      question: "How do I set up financial goals?",
-      answer: "Go to Goals section, tap 'Create Goal', choose between saving, debt payoff, or custom goals, set your target amount and timeline.",
-      category: "Goals"
-    },
-    {
-      question: "Is my financial data secure?",
-      answer: "Absolutely! We use bank-level encryption and never store your banking credentials. Your data is encrypted both in transit and at rest.",
-      category: "Security"
-    },
-    {
-      question: "How do I connect my bank account?",
-      answer: "Go to Accounts > Add Account > Connect Bank. We use secure third-party services that are certified by major banks and financial institutions.",
+      question: "How do I create my first account?",
+      answer: "To create your first account, go to the Accounts section in the main menu and tap 'Add Account'. You can either manually add an account by entering the account details, or connect your bank account securely through our encrypted connection. For manual accounts, simply enter the account name, type (checking, savings, credit card, etc.), and initial balance.",
       category: "Accounts"
     },
     {
-      question: "What's the difference between free and premium?",
-      answer: "Free users get basic features with limited exports. Premium includes unlimited exports, advanced analytics, priority support, and ad-free experience.",
-      category: "Premium Features"
+      question: "How do custom categories work?",
+      answer: "Custom categories allow you to organize your transactions exactly how you want. Go to Categories in the main menu and tap 'Create Category'. You can choose an icon, name, and color for your category. These custom categories will appear alongside the default ones when you add transactions, helping you track spending patterns that matter to you.",
+      category: "Categories"
     },
     {
-      question: "How do I change my currency?",
-      answer: "Go to Profile > Settings > Currency to change your default currency. This affects how amounts are displayed throughout the app.",
-      category: "Settings"
-    }
-  ];
-
-  const tutorials: TutorialItem[] = [
-    {
-      title: "Getting Started Guide",
-      description: "Learn the basics of using the app",
-      icon: "🚀",
-      action: () => showTutorial("getting-started")
+      question: "How do I create a budget?",
+      answer: "Navigate to Budgets in the main menu and tap 'Create Budget'. Select a category (either default or custom), set your spending limit, and choose the time period (monthly, weekly, or custom). You can also set up recurring budgets that automatically reset each period. The app will track your spending and show your progress visually.",
+      category: "Budgets"
     },
     {
-      title: "Budget Management",
-      description: "Master budgeting and spending tracking",
-      icon: "📊",
-      action: () => showTutorial("budgeting")
+      question: "What happens when I exceed my budget?",
+      answer: "When you exceed your budget, you'll receive a notification alerting you. The budget progress bar will turn red, and you can see exactly how much you've overspent. You can either adjust your budget for the current period or use this as motivation to stay within budget next time. Premium users get detailed insights on overspending patterns.",
+      category: "Budgets"
     },
     {
-      title: "Goal Setting",
-      description: "Set and achieve financial goals",
-      icon: "🎯",
-      action: () => showTutorial("goals")
+      question: "How secure is my financial data?",
+      answer: "Your financial data is protected with bank-level security. We use 256-bit AES encryption for data at rest and TLS 1.3 for data in transit. We never store your banking credentials - they're handled securely by our certified third-party partners. Your data is backed up securely and you can export or delete it anytime. We also use biometric authentication for additional security.",
+      category: "Security"
     },
     {
-      title: "Data Export",
-      description: "Export and backup your data",
-      icon: "📤",
-      action: () => showTutorial("export")
+      question: "Do you sell my financial data?",
+      answer: "No, we never sell your financial data. Your privacy is our top priority. We only use your data to provide you with the financial management services you've requested, such as transaction categorization, budget tracking, and financial insights. We don't share your personal or financial information with third parties for marketing or advertising purposes.",
+      category: "Privacy"
     }
   ];
 
@@ -105,10 +64,10 @@ const HelpSupportScreen: React.FC = () => {
       action: () => openEmail()
     },
     {
-      title: "Live Chat",
-      description: "Chat with our support team",
-      icon: "💬",
-      action: () => openLiveChat()
+      title: "Telegram Support",
+      description: "Chat with us on Telegram",
+      icon: "📱",
+      action: () => openTelegram()
     },
     {
       title: "Report a Bug",
@@ -124,39 +83,66 @@ const HelpSupportScreen: React.FC = () => {
     }
   ];
 
+  const helpOptions = [
+    {
+      title: "Restart Onboarding",
+      description: "Go through the tutorial again",
+      icon: "🔄",
+      action: () => restartOnboarding()
+    }
+  ];
+
   const toggleFAQ = (index: number) => {
     setExpandedFAQ(expandedFAQ === index ? null : index);
   };
 
-  const showTutorial = (tutorial: string) => {
-    Alert.alert(
-      "Tutorial",
-      `This will open the ${tutorial} tutorial. Coming soon!`,
-      [{ text: "OK" }]
-    );
-  };
-
   const openEmail = () => {
-    Linking.openURL('mailto:support@financemanager.com?subject=Help Request');
+    Linking.openURL('mailto:wealthwise523@gmail.com?subject=Help Request');
   };
 
-  const openLiveChat = () => {
-    Alert.alert(
-      "Live Chat",
-      "Live chat support is available during business hours (9 AM - 6 PM EST). Would you like to start a chat?",
-      [
-        { text: "Cancel", style: "cancel" },
-        { text: "Start Chat", onPress: () => Alert.alert("Chat", "Connecting to support agent...") }
-      ]
-    );
+  const openTelegram = () => {
+    Linking.openURL('https://t.me/WealthWiseSuppo');
   };
 
   const reportBug = () => {
-    Linking.openURL('mailto:bugs@financemanager.com?subject=Bug Report');
+    Linking.openURL('mailto:wealthwise523@gmail.com?subject=Bug Report');
   };
 
   const requestFeature = () => {
-    Linking.openURL('mailto:features@financemanager.com?subject=Feature Request');
+    Linking.openURL('mailto:wealthwise523@gmail.com?subject=Feature Request');
+  };
+
+  const restartOnboarding = () => {
+    Alert.alert(
+      'Restart Onboarding',
+      'Are you sure you want to restart the onboarding process? This will reset your onboarding progress.',
+      [
+        {
+          text: 'Cancel',
+          style: 'cancel',
+        },
+        {
+          text: 'Restart',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await dispatch(resetOnboardingAsync()).unwrap();
+              Alert.alert(
+                'Onboarding Restarted',
+                'The onboarding process has been restarted. You can now go through the tutorial again.',
+                [{ text: 'OK' }]
+              );
+            } catch (error) {
+              Alert.alert(
+                'Error',
+                'Failed to restart onboarding. Please try again.',
+                [{ text: 'OK' }]
+              );
+            }
+          },
+        },
+      ]
+    );
   };
 
   const renderFAQItem = (faq: FAQItem, index: number) => (
@@ -180,22 +166,6 @@ const HelpSupportScreen: React.FC = () => {
           </View>
         </View>
       )}
-    </TouchableOpacity>
-  );
-
-  const renderTutorialItem = (tutorial: TutorialItem, index: number) => (
-    <TouchableOpacity
-      key={index}
-      style={styles.tutorialItem}
-      onPress={tutorial.action}
-      activeOpacity={0.7}
-    >
-      <Text style={styles.tutorialIcon}>{tutorial.icon}</Text>
-      <View style={styles.tutorialContent}>
-        <Text style={styles.tutorialTitle}>{tutorial.title}</Text>
-        <Text style={styles.tutorialDescription}>{tutorial.description}</Text>
-      </View>
-      <Text style={styles.chevron}>›</Text>
     </TouchableOpacity>
   );
 
@@ -223,35 +193,6 @@ const HelpSupportScreen: React.FC = () => {
       </View>
 
       <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
-        {/* Quick Help Section */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Quick Help</Text>
-          <View style={styles.quickHelpGrid}>
-            <TouchableOpacity style={styles.quickHelpItem} onPress={() => setExpandedFAQ(0)}>
-              <Text style={styles.quickHelpIcon}>💰</Text>
-              <Text style={styles.quickHelpText}>Add Transaction</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.quickHelpItem} onPress={() => setExpandedFAQ(1)}>
-              <Text style={styles.quickHelpIcon}>📊</Text>
-              <Text style={styles.quickHelpText}>Create Budget</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.quickHelpItem} onPress={() => setExpandedFAQ(3)}>
-              <Text style={styles.quickHelpIcon}>🎯</Text>
-              <Text style={styles.quickHelpText}>Set Goals</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.quickHelpItem} onPress={() => setExpandedFAQ(2)}>
-              <Text style={styles.quickHelpIcon}>📤</Text>
-              <Text style={styles.quickHelpText}>Export Data</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-
-        {/* Tutorials Section */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Tutorials & Guides</Text>
-          {tutorials.map(renderTutorialItem)}
-        </View>
-
         {/* FAQ Section */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Frequently Asked Questions</Text>
@@ -262,6 +203,12 @@ const HelpSupportScreen: React.FC = () => {
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Contact Support</Text>
           {contactOptions.map(renderContactItem)}
+        </View>
+
+        {/* Help Options Section */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Help Options</Text>
+          {helpOptions.map(renderContactItem)}
         </View>
 
         {/* App Info Section */}
@@ -321,74 +268,6 @@ const styles = StyleSheet.create({
     color: colors.text,
     marginBottom: spacing.md,
     fontWeight: '600',
-  },
-  quickHelpGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    justifyContent: 'space-between',
-  },
-  quickHelpItem: {
-    width: '48%',
-    backgroundColor: colors.card,
-    borderRadius: 12,
-    padding: spacing.md,
-    alignItems: 'center',
-    marginBottom: spacing.sm,
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.1,
-    shadowRadius: 3.84,
-    elevation: 5,
-  },
-  quickHelpIcon: {
-    fontSize: 24,
-    marginBottom: spacing.sm,
-  },
-  quickHelpText: {
-    ...typography.small,
-    color: colors.text,
-    textAlign: 'center',
-    fontWeight: '600',
-  },
-  tutorialItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: colors.card,
-    padding: spacing.lg,
-    borderRadius: 12,
-    marginBottom: spacing.sm,
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 1,
-    },
-    shadowOpacity: 0.05,
-    shadowRadius: 2,
-    elevation: 2,
-  },
-  tutorialIcon: {
-    fontSize: 24,
-    marginRight: spacing.md,
-  },
-  tutorialContent: {
-    flex: 1,
-  },
-  tutorialTitle: {
-    ...typography.body,
-    color: colors.text,
-    fontWeight: '600',
-    marginBottom: spacing.xs,
-  },
-  tutorialDescription: {
-    ...typography.small,
-    color: colors.textSecondary,
-  },
-  chevron: {
-    ...typography.h3,
-    color: colors.textSecondary,
   },
   faqItem: {
     backgroundColor: colors.card,
@@ -475,6 +354,10 @@ const styles = StyleSheet.create({
   },
   contactDescription: {
     ...typography.small,
+    color: colors.textSecondary,
+  },
+  chevron: {
+    ...typography.h3,
     color: colors.textSecondary,
   },
   appInfoCard: {

@@ -14,13 +14,15 @@ import { useAppDispatch } from '../../hooks/useAppDispatch';
 import { useTypedSelector } from '../../hooks/useTypedSelector';
 import { fetchBudgets, deleteBudget } from '../../store/slices/budgetsSlice';
 import { fetchUserProfile } from '../../store/slices/userSlice';
-import { showPremiumModal } from '../../store/slices/uiSlice';
+import { fetchCategories } from '../../store/slices/categoriesSlice';
+
 import { BudgetCard } from '../../components/common/BudgetCard';
 import { LoadingSpinner } from '../../components/common/LoadingSpinner';
 import { colors, typography, spacing } from '../../constants/colors';
-import { SUBSCRIPTION_TIERS } from '../../config/api';
 import { RootState } from '../../store';
 import { formatCurrency } from '../../utils/currency';
+import OnboardingOverlay from '../../components/common/OnboardingOverlay';
+import { useOnboardingOverlay } from '../../hooks/useOnboardingOverlay';
 
 interface BudgetsListScreenProps {
   navigation: any;
@@ -30,6 +32,9 @@ const BudgetsListScreen: React.FC<BudgetsListScreenProps> = ({ navigation }) => 
   const dispatch = useAppDispatch();
   const [refreshing, setRefreshing] = useState(false);
   const flatListRef = useRef<FlatList>(null);
+  
+  // Onboarding overlay hook
+  const onboardingOverlay = useOnboardingOverlay();
 
   const budgetsSelector = (state: RootState) => state.budgets;
   const userSelector = (state: RootState) => state.user;
@@ -46,9 +51,14 @@ const BudgetsListScreen: React.FC<BudgetsListScreenProps> = ({ navigation }) => 
     }
   }, [isAuthenticated]);
 
-  // Handle screen focus to restore scroll functionality
+  // Handle screen focus to refresh data and restore scroll functionality
   useFocusEffect(
     React.useCallback(() => {
+      // Refresh data when screen comes into focus (e.g., after creating a new budget)
+      if (isAuthenticated) {
+        loadData();
+      }
+      
       // Reset scroll position and ensure FlatList is properly initialized
       if (flatListRef.current) {
         // Small delay to ensure the component is fully rendered
@@ -56,7 +66,7 @@ const BudgetsListScreen: React.FC<BudgetsListScreenProps> = ({ navigation }) => 
           flatListRef.current?.scrollToOffset({ offset: 0, animated: false });
         }, 100);
       }
-    }, [])
+    }, [isAuthenticated])
   );
 
   const restoreScrollPosition = () => {
@@ -76,6 +86,7 @@ const BudgetsListScreen: React.FC<BudgetsListScreenProps> = ({ navigation }) => 
       await Promise.all([
         dispatch(fetchBudgets()),
         dispatch(fetchUserProfile()),
+        dispatch(fetchCategories()),
       ]);
     } catch (error) {
       console.error('Error loading budgets:', error);
@@ -117,10 +128,13 @@ const BudgetsListScreen: React.FC<BudgetsListScreenProps> = ({ navigation }) => 
         'Upgrade to Premium for unlimited budgets.',
         [
           { text: 'Cancel', style: 'cancel' },
-          {
-            text: 'Upgrade',
-            onPress: () => dispatch(showPremiumModal()),
+                  {
+          text: 'Upgrade',
+          onPress: () => {
+            // TODO: Implement premium upgrade
+            Alert.alert('Premium Feature', 'Premium upgrade functionality coming soon!');
           },
+        },
         ]
       );
     }
@@ -280,6 +294,19 @@ const BudgetsListScreen: React.FC<BudgetsListScreenProps> = ({ navigation }) => 
       >
         <Text style={styles.fabIcon}>+</Text>
       </TouchableOpacity>
+
+      {/* Onboarding Overlay - show for step 4 (budgets) only */}
+      {onboardingOverlay.isVisible && onboardingOverlay.currentStep === 4 && (
+        <OnboardingOverlay
+          isVisible={onboardingOverlay.isVisible}
+          currentStep={onboardingOverlay.currentStep}
+          totalSteps={onboardingOverlay.totalSteps}
+          steps={onboardingOverlay.steps}
+          onNext={onboardingOverlay.handleNext}
+          onSkip={onboardingOverlay.handleSkip}
+          onComplete={onboardingOverlay.handleComplete}
+        />
+      )}
     </SafeAreaView>
   );
 };

@@ -16,6 +16,8 @@ import { CustomButton } from '../../components/common/CustomButton';
 import { colors, typography, spacing } from '../../constants/colors';
 import { getCurrencySymbol } from '../../utils/currency';
 import { checkAccountCreationLimit, getUserStats, getUserProfile } from '../../utils/subscriptionUtils';
+import OnboardingOverlay from '../../components/common/OnboardingOverlay';
+import { useOnboardingOverlay } from '../../hooks/useOnboardingOverlay';
 
 interface AddEditAccountScreenProps {
   navigation: any;
@@ -26,6 +28,9 @@ const AddEditAccountScreen: React.FC<AddEditAccountScreenProps> = ({ navigation,
   const dispatch = useAppDispatch();
   const { accountId, account } = route.params || {};
   const isEditing = !!accountId;
+  
+  // Onboarding overlay hook
+  const onboardingOverlay = useOnboardingOverlay();
 
   // Get display currency from Redux store
   const { displayCurrency } = useTypedSelector((state) => state.user);
@@ -310,6 +315,23 @@ const AddEditAccountScreen: React.FC<AddEditAccountScreenProps> = ({ navigation,
           style={styles.saveButton}
         />
       </View>
+      
+             {/* Onboarding Overlay - only show for new accounts during onboarding */}
+       {!isEditing && onboardingOverlay.isVisible && onboardingOverlay.currentStep === 1 && (
+         <>
+           <OnboardingOverlay
+             isVisible={onboardingOverlay.isVisible}
+             currentStep={onboardingOverlay.currentStep}
+             totalSteps={onboardingOverlay.totalSteps}
+             steps={onboardingOverlay.steps}
+             onNext={onboardingOverlay.handleNext}
+             onSkip={onboardingOverlay.handleSkip}
+             onComplete={onboardingOverlay.handleComplete}
+           />
+           {/* Prevent interaction with form during onboarding */}
+           <View style={styles.interactionBlocker} />
+         </>
+       )}
     </SafeAreaView>
   );
 };
@@ -444,6 +466,15 @@ const styles = StyleSheet.create({
   },
   saveButton: {
     width: '100%',
+  },
+  interactionBlocker: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'transparent',
+    zIndex: 999,
   },
 });
 

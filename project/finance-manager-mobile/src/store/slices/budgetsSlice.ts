@@ -49,9 +49,22 @@ export const fetchBudget = createAsyncThunk(
 
 export const createBudget = createAsyncThunk(
   'budgets/createBudget',
-  async (budgetData: any) => {
-    const response = await apiService.createBudget(budgetData);
-    return response;
+  async (budgetData: any, { rejectWithValue }) => {
+    try {
+      const response = await apiService.createBudget(budgetData);
+      return response;
+    } catch (error: any) {
+      // Handle 409 Conflict error for duplicate budgets
+      if (error.response?.status === 409) {
+        // Return the error data so the component can handle it
+        return rejectWithValue({
+          status: 409,
+          error: error.response.data.error,
+          existing_budget_id: error.response.data.existing_budget_id
+        });
+      }
+      return rejectWithValue(error.message || 'Failed to create budget');
+    }
   }
 );
 

@@ -9,16 +9,17 @@ let adMobService: any = {
 };
 
 // For development builds or bare workflow, try to use real AdMob
+// Temporarily disabled due to build issues
 try {
-  const {
-    RewardedAd,
-    RewardedAdEventType,
-    TestIds,
-  } = require('react-native-google-mobile-ads');
-  const { getAdUnitId, ADMOB_CONFIG } = require('../config/adMobConfig');
+  // const {
+  //   RewardedAd,
+  //   RewardedAdEventType,
+  //   TestIds,
+  // } = require('react-native-google-mobile-ads');
+  // const { getAdUnitId, ADMOB_CONFIG } = require('../config/adMobConfig');
 
   // Get the appropriate ad unit ID
-  const REWARDED_AD_UNIT_ID = getAdUnitId('rewarded');
+  // const REWARDED_AD_UNIT_ID = getAdUnitId('rewarded');
 
   class AdMobService {
     private rewardedAd: any = null;
@@ -30,47 +31,47 @@ try {
     }
 
     private initializeRewardedAd() {
-      this.rewardedAd = RewardedAd.createForAdRequest(REWARDED_AD_UNIT_ID, ADMOB_CONFIG.AD_REQUEST_CONFIG);
+      // this.rewardedAd = RewardedAd.createForAdRequest(REWARDED_AD_UNIT_ID, ADMOB_CONFIG.AD_REQUEST_CONFIG);
 
       // Set up event listeners
-      this.rewardedAd.addAdEventListener(RewardedAdEventType.LOADED, () => {
-        console.log('🎬 Rewarded ad loaded');
-        this.isLoading = false;
-      });
+      // this.rewardedAd.addAdEventListener(RewardedAdEventType.LOADED, () => {
+      //   console.log('🎬 Rewarded ad loaded');
+      //   this.isLoading = false;
+      // });
 
-      this.rewardedAd.addAdEventListener(RewardedAdEventType.ERROR, (error: any) => {
-        console.error('❌ Rewarded ad error:', error);
-        this.isLoading = false;
-        if (this.onRewardedCallback) {
-          this.onRewardedCallback(false);
-          this.onRewardedCallback = null;
-        }
-      });
+      // this.rewardedAd.addAdEventListener(RewardedAdEventType.ERROR, (error: any) => {
+      //   console.error('❌ Rewarded ad error:', error);
+      //   this.isLoading = false;
+      //   if (this.onRewardedCallback) {
+      //     this.onRewardedCallback(false);
+      //     this.onRewardedCallback = null;
+      //   }
+      // });
 
-      this.rewardedAd.addAdEventListener(RewardedAdEventType.OPENED, () => {
-        console.log('🎬 Rewarded ad opened');
-      });
+      // this.rewardedAd.addAdEventListener(RewardedAdEventType.OPENED, () => {
+      //   console.log('🎬 Rewarded ad opened');
+      // });
 
-      this.rewardedAd.addAdEventListener(RewardedAdEventType.CLOSED, () => {
-        console.log('🎬 Rewarded ad closed');
-        if (this.onRewardedCallback) {
-          this.onRewardedCallback(false);
-          this.onRewardedCallback = null;
-        }
-        // Reload the ad for next use
-        this.loadRewardedAd();
-      });
+      // this.rewardedAd.addAdEventListener(RewardedAdEventType.CLOSED, () => {
+      //   console.log('🎬 Rewarded ad closed');
+      //   if (this.onRewardedCallback) {
+      //     this.onRewardedCallback(false);
+      //     this.onRewardedCallback = null;
+      //   }
+      //   // Reload the ad for next use
+      //   this.loadRewardedAd();
+      // });
 
-      this.rewardedAd.addAdEventListener(RewardedAdEventType.EARNED_REWARD, (reward: any) => {
-        console.log('🎁 User earned reward:', reward);
-        if (this.onRewardedCallback) {
-          this.onRewardedCallback(true);
-          this.onRewardedCallback = null;
-        }
-      });
+      // this.rewardedAd.addAdEventListener(RewardedAdEventType.EARNED_REWARD, (reward: any) => {
+      //   console.log('🎁 User earned reward:', reward);
+      //   if (this.onRewardedCallback) {
+      //     this.onRewardedCallback(true);
+      //     this.onRewardedCallback = null;
+      //   }
+      // });
 
       // Load the initial ad
-      this.loadRewardedAd();
+      // this.loadRewardedAd();
     }
 
     private async loadRewardedAd() {
@@ -78,7 +79,7 @@ try {
 
       try {
         this.isLoading = true;
-        await this.rewardedAd.load();
+        // await this.rewardedAd.load();
       } catch (error) {
         console.error('❌ Failed to load rewarded ad:', error);
         this.isLoading = false;
@@ -107,7 +108,7 @@ try {
         }
 
         this.onRewardedCallback = resolve;
-        this.rewardedAd.show();
+        // this.rewardedAd.show();
       });
     }
 

@@ -30,6 +30,7 @@ const CreateEditBudgetScreen: React.FC<CreateEditBudgetScreenProps> = ({ navigat
 
   const { categories } = useTypedSelector((state) => state.categories);
   const { displayCurrency } = useTypedSelector((state) => state.user);
+  const { budgets } = useTypedSelector((state) => state.budgets);
 
   const [formData, setFormData] = useState({
     name: '',
@@ -208,12 +209,47 @@ const CreateEditBudgetScreen: React.FC<CreateEditBudgetScreenProps> = ({ navigat
 
       if (isEditing) {
         await dispatch(updateBudget({ id: budgetId, data: budgetData })).unwrap();
+        navigation.goBack();
       } else {
-        await dispatch(createBudget(budgetData)).unwrap();
+        try {
+          await dispatch(createBudget(budgetData)).unwrap();
+          navigation.goBack();
+        } catch (error: any) {
+          // Handle specific 409 Conflict error for duplicate budgets
+          if (error.status === 409) {
+            const existingBudgetId = error.existing_budget_id;
+            
+            Alert.alert(
+              'Budget Already Exists',
+              error.error || 'You already have a budget for this category. Would you like to view the existing budget?',
+              [
+                {
+                  text: 'Cancel',
+                  style: 'cancel',
+                  onPress: () => navigation.goBack()
+                },
+                {
+                  text: 'View Existing Budget',
+                  onPress: () => {
+                    if (existingBudgetId) {
+                      navigation.navigate('BudgetDetail', { 
+                        budgetId: existingBudgetId 
+                      });
+                    } else {
+                      navigation.goBack();
+                    }
+                  }
+                }
+              ]
+            );
+          } else {
+            // Re-throw other errors to be handled by the outer catch block
+            throw error;
+          }
+        }
       }
-
-      navigation.goBack();
     } catch (error: any) {
+      // Handle other errors
       Alert.alert(
         isEditing ? 'Update Failed' : 'Creation Failed',
         error.message || 'Please try again.'
@@ -313,6 +349,38 @@ const CreateEditBudgetScreen: React.FC<CreateEditBudgetScreenProps> = ({ navigat
     return '🏷️'; // Default fallback
   };
 
+  const getExistingBudgetsForCategory = (categoryId: string) => {
+    return budgets.filter(budget => budget.category_id === categoryId);
+  };
+
+  const showExistingBudgetsAlert = (categoryId: string) => {
+    const existingBudgets = getExistingBudgetsForCategory(categoryId);
+    if (existingBudgets.length === 0) return;
+
+    const category = categories.find(cat => cat.id === categoryId);
+    const categoryName = category ? category.name : 'this category';
+
+    Alert.alert(
+      'Existing Budgets Found',
+      `You already have ${existingBudgets.length} budget(s) for ${categoryName}. Would you like to view them?`,
+      [
+        {
+          text: 'Cancel',
+          style: 'cancel'
+        },
+        {
+          text: 'View Budgets',
+          onPress: () => {
+            // Navigate to budget list with filter for this category
+            navigation.navigate('BudgetsList', { 
+              filterCategory: categoryId 
+            });
+          }
+        }
+      ]
+    );
+  };
+
   const renderPeriodSelector = () => (
     <View style={styles.selectorContainer}>
       <Text style={styles.label}>Budget Period</Text>
@@ -352,7 +420,37 @@ const CreateEditBudgetScreen: React.FC<CreateEditBudgetScreenProps> = ({ navigat
               styles.categoryOption,
               formData.category_id === category.id && styles.categoryOptionSelected,
             ]}
-            onPress={() => updateFormData('category_id', category.id)}
+            onPress={() => {
+              // Check if there are existing budgets for this category
+              const existingBudgets = getExistingBudgetsForCategory(category.id);
+              if (existingBudgets.length > 0 && !isEditing) {
+                // Show warning and ask if user wants to proceed
+                Alert.alert(
+                  'Existing Budgets Found',
+                  `You already have ${existingBudgets.length} budget(s) for ${category.name}. Would you like to view them instead?`,
+                  [
+                    {
+                      text: 'Cancel',
+                      style: 'cancel'
+                    },
+                    {
+                      text: 'View Existing Budgets',
+                      onPress: () => {
+                        navigation.navigate('BudgetsList', { 
+                          filterCategory: category.id 
+                        });
+                      }
+                    },
+                    {
+                      text: 'Create Anyway',
+                      onPress: () => updateFormData('category_id', category.id)
+                    }
+                  ]
+                );
+              } else {
+                updateFormData('category_id', category.id);
+              }
+            }}
           >
             <Text style={styles.categoryIcon}>
               {getCategoryIcon(category)}
@@ -365,6 +463,13 @@ const CreateEditBudgetScreen: React.FC<CreateEditBudgetScreenProps> = ({ navigat
             >
               {category.name}
             </Text>
+            {!isEditing && getExistingBudgetsForCategory(category.id).length > 0 && (
+              <View style={styles.existingBudgetIndicator}>
+                <Text style={styles.existingBudgetText}>
+                  {getExistingBudgetsForCategory(category.id).length} budget(s)
+                </Text>
+              </View>
+            )}
           </TouchableOpacity>
         ))}
       </ScrollView>
@@ -650,6 +755,19 @@ const styles = StyleSheet.create({
   categoryLabelSelected: {
     color: colors.primary,
     fontWeight: '600',
+  },
+  existingBudgetIndicator: {
+    backgroundColor: colors.warning + '20',
+    paddingHorizontal: spacing.xs,
+    paddingVertical: 2,
+    borderRadius: spacing.xs,
+    marginTop: spacing.xs,
+  },
+  existingBudgetText: {
+    ...typography.caption,
+    color: colors.warning,
+    fontSize: 10,
+    fontWeight: '500',
   },
 
   dateRow: {

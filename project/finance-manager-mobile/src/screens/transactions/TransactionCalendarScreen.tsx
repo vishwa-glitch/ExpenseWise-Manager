@@ -1,4 +1,5 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
+import { useFocusEffect } from '@react-navigation/native';
 import {
   View,
   Text,
@@ -17,6 +18,8 @@ import { CustomButton } from '../../components/common/CustomButton';
 import { colors, typography, spacing } from '../../constants/colors';
 import { formatCurrency } from '../../utils/currency';
 import { StackNavigationProp } from '@react-navigation/stack';
+import OnboardingOverlay from '../../components/common/OnboardingOverlay';
+import { useOnboardingOverlay } from '../../hooks/useOnboardingOverlay';
 
 // Define your stack navigator's params list
 // This is a basic example; you should replace it with your actual navigator's params
@@ -41,6 +44,9 @@ const TransactionCalendarScreen: React.FC<TransactionCalendarScreenProps> = ({ n
   const [currentDate, setCurrentDate] = useState<Date>(new Date());
   const [isLoading, setIsLoading] = useState(false);
   
+  // Onboarding overlay hook
+  const onboardingOverlay = useOnboardingOverlay();
+  
   // Date filter states
   const [showDateFilter, setShowDateFilter] = useState(false);
   const [selectedStartDate, setSelectedStartDate] = useState('');
@@ -56,6 +62,62 @@ const TransactionCalendarScreen: React.FC<TransactionCalendarScreenProps> = ({ n
       loadCalendarData();
     }
   }, [currentDate, isAuthenticated]);
+
+  // Refresh calendar data when screen comes into focus
+  useFocusEffect(
+    useCallback(() => {
+      if (isAuthenticated) {
+        console.log('📅 Calendar screen focused - refreshing data');
+        // Call loadCalendarData directly without dependency
+        const refreshData = async () => {
+          if (!isAuthenticated) {
+            console.log('🚫 Skipping calendar data load - user not authenticated');
+            return;
+          }
+
+          setIsLoading(true);
+          try {
+            // Use forced date range or check current state
+            const shouldUseDateRange = isDateRangeActive && selectedStartDate && selectedEndDate;
+            
+            if (shouldUseDateRange) {
+              const startDate = selectedStartDate;
+              const endDate = selectedEndDate;
+              
+              // Load data for date range
+              console.log('📅 Calendar: Loading date range data', {
+                startDate,
+                endDate,
+                isDateRangeActive
+              });
+              await dispatch(fetchTransactionCalendar({
+                startDate,
+                endDate,
+              }));
+            } else {
+              // Load data for current month
+              console.log('📅 Calendar: Loading monthly data', {
+                year: currentDate.getFullYear(),
+                month: currentDate.getMonth() + 1,
+                isDateRangeActive
+              });
+              await dispatch(fetchTransactionCalendar({
+                year: currentDate.getFullYear(),
+                month: currentDate.getMonth() + 1,
+              }));
+            }
+          } catch (error) {
+            console.error('Error loading calendar data:', error);
+            Alert.alert('Error', 'Failed to load calendar data. Please try again.');
+          } finally {
+            setIsLoading(false);
+          }
+        };
+        
+        refreshData();
+      }
+    }, [isAuthenticated, isDateRangeActive, selectedStartDate, selectedEndDate, currentDate, dispatch])
+  );
 
   const loadCalendarData = async (forceDateRange?: { startDate: string; endDate: string }) => {
     if (!isAuthenticated) {
@@ -132,10 +194,13 @@ const TransactionCalendarScreen: React.FC<TransactionCalendarScreenProps> = ({ n
   };
 
   const clearDateFilter = async () => {
+    console.log('📅 Clearing date filter and refreshing calendar');
     setIsDateRangeActive(false);
     setSelectedStartDate('');
     setSelectedEndDate('');
     setShowDateFilter(false);
+    
+    // Force reload calendar data for current month
     await loadCalendarData();
   };
 
@@ -202,10 +267,14 @@ const TransactionCalendarScreen: React.FC<TransactionCalendarScreenProps> = ({ n
         onPress={() => {
           if (hasTransactions) {
             // Navigate to transactions list for this specific day
+            const selectedDate = `${currentDate.getFullYear()}-${String(currentDate.getMonth() + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+            console.log('📅 Navigating to transactions for date:', selectedDate);
+            
+            // Navigate to the parent navigator and pass the date filter
             navigation.navigate('TransactionsMain', {
               screen: 'AllTransactions',
               params: {
-                filterDate: `${currentDate.getFullYear()}-${String(currentDate.getMonth() + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`,
+                filterDate: selectedDate,
               },
             });
           }
@@ -523,6 +592,7 @@ const TransactionCalendarScreen: React.FC<TransactionCalendarScreenProps> = ({ n
         <TouchableOpacity
           style={styles.viewTransactionsButton}
           onPress={() => {
+            console.log('📅 Viewing transactions for date range:', { selectedStartDate, selectedEndDate });
             navigation.navigate('TransactionsMain', {
               screen: 'AllTransactions',
               params: {
@@ -655,6 +725,19 @@ const TransactionCalendarScreen: React.FC<TransactionCalendarScreenProps> = ({ n
 
       {/* Date Filter Modal */}
       {renderDateFilterModal()}
+
+      {/* Onboarding Overlay - show for step 3 (calendar) */}
+      {onboardingOverlay.isVisible && onboardingOverlay.currentStep === 3 && (
+        <OnboardingOverlay
+          isVisible={onboardingOverlay.isVisible}
+          currentStep={onboardingOverlay.currentStep}
+          totalSteps={onboardingOverlay.totalSteps}
+          steps={onboardingOverlay.steps}
+          onNext={onboardingOverlay.handleNext}
+          onSkip={onboardingOverlay.handleSkip}
+          onComplete={onboardingOverlay.handleComplete}
+        />
+      )}
     </ScrollView>
   );
 };

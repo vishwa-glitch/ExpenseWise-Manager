@@ -5,34 +5,10 @@ import { StatusBar } from 'expo-status-bar';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { store } from './src/store';
 import AppNavigator from './src/navigation/AppNavigator';
-import { Platform } from 'react-native';
 
 export default function App() {
-  useEffect(() => {
-    // Initialize AdMob only in development builds or bare workflow
-    const isExpoManaged = !Platform.select({
-      native: false,
-      default: true,
-    });
-
-    if (!isExpoManaged) {
-      try {
-        const mobileAds = require('react-native-google-mobile-ads').default;
-        mobileAds()
-          .initialize()
-          .then((adapterStatuses: any) => {
-            console.log('🎬 AdMob initialized successfully');
-          })
-          .catch((error: any) => {
-            console.error('❌ Failed to initialize AdMob:', error);
-          });
-      } catch (error) {
-        console.log('📱 AdMob not available, using mock service');
-      }
-    } else {
-      console.log('📱 Using mock ad service for Expo managed workflow');
-    }
-  }, []);
+  // AdMob initialization removed for now - files kept for future use
+  // See ADMOB_IMPLEMENTATION.md for re-enabling instructions
 
   return (
     <SafeAreaProvider>
