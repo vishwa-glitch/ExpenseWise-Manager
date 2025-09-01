@@ -96,14 +96,12 @@ export const useOnboardingOverlay = () => {
             // We'll handle the tab switch in the TransactionsNavigator
             break;
           case 'budgets':
-            // Navigate to Goals navigator and then programmatically switch to Budget tab
-            (navigation as any).navigate('Home', { screen: 'Goals' });
-            // We'll handle the tab switch in the GoalsNavigator
+            // Navigate to Budget tab
+            (navigation as any).navigate('Home', { screen: 'Budget' });
             break;
           case 'goals':
-            // Navigate to Goals navigator and then programmatically switch to GoalsList tab
-            (navigation as any).navigate('Home', { screen: 'Goals' });
-            // We'll handle the tab switch in the GoalsNavigator
+            // Goals navigation removed for now - functionality kept for future use
+            (navigation as any).navigate('Home', { screen: 'Dashboard' });
             break;
           case 'categories':
             (navigation as any).navigate('Home', { screen: 'More' });
@@ -142,14 +140,12 @@ export const useOnboardingOverlay = () => {
             // We'll handle the tab switch in the TransactionsNavigator
             break;
           case 'budgets':
-            // Navigate to Goals navigator and then programmatically switch to Budget tab
-            (navigation as any).navigate('Home', { screen: 'Goals' });
-            // We'll handle the tab switch in the GoalsNavigator
+            // Navigate to Budget tab
+            (navigation as any).navigate('Home', { screen: 'Budget' });
             break;
           case 'goals':
-            // Navigate to Goals navigator and then programmatically switch to GoalsList tab
-            (navigation as any).navigate('Home', { screen: 'Goals' });
-            // We'll handle the tab switch in the GoalsNavigator
+            // Goals navigation removed for now - functionality kept for future use
+            (navigation as any).navigate('Home', { screen: 'Dashboard' });
             break;
           case 'categories':
             (navigation as any).navigate('Home', { screen: 'More' });

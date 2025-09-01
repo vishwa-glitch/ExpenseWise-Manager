@@ -187,7 +187,27 @@ const accountsSlice = createSlice({
       })
       .addCase(fetchAccountSummary.fulfilled, (state, action) => {
         state.isLoading = false;
-        state.accountSummary = action.payload.summary || action.payload;
+        
+        // Map backend response to frontend expected structure
+        const backendData = action.payload;
+        const backendSummary = backendData.summary || backendData;
+        
+        // Transform the backend response to match frontend expectations
+        state.accountSummary = {
+          total_income: backendSummary.total_income || 0,
+          total_expenses: backendSummary.total_expenses || 0,
+          net_change: backendSummary.net_amount || backendSummary.net_change || 0, // Backend returns net_amount, frontend expects net_change
+          transaction_count: backendSummary.total_transactions || backendSummary.transaction_count || 0, // Backend returns total_transactions, frontend expects transaction_count
+          average_transaction: backendSummary.avg_expense || backendSummary.average_transaction || 0, // Backend returns avg_expense, frontend expects average_transaction
+          largest_expense: backendSummary.max_expense || backendSummary.largest_expense || 0, // Backend returns max_expense, frontend expects largest_expense
+          largest_income: backendSummary.largest_income || 0,
+          most_frequent_category: backendSummary.most_frequent_category || null,
+        };
+        
+        console.log('📊 Account summary mapped:', {
+          backendData,
+          mappedSummary: state.accountSummary
+        });
       })
       .addCase(fetchAccountSummary.rejected, (state, action) => {
         state.isLoading = false;

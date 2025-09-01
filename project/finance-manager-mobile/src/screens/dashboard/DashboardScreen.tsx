@@ -11,15 +11,16 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAppDispatch } from '../../hooks/useAppDispatch';
-import { useTypedSelector } from '../../hooks/useTypedSelector';
+import { useTypedSelector, useUserData } from '../../hooks/useTypedSelector';
 import { fetchAccounts } from '../../store/slices/accountsSlice';
 import { fetchTransactions } from '../../store/slices/transactionsSlice';
-import { fetchGoals } from '../../store/slices/goalsSlice';
+// import { fetchGoals } from '../../store/slices/goalsSlice'; // removed for now
 import { fetchRecommendations } from '../../store/slices/recommendationsSlice';
 import { fetchBudgets } from '../../store/slices/budgetsSlice';
 import { fetchDashboardInsights } from '../../store/slices/analyticsSlice';
+import { fetchUserProfile } from '../../store/slices/userSlice';
 import { TransactionItem } from '../../components/common/TransactionItem';
-import { GoalCard } from '../../components/common/GoalCard';
+// import { GoalCard } from '../../components/common/GoalCard'; // removed for now
 import { RecommendationCard } from '../../components/common/RecommendationCard';
 import { SectionHeader } from '../../components/common/SectionHeader';
 import { LoadingSpinner } from '../../components/common/LoadingSpinner';
@@ -29,7 +30,7 @@ import { ErrorBoundary } from '../../components/common/ErrorBoundary';
 import { colors, typography, spacing } from '../../constants/colors';
 import { formatCurrency } from '../../utils/currency';
 import { SmartAlertCard } from '../../components/dashboard/widgets/SmartAlertCard';
-import { GoalProgressCard } from '../../components/dashboard/widgets/GoalProgressCard';
+// import { GoalProgressCard } from '../../components/dashboard/widgets/GoalProgressCard'; // removed for now
 import { CategoryBreakdownSection } from '../../components/dashboard/CategoryBreakdownSection';
 import OnboardingOverlay from '../../components/common/OnboardingOverlay';
 import { useOnboardingOverlay } from '../../hooks/useOnboardingOverlay';
@@ -51,10 +52,22 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
   // Onboarding overlay hook
   const onboardingOverlay = useOnboardingOverlay();
 
-  const { user, isAuthenticated } = useTypedSelector((state) => state.auth);
+  const { user, isAuthenticated, isLoading: userLoading } = useUserData();
+  
+  // Debug logging for user data
+  useEffect(() => {
+    console.log('👤 Dashboard - User data:', {
+      user,
+      isAuthenticated,
+      hasUser: !!user,
+      firstName: user?.first_name,
+      lastName: user?.last_name,
+      email: user?.email,
+    });
+  }, [user, isAuthenticated]);
   const { accounts } = useTypedSelector((state) => state.accounts);
   const { transactions } = useTypedSelector((state) => state.transactions);
-  const { goals, isLoading: goalsLoading } = useTypedSelector((state) => state.goals);
+  // const { goals, isLoading: goalsLoading } = useTypedSelector((state) => state.goals); // removed for now
   const { budgets, budgetStatus, isLoading: budgetsLoading } = useTypedSelector((state) => state.budgets);
   const { recommendations } = useTypedSelector((state) => state.recommendations);
   const { displayCurrency } = useTypedSelector((state) => state.user);
@@ -69,8 +82,16 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
     // Only load dashboard data when user is authenticated
     if (isAuthenticated) {
       loadDashboardData();
+      
+      // If user data is missing, try to load profile data
+      if (!user?.first_name && !user?.email) {
+        console.log('👤 User data missing, attempting to load profile...');
+        dispatch(fetchUserProfile()).catch(error => {
+          console.error('❌ Failed to load user profile:', error);
+        });
+      }
     }
-  }, [isAuthenticated]);
+  }, [isAuthenticated, user]);
 
   const loadDashboardData = async () => {
     // Double-check authentication before making API calls
@@ -84,7 +105,7 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
       await Promise.all([
         dispatch(fetchAccounts()),
         dispatch(fetchTransactions({ limit: 10 })),
-        dispatch(fetchGoals()),
+        // dispatch(fetchGoals()), // removed for now
         dispatch(fetchRecommendations()),
         dispatch(fetchBudgets()),
         dispatch(fetchDashboardInsights()),
@@ -138,16 +159,16 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
     }
   };
 
-  const getActiveGoals = () => {
-    try {
-      if (!goals || !Array.isArray(goals)) {
-        return [];
-      }
-      return goals.filter(goal => goal && goal.status === 'active').slice(0, 2);
-    } catch (error) {
-      return [];
-    }
-  };
+  // const getActiveGoals = () => {
+  //   try {
+  //     if (!goals || !Array.isArray(goals)) {
+  //       return [];
+  //     }
+  //     return goals.filter(goal => goal && goal.status === 'active').slice(0, 2);
+  //   } catch (error) {
+  //     return [];
+  //   }
+  // };
 
   const getMostRelevantBudgetAlert = () => {
     try {
@@ -186,50 +207,50 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
     }
   };
 
-  const getMostRelevantGoal = () => {
-    try {
-      if (!goals || !Array.isArray(goals) || goals.length === 0) {
-        return null;
-      }
+  // const getMostRelevantGoal = () => {
+  //   try {
+  //     if (!goals || !Array.isArray(goals) || goals.length === 0) {
+  //       return null;
+  //   }
 
-      // Find the goal with the highest priority or most progress
-      const activeGoals = goals.filter(goal => goal && goal.status === 'active');
-      if (activeGoals.length === 0) return null;
+  //   // Find the goal with the highest priority or most progress
+  //   const activeGoals = goals.filter(goal => goal && goal.status === 'active');
+  //   if (activeGoals.length === 0) return null;
 
-      // Sort by priority (high first) then by progress percentage
-      const sortedGoals = activeGoals
-        .map(goal => ({
-          ...goal,
-          progressPercentage: goal.progress_percentage || 0,
-          priority: goal.priority || 'medium'
-        }))
-        .sort((a, b) => {
-          // Priority order: high > medium > low
-          const priorityOrder: { [key: string]: number } = { high: 3, medium: 2, low: 1 };
-          const aPriority = priorityOrder[a.priority] || 2;
-          const bPriority = priorityOrder[b.priority] || 2;
-          
-          if (aPriority !== bPriority) {
-            return bPriority - aPriority;
-          }
-          // If same priority, sort by progress percentage
-          return b.progressPercentage - a.progressPercentage;
-        });
+  //   // Sort by priority (high first) then by progress percentage
+  //   const sortedGoals = activeGoals
+  //     .map(goal => ({
+  //       ...goal,
+  //       progressPercentage: goal.progress_percentage || 0,
+  //       priority: goal.priority || 'medium'
+  //     }))
+  //     .sort((a, b) => {
+  //       // Priority order: high > medium > low
+  //       const priorityOrder: { [key: string]: number } = { high: 3, medium: 2, low: 1 };
+  //       const aPriority = priorityOrder[a.priority] || 2;
+  //       const bPriority = priorityOrder[b.priority] || 2;
+        
+  //       if (aPriority !== bPriority) {
+  //         return bPriority - aPriority;
+  //       }
+  //       // If same priority, sort by progress percentage
+  //       return b.progressPercentage - a.progressPercentage;
+  //     });
 
-      const selectedGoal = sortedGoals[0];
-      
-      return {
-        title: selectedGoal.title || 'Financial Goal',
-        currentAmount: selectedGoal.current_amount || 0,
-        targetAmount: selectedGoal.target_amount || 0,
-        progressPercentage: selectedGoal.progressPercentage,
-        monthlyIncrement: selectedGoal.monthly_savings_needed || 0,
-      };
-    } catch (error) {
-      console.error('Error getting goal:', error);
-      return null;
-    }
-  };
+  //   const selectedGoal = sortedGoals[0];
+    
+  //   return {
+  //     title: selectedGoal.title || 'Financial Goal',
+  //     currentAmount: selectedGoal.current_amount || 0,
+  //     targetAmount: selectedGoal.target_amount || 0,
+  //     progressPercentage: selectedGoal.progressPercentage,
+  //     monthlyIncrement: selectedGoal.monthly_savings_needed || 0,
+  //   };
+  // } catch (error) {
+  //   console.error('Error getting goal:', error);
+  //   return null;
+  // }
+  // };
 
   const getTopRecommendations = () => {
     try {
@@ -341,8 +362,8 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
     }
   };
 
-  // Show loading spinner if not authenticated or if loading and no data
-  if (!isAuthenticated || (goalsLoading && !goals)) {
+  // Show loading spinner if not authenticated
+  if (!isAuthenticated) {
     return <LoadingSpinner />;
   }
 
@@ -371,7 +392,7 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
         <View style={styles.header}>
           <View style={styles.welcomeSection}>
             <Text style={styles.welcomeText}>
-              Welcome back, {user?.first_name || 'User'}!
+              Welcome back, {userLoading ? '...' : (user?.first_name || user?.email?.split('@')[0] || 'User')}!
             </Text>
             <Text style={styles.dateText}>
               {getCurrentDate()}
@@ -517,22 +538,14 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
             <SmartAlertCard 
               error={null}
               {...getMostRelevantBudgetAlert()}
-              onPress={() => navigation.navigate('Goals', { screen: 'Budget' })} 
-              onDetailsPress={() => navigation.navigate('Goals', { screen: 'Budget' })} 
+                            onPress={() => navigation.navigate('Budget')}
+              onDetailsPress={() => navigation.navigate('Budget')} 
             />
           ) : null}
           {budgetsLoading || getMostRelevantBudgetAlert() ? (
             <View style={{ height: spacing.sm }} />
           ) : null}
-          {goalsLoading ? (
-            <LoadingSpinner />
-          ) : getMostRelevantGoal() ? (
-            <GoalProgressCard 
-              error={null}
-              {...getMostRelevantGoal()}
-              onPress={() => navigation.navigate('Goals')} 
-            />
-          ) : null}
+          {/* Goals widget removed for now - functionality kept for future use */}
         </View>
 
         {/* Category Breakdown Section */}

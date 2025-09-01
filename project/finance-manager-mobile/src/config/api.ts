@@ -22,6 +22,7 @@ export const API_ENDPOINTS = {
     LOGIN: "/auth/login",
     REFRESH: "/auth/refresh",
     LOGOUT: "/auth/logout",
+    VALIDATE_OFFLINE: "/auth/validate-offline",
   },
 
   // User Management
@@ -33,6 +34,8 @@ export const API_ENDPOINTS = {
     EXPORT_ELIGIBILITY: "/user/export-eligibility",
     REWARD_AD_COMPLETED: "/user/reward-ad-completed",
     USAGE: "/user/usage",
+    DELETION_INFO: "/user/deletion-info",
+    DELETE_ACCOUNT: "/user/account",
   },
 
   // Account Management
@@ -135,15 +138,7 @@ export const API_ENDPOINTS = {
     GENERATE: "/recommendations/generate",
   },
 
-  // Notifications
-  NOTIFICATIONS: {
-    LIST: "/notifications",
-    UNREAD: "/notifications/unread",
-    READ: (id: string) => `/notifications/${id}/read`,
-    CLICK: (id: string) => `/notifications/${id}/click`,
-    MARK_ALL_READ: "/notifications/mark-all-read",
-    PREFERENCES: "/notifications/preferences",
-  },
+
 
   // Analytics
   ANALYTICS: {

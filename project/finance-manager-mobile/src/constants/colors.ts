@@ -35,13 +35,15 @@ export const colors = {
   cardDark: '#2D2D2D',
   border: '#E9ECEF',
   borderDark: '#404040',
+  shadow: '#000000',
   
   // Status Colors
   success: '#28a745',
   error: '#dc3545',
   info: '#17a2b8',
   light: '#f8f9fa',
-  dark: '#343a40'
+  dark: '#343a40',
+  white: '#FFFFFF'
 };
 
 export const typography = {

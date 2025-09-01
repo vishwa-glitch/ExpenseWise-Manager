@@ -9,7 +9,7 @@ import {
   Platform,
 } from 'react-native';
 import { useAppDispatch } from '../../hooks/useAppDispatch';
-import { useTypedSelector } from '../../hooks/useTypedSelector';
+import { useTypedSelector, useUserData } from '../../hooks/useTypedSelector';
 import { logout } from '../../store/slices/authSlice';
 import { colors, typography, spacing } from '../../constants/colors';
 
@@ -20,7 +20,7 @@ interface MoreScreenProps {
 
 const MoreScreen: React.FC<MoreScreenProps> = ({ navigation }) => {
   const dispatch = useAppDispatch();
-  const { user } = useTypedSelector((state) => state.auth);
+  const { user } = useUserData();
 
   const menuItems = [
     {
@@ -34,6 +34,12 @@ const MoreScreen: React.FC<MoreScreenProps> = ({ navigation }) => {
       icon: '📤',
       screen: 'Export', 
       description: 'Export transactions to Excel, CSV, or PDF',
+    },
+    {
+      title: 'Notifications',
+      icon: '🔔',
+      screen: 'NotificationSettings',
+      description: 'Manage notification preferences',
     },
   ];
 
@@ -121,7 +127,8 @@ const MoreScreen: React.FC<MoreScreenProps> = ({ navigation }) => {
               <Text style={styles.quickActionIcon}>💰</Text>
               <Text style={styles.quickActionText}>Add Transaction</Text>
             </TouchableOpacity>
-            <TouchableOpacity
+            {/* Goals functionality removed for now - kept for future use */}
+            {/* <TouchableOpacity
               style={styles.quickActionButton}
               onPress={() =>
                 navigation.navigate('Goals', {
@@ -131,7 +138,7 @@ const MoreScreen: React.FC<MoreScreenProps> = ({ navigation }) => {
             >
               <Text style={styles.quickActionIcon}>🎯</Text>
               <Text style={styles.quickActionText}>Create Goal</Text>
-            </TouchableOpacity>
+            </TouchableOpacity> */}
             <TouchableOpacity
               style={styles.quickActionButton}
               onPress={() =>
@@ -146,7 +153,7 @@ const MoreScreen: React.FC<MoreScreenProps> = ({ navigation }) => {
             <TouchableOpacity
               style={styles.quickActionButton}
               onPress={() =>
-                navigation.navigate('Goals', {
+                navigation.navigate('Budget', {
                   screen: 'CreateBudget',
                 })
               }

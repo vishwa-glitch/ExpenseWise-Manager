@@ -8,7 +8,8 @@ import { colors } from '../constants/colors';
 // Import tab screens
 import DashboardNavigator from './DashboardNavigator';
 import TransactionsNavigator from './TransactionsNavigator';
-import GoalsNavigator from './GoalsNavigator';
+// GoalsNavigator import removed for now - file kept for future use
+import BudgetNavigator from './BudgetNavigator';
 import MoreNavigator from './MoreNavigator';
 
 // Import drawer screens
@@ -20,6 +21,7 @@ import SettingsScreen from '../screens/settings/SettingsScreen';
 import ProfileNavigator from './ProfileNavigator';
 import AccountSharesScreen from '../screens/accounts/AccountSharingScreen';
 import HelpSupportScreen from '../screens/help/HelpSupportScreen';
+import AccountDeletionScreen from '../screens/help/AccountDeletionScreen';
 
 // Import account screens for direct navigation
 import AccountsListScreen from '../screens/accounts/AccountsListScreen';
@@ -41,7 +43,7 @@ const TabBarIcon: React.FC<{ name: string; focused: boolean }> = ({ name, focuse
   const iconMap: { [key: string]: string } = {
     Dashboard: '🏠',
     Transactions: '📋',
-    'Goals & Budget': '🎯',
+    Budget: '📊',
     More: '☰',
   };
 
@@ -150,9 +152,9 @@ const TabNavigator: React.FC = () => {
         options={{ tabBarLabel: 'Transactions' }}
       />
       <Tab.Screen 
-        name="Goals" 
-        component={GoalsNavigator}
-        options={{ tabBarLabel: 'Goals & Budget' }}
+        name="Budget" 
+        component={BudgetNavigator}
+        options={{ tabBarLabel: 'Budget' }}
       />
       <Tab.Screen 
         name="More" 
@@ -180,6 +182,7 @@ const MainNavigator: React.FC = () => {
         <Stack.Screen name="Profile" component={ProfileNavigator} />
         <Stack.Screen name="AccountShares" component={AccountSharesScreen} />
         <Stack.Screen name="HelpSupport" component={HelpSupportScreen} />
+        <Stack.Screen name="AccountDeletion" component={AccountDeletionScreen} />
       </Stack.Navigator>
       
       {/* Global Premium Modal */}

@@ -17,9 +17,9 @@ import { LoadingSkeleton } from '../common/LoadingSkeleton';
 import { colors, typography, spacing } from '../../constants/colors';
 import { fetchSpendingTrends, fetchCategoryBreakdown } from '../../store/slices/analyticsSlice';
 import { fetchBudgets } from '../../store/slices/budgetsSlice';
-import { fetchGoals } from '../../store/slices/goalsSlice';
+// import { fetchGoals } from '../../store/slices/goalsSlice'; // removed for now
 import { SmartAlertCard } from './widgets/SmartAlertCard';
-import { GoalProgressCard } from './widgets/GoalProgressCard';
+// import { GoalProgressCard } from './widgets/GoalProgressCard'; // removed for now
 
 export type TimePeriod = 'weekly' | 'monthly' | '6months' | 'yearly';
 
@@ -40,7 +40,7 @@ export const SmartInsightsSection: React.FC<SmartInsightsSectionProps> = ({
 
   const { spendingTrends, error } = useTypedSelector((state) => state.analytics);
   const { budgets, budgetStatus, isLoading: budgetsLoading, error: budgetsError } = useTypedSelector((state) => state.budgets);
-  const { goals, isLoading: goalsLoading, error: goalsError } = useTypedSelector((state) => state.goals);
+  // const { goals, isLoading: goalsLoading, error: goalsError } = useTypedSelector((state) => state.goals); // removed for now
 
   useEffect(() => {
     // Load data for the selected period when it changes
@@ -49,7 +49,7 @@ export const SmartInsightsSection: React.FC<SmartInsightsSectionProps> = ({
 
   useEffect(() => {
     dispatch(fetchBudgets());
-    dispatch(fetchGoals());
+            // dispatch(fetchGoals()); // removed for now
   }, [dispatch]);
 
   const handlePeriodChange = async (period: TimePeriod) => {
@@ -199,13 +199,13 @@ export const SmartInsightsSection: React.FC<SmartInsightsSectionProps> = ({
     return budgets.reduce((max, budget) => (budget.spent_amount / budget.amount > max.spent_amount / max.amount ? budget : max), budgets[0]);
   };
 
-  const getPrimaryGoal = () => {
-    if (!goals || goals.length === 0) return null;
-    return goals[0]; 
-  };
+  // const getPrimaryGoal = () => {
+  //   if (!goals || goals.length === 0) return null;
+  //   return goals[0]; 
+  // };
 
   const highestUsageBudget = getHighestUsageBudget();
-  const primaryGoal = getPrimaryGoal();
+  // const primaryGoal = getPrimaryGoal();
 
   const renderInsightsContent = () => {
     if (error) {
@@ -265,18 +265,7 @@ export const SmartInsightsSection: React.FC<SmartInsightsSectionProps> = ({
               daysLeft={budgetStatus.daysLeft}
             />
           ) : null}
-          {goalsLoading ? (
-            <GoalProgressCard isLoading={true} error={null} />
-          ) : primaryGoal ? (
-            <GoalProgressCard 
-              isLoading={false}
-              error={goalsError}
-              title={primaryGoal.name}
-              percentage={Math.round((primaryGoal.current_amount / primaryGoal.target_amount) * 100)}
-              currentAmount={primaryGoal.current_amount}
-              totalAmount={primaryGoal.target_amount}
-            />
-          ) : null}
+          {/* Goals widget removed for now - functionality kept for future use */}
         </View>
 
         <View style={styles.periodSelector}>

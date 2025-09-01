@@ -12,15 +12,10 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAppDispatch } from '../../hooks/useAppDispatch';
 import { useTypedSelector } from '../../hooks/useTypedSelector';
-import { fetchWeeklyHealth } from '../../store/slices/analyticsSlice';
-import { fetchBudgetAnalytics, fetchBudgetVarianceReport } from '../../store/slices/budgetAnalyticsSlice';
+import { fetchBudgetAnalytics } from '../../store/slices/budgetAnalyticsSlice';
 
 import { colors, typography, spacing } from '../../constants/colors';
-import {
-  BudgetAnalyticsSummary,
-  BudgetVarianceReport,
-  BudgetProgressBars,
-} from '../../components/budgets';
+import { SimplifiedBudgetAnalytics } from '../../components/budgets';
 
 interface BudgetAnalyticsScreenProps {
   navigation: any;
@@ -44,13 +39,7 @@ const BudgetAnalyticsScreen: React.FC<BudgetAnalyticsScreenProps> = ({ navigatio
   const loadData = async () => {
     try {
       await Promise.all([
-        dispatch(fetchWeeklyHealth()),
-        dispatch(fetchBudgetAnalytics({ period: 'current_month', months: 6 })),
-        dispatch(fetchBudgetVarianceReport({ 
-          startDate: new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().split('T')[0],
-          endDate: new Date().toISOString().split('T')[0],
-          includeInactive: false 
-        }))
+        dispatch(fetchBudgetAnalytics({ period: 'current_month', months: 1 })),
       ]);
     } catch (error) {
       console.error('Error loading analytics data:', error);
@@ -68,10 +57,7 @@ const BudgetAnalyticsScreen: React.FC<BudgetAnalyticsScreenProps> = ({ navigatio
     navigation.navigate('BudgetDetail', { budgetId });
   };
 
-  const handleCategoryPress = (categoryId: string) => {
-    // Navigate to category details or show category-specific analytics
-    console.log('Category pressed:', categoryId);
-  };
+
 
   return (
     <SafeAreaView style={styles.container}>
@@ -96,52 +82,30 @@ const BudgetAnalyticsScreen: React.FC<BudgetAnalyticsScreenProps> = ({ navigatio
       >
         {/* Header */}
         <View style={styles.header}>
-          <Text style={styles.title}>Budget Analytics</Text>
-          <Text style={styles.subtitle}>Track your financial health and spending patterns</Text>
+          <Text style={styles.title}>Budget Overview</Text>
+          <Text style={styles.subtitle}>Simple insights into your budget performance</Text>
         </View>
 
-        {/* Budget Analytics Summary */}
+        {/* Simplified Budget Analytics */}
         {budgetAnalytics?.analytics && (
-          <BudgetAnalyticsSummary 
+          <SimplifiedBudgetAnalytics 
             analytics={budgetAnalytics.analytics}
-          />
-        )}
-
-        {/* Budget Progress Bars */}
-        {budgetAnalytics?.analytics?.category_performance && (
-          <BudgetProgressBars 
-            categoryPerformance={budgetAnalytics.analytics.category_performance}
-            onCategoryPress={handleCategoryPress}
-          />
-        )}
-
-        {/* Budget Variance Report */}
-        {budgetAnalytics?.varianceReport && (
-          <BudgetVarianceReport 
-            varianceReport={budgetAnalytics.varianceReport}
             onBudgetPress={handleBudgetPress}
           />
         )}
 
         {/* Loading States */}
-        {(budgetAnalytics?.analyticsLoading || budgetAnalytics?.varianceReportLoading) && !budgetAnalytics?.analytics && !budgetAnalytics?.varianceReport && (
+        {budgetAnalytics?.analyticsLoading && !budgetAnalytics?.analytics && (
           <View style={styles.loadingContainer}>
-            <Text style={styles.loadingText}>Loading budget analytics...</Text>
+            <Text style={styles.loadingText}>Loading budget overview...</Text>
           </View>
         )}
 
         {/* Error States */}
         {budgetAnalytics?.analyticsError && !budgetAnalytics?.analytics && (
           <View style={styles.errorContainer}>
-            <Text style={styles.errorText}>Failed to load budget analytics</Text>
+            <Text style={styles.errorText}>Failed to load budget overview</Text>
             <Text style={styles.errorSubtext}>{budgetAnalytics.analyticsError}</Text>
-          </View>
-        )}
-
-        {budgetAnalytics?.varianceReportError && !budgetAnalytics?.varianceReport && (
-          <View style={styles.errorContainer}>
-            <Text style={styles.errorText}>Failed to load variance report</Text>
-            <Text style={styles.errorSubtext}>{budgetAnalytics.varianceReportError}</Text>
           </View>
         )}
       </ScrollView>

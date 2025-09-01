@@ -38,17 +38,30 @@ export const GoalCard: React.FC<GoalCardProps> = ({ goal, onPress, onContribute,
       amount = 0;
     }
     const currency = goal.currency || displayCurrency || 'USD';
-    return formatCurrency(amount, currency, { maximumFractionDigits: 0 });
+    try {
+      const formatted = formatCurrency(amount, currency, { maximumFractionDigits: 0 });
+      // Ensure we return a valid string
+      return typeof formatted === 'string' ? formatted : String(amount);
+    } catch (error) {
+      console.warn('Error formatting amount:', error);
+      return String(amount);
+    }
   };
 
   const formatDate = (dateString?: string) => {
     if (!dateString) return '';
-    const date = new Date(dateString);
-    return date.toLocaleDateString('en-IN', {
-      day: '2-digit',
-      month: 'short',
-      year: 'numeric',
-    });
+    try {
+      const date = new Date(dateString);
+      if (isNaN(date.getTime())) return '';
+      return date.toLocaleDateString('en-IN', {
+        day: '2-digit',
+        month: 'short',
+        year: 'numeric',
+      });
+    } catch (error) {
+      console.warn('Error formatting date:', error);
+      return '';
+    }
   };
 
   const getCategoryIcon = (category?: string) => {
@@ -101,13 +114,36 @@ export const GoalCard: React.FC<GoalCardProps> = ({ goal, onPress, onContribute,
   };
 
   const getPriorityDisplay = () => {
-    if (!goal.priority) return '';
-    return goal.priority.charAt(0).toUpperCase() + goal.priority.slice(1);
+    if (!goal.priority || typeof goal.priority !== 'string') return '';
+    try {
+      return goal.priority.charAt(0).toUpperCase() + goal.priority.slice(1);
+    } catch (error) {
+      console.warn('Error formatting priority:', error);
+      return goal.priority;
+    }
+  };
+
+  const getTransparentColor = (color: string, opacity: number = 0.2) => {
+    // Convert hex to rgba for transparency
+    if (color.startsWith('#')) {
+      const hex = color.replace('#', '');
+      const r = parseInt(hex.substr(0, 2), 16);
+      const g = parseInt(hex.substr(2, 2), 16);
+      const b = parseInt(hex.substr(4, 2), 16);
+      return `rgba(${r}, ${g}, ${b}, ${opacity})`;
+    }
+    return color;
+  };
+
+  const getRemainingAmount = () => {
+    const target = typeof goal.target_amount === 'number' && !isNaN(goal.target_amount) ? goal.target_amount : 0;
+    const current = typeof goal.current_amount === 'number' && !isNaN(goal.current_amount) ? goal.current_amount : 0;
+    return target - current;
   };
 
   return (
     <TouchableOpacity
-      style={[styles.container, compact && styles.compact]}
+      style={[styles.container, compact ? styles.compact : null]}
       onPress={onPress}
       activeOpacity={0.8}
     >
@@ -125,7 +161,7 @@ export const GoalCard: React.FC<GoalCardProps> = ({ goal, onPress, onContribute,
             </Text>
             {!compact && goal.category && (
               <Text style={styles.category}>
-                {goal.category.charAt(0).toUpperCase() + goal.category.slice(1)}
+                {typeof goal.category === 'string' ? goal.category.charAt(0).toUpperCase() + goal.category.slice(1) : goal.category}
               </Text>
             )}
           </View>
@@ -136,9 +172,12 @@ export const GoalCard: React.FC<GoalCardProps> = ({ goal, onPress, onContribute,
               <Text style={styles.priorityText}>{getPriorityDisplay()}</Text>
             </View>
           )}
-                      <View style={[styles.statusBadge, { backgroundColor: getStatusColor() + '20' }]}>
+                      <View style={[styles.statusBadge, { backgroundColor: getTransparentColor(getStatusColor(), 0.2) }]}>
               <Text style={[styles.statusText, { color: getStatusColor() }]}>
-                {(goal.status || 'active').charAt(0).toUpperCase() + (goal.status || 'active').slice(1)}
+                {(() => {
+                  const status = goal.status || 'active';
+                  return typeof status === 'string' ? status.charAt(0).toUpperCase() + status.slice(1) : status;
+                })()}
               </Text>
             </View>
         </View>
@@ -149,7 +188,10 @@ export const GoalCard: React.FC<GoalCardProps> = ({ goal, onPress, onContribute,
         <View style={styles.progressInfo}>
           <Text style={styles.progressLabel}>Progress</Text>
           <Text style={[styles.progressText, { color: getProgressColor() }]}>
-            {(goal.progress_percentage || 0).toFixed(1)}%
+            {(() => {
+              const progress = goal.progress_percentage || 0;
+              return typeof progress === 'number' && !isNaN(progress) ? progress.toFixed(1) + '%' : '0.0%';
+            })()}
           </Text>
         </View>
         <View style={styles.progressBar}>
@@ -157,7 +199,7 @@ export const GoalCard: React.FC<GoalCardProps> = ({ goal, onPress, onContribute,
             style={[
               styles.progressFill,
               {
-                width: `${Math.min(goal.progress_percentage || 0, 100)}%`,
+                width: `${Math.min(typeof goal.progress_percentage === 'number' && !isNaN(goal.progress_percentage) ? goal.progress_percentage : 0, 100)}%`,
                 backgroundColor: getProgressColor(),
               },
             ]}
@@ -182,7 +224,7 @@ export const GoalCard: React.FC<GoalCardProps> = ({ goal, onPress, onContribute,
         <View style={styles.amountRow}>
           <Text style={styles.amountLabel}>Remaining</Text>
           <Text style={styles.remainingAmount}>
-            {formatAmount((goal.target_amount || 0) - (goal.current_amount || 0))}
+            {formatAmount(getRemainingAmount())}
           </Text>
         </View>
       </View>
@@ -195,7 +237,7 @@ export const GoalCard: React.FC<GoalCardProps> = ({ goal, onPress, onContribute,
                 🗓️ {formatDate(goal.target_date)}
               </Text>
             )}
-            {goal.days_remaining !== undefined && goal.days_remaining > 0 && (
+            {goal.days_remaining !== undefined && typeof goal.days_remaining === 'number' && goal.days_remaining > 0 && (
               <Text style={[styles.daysRemaining, { color: getDaysRemainingColor() }]}>
                 ⏰ {goal.days_remaining} days left
               </Text>
@@ -215,7 +257,7 @@ export const GoalCard: React.FC<GoalCardProps> = ({ goal, onPress, onContribute,
         </View>
       )}
 
-      {!compact && goal.monthly_savings_needed && goal.monthly_savings_needed > 0 && (
+      {!compact && goal.monthly_savings_needed && typeof goal.monthly_savings_needed === 'number' && goal.monthly_savings_needed > 0 && (
         <View style={styles.savingsNeeded}>
           <Text style={styles.savingsIcon}>💡</Text>
           <Text style={styles.savingsText}>

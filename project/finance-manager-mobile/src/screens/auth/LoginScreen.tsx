@@ -10,6 +10,7 @@ import {
   Alert,
   Keyboard,
   TouchableWithoutFeedback,
+  Image,
 } from 'react-native';
 import { useAppDispatch } from '../../hooks/useAppDispatch';
 import { useTypedSelector } from '../../hooks/useTypedSelector';
@@ -123,8 +124,8 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ navigation, route }) => {
           >
             <View style={styles.content}>
               <View style={styles.header}>
-                <Text style={styles.logo}>💰</Text>
-                <Text style={styles.title}>Finance Manager</Text>
+                <Image source={require('../../../assets/logo.png')} style={styles.logo} />
+                <Text style={styles.title}>Expense Manager</Text>
                 <Text style={styles.subtitle}>Welcome back! Sign in to continue</Text>
               </View>
 
@@ -202,8 +203,10 @@ const styles = StyleSheet.create({
     marginBottom: spacing.lg,
   },
   logo: {
-    fontSize: 64,
+    width: 80,
+    height: 80,
     marginBottom: spacing.md,
+    resizeMode: 'contain',
   },
   title: {
     ...typography.h1,

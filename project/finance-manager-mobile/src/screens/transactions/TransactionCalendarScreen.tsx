@@ -11,7 +11,7 @@ import {
   ScrollView,
 } from 'react-native';
 import { useAppDispatch } from '../../hooks/useAppDispatch';
-import { useTypedSelector, RootState } from '../../hooks/useTypedSelector';
+import { useTypedSelector } from '../../hooks/useTypedSelector';
 import { fetchTransactionCalendar } from '../../store/slices/transactionsSlice';
 import { LoadingSpinner } from '../../components/common/LoadingSpinner';
 import { CustomButton } from '../../components/common/CustomButton';
@@ -53,9 +53,9 @@ const TransactionCalendarScreen: React.FC<TransactionCalendarScreenProps> = ({ n
   const [selectedEndDate, setSelectedEndDate] = useState('');
   const [isDateRangeActive, setIsDateRangeActive] = useState(false);
 
-  const { calendarData } = useTypedSelector((state: RootState) => state.transactions);
-  const { isAuthenticated } = useTypedSelector((state: RootState) => state.auth);
-  const { displayCurrency } = useTypedSelector((state: RootState) => state.user);
+  const { calendarData } = useTypedSelector((state) => state.transactions);
+  const { isAuthenticated } = useTypedSelector((state) => state.auth);
+  const { displayCurrency } = useTypedSelector((state) => state.user);
 
   useEffect(() => {
     if (isAuthenticated) {
@@ -389,7 +389,16 @@ const TransactionCalendarScreen: React.FC<TransactionCalendarScreenProps> = ({ n
       return getDateRangeSummary();
     }
 
+    console.log('📊 getMonthSummary called', {
+      hasCalendarData: !!calendarData,
+      calendarDataType: typeof calendarData,
+      calendarDataKeys: calendarData ? Object.keys(calendarData) : null,
+      hasCalendarDataProperty: !!(calendarData?.calendar_data),
+      calendarDataValues: calendarData?.calendar_data ? Object.values(calendarData.calendar_data) : null,
+    });
+
     if (!calendarData?.calendar_data) {
+      console.log('📊 Returning zeros - no calendar_data property');
       return { totalIncome: 0, totalExpenses: 0, netAmount: 0, transactionCount: 0 };
     }
 
@@ -397,10 +406,33 @@ const TransactionCalendarScreen: React.FC<TransactionCalendarScreenProps> = ({ n
     let totalExpenses = 0;
     let transactionCount = 0;
 
-    Object.values(calendarData.calendar_data).forEach((dayData: any) => {
-      totalIncome += dayData.income || 0;
-      totalExpenses += dayData.expenses || 0;
-      transactionCount += dayData.transaction_count || 0;
+    Object.values(calendarData.calendar_data).forEach((dayData: any, index: number) => {
+      const dayIncome = dayData.income || 0;
+      const dayExpenses = dayData.expenses || 0;
+      // Calculate transaction count from transactions array if not provided
+      const dayTransactionCount = dayData.transaction_count || (dayData.transactions ? dayData.transactions.length : 0);
+      
+      totalIncome += dayIncome;
+      totalExpenses += dayExpenses;
+      transactionCount += dayTransactionCount;
+      
+      if (index < 5) { // Log first 5 days for debugging
+        console.log(`📊 Day ${index + 1}:`, {
+          income: dayIncome,
+          expenses: dayExpenses,
+          transactionCount: dayTransactionCount,
+          transactionsArrayLength: dayData.transactions ? dayData.transactions.length : 0,
+          hasTransactionCount: !!dayData.transaction_count,
+          dayData
+        });
+      }
+    });
+
+    console.log('📊 Month summary calculated:', {
+      totalIncome,
+      totalExpenses,
+      transactionCount,
+      netAmount: totalIncome - totalExpenses
     });
 
     return {

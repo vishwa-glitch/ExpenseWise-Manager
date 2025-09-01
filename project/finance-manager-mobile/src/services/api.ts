@@ -41,6 +41,18 @@ class ApiService {
     return this.api.get(url, config);
   }
 
+  public async post<T = any, R = AxiosResponse<T>>(url: string, data?: any, config?: AxiosRequestConfig): Promise<R> {
+    return this.api.post(url, data, config);
+  }
+
+  public async put<T = any, R = AxiosResponse<T>>(url: string, data?: any, config?: AxiosRequestConfig): Promise<R> {
+    return this.api.put(url, data, config);
+  }
+
+  public async delete<T = any, R = AxiosResponse<T>>(url: string, config?: AxiosRequestConfig): Promise<R> {
+    return this.api.delete(url, config);
+  }
+
   private setupInterceptors() {
     // Request interceptor to add auth token
     this.api.interceptors.request.use(
@@ -285,6 +297,24 @@ class ApiService {
         await SecureStore.deleteItemAsync('refresh_token').catch(() => {});
       }
 
+      // Validate and store offline token
+      const offline_token = tokens.offline_token || response.data.offline_token;
+      if (offline_token && typeof offline_token === 'string' && offline_token.length > 0) {
+        try {
+          await SecureStore.setItemAsync('offline_token', offline_token);
+          console.log('✅ Offline token stored successfully');
+        } catch (error) {
+          console.error('❌ Error storing offline token:', error);
+          // Don't fail login if offline token storage fails
+        }
+      } else {
+        console.warn('⚠️ Invalid offline_token received from backend:', {
+          original: offline_token,
+          type: typeof offline_token
+        });
+        await SecureStore.deleteItemAsync('offline_token').catch(() => {});
+      }
+
       return response.data;
     } catch (error: any) {
       console.error('❌ Login error:', error);
@@ -381,6 +411,24 @@ class ApiService {
         await SecureStore.deleteItemAsync('refresh_token').catch(() => {});
       }
 
+      // Validate and store offline token
+      const offline_token = tokens.offline_token || response.data.offline_token;
+      if (offline_token && typeof offline_token === 'string' && offline_token.length > 0) {
+        try {
+          await SecureStore.setItemAsync('offline_token', offline_token);
+          console.log('✅ Offline token stored successfully');
+        } catch (error) {
+          console.error('❌ Error storing offline token:', error);
+          // Don't fail registration if offline token storage fails
+        }
+      } else {
+        console.warn('⚠️ Invalid offline_token received from backend:', {
+          original: offline_token,
+          type: typeof offline_token
+        });
+        await SecureStore.deleteItemAsync('offline_token').catch(() => {});
+      }
+
       return response.data;
     } catch (error: any) {
       console.error('❌ Registration error:', error);
@@ -458,6 +506,7 @@ class ApiService {
     } finally {
       await SecureStore.deleteItemAsync('access_token').catch(() => {});
       await SecureStore.deleteItemAsync('refresh_token').catch(() => {});
+      await SecureStore.deleteItemAsync('offline_token').catch(() => {});
       console.log('🧹 Tokens cleared from SecureStore');
     }
   }
@@ -524,7 +573,13 @@ class ApiService {
   }
 
   async getAccountSummary(id: string, period = 'month') {
-    const response = await this.api.get(API_ENDPOINTS.ACCOUNTS.SUMMARY(id, period));
+    const endpoint = API_ENDPOINTS.ACCOUNTS.SUMMARY(id, period);
+    console.log('🔍 Fetching account summary for:', { id, period });
+    console.log('🌐 API endpoint:', endpoint);
+    console.log('🔗 Full URL:', `${this.api.defaults.baseURL}${endpoint}`);
+    
+    const response = await this.api.get(endpoint);
+    console.log('📊 Account summary API response:', response.data);
     return response.data;
   }
 
@@ -902,21 +957,7 @@ class ApiService {
     return response.data;
   }
 
-  // Notification methods
-  async getNotifications() {
-    const response = await this.api.get(API_ENDPOINTS.NOTIFICATIONS.LIST);
-    return response.data;
-  }
 
-  async getUnreadNotifications() {
-    const response = await this.api.get(API_ENDPOINTS.NOTIFICATIONS.UNREAD);
-    return response.data;
-  }
-
-  async markNotificationAsRead(id: string) {
-    const response = await this.api.post(API_ENDPOINTS.NOTIFICATIONS.READ(id));
-    return response.data;
-  }
 
   // Analytics methods
   async getSpendingTrends(months = 6) {
@@ -1177,6 +1218,97 @@ class ApiService {
     }
   }
 
+  // Method to validate offline token locally (without network request)
+  async validateOfflineToken(): Promise<boolean> {
+    try {
+      const offlineToken = await SecureStore.getItemAsync('offline_token');
+      
+      if (!offlineToken) {
+        console.log('❌ No offline token available');
+        return false;
+      }
+
+      console.log('🔍 Validating offline token locally...');
+      console.log('🔑 Offline token (first 50 chars):', offlineToken.substring(0, 50) + '...');
+      
+      // For now, if we have an offline token, consider it valid
+      // This is a simple approach that prevents users from being logged out when offline
+      console.log('✅ Offline token exists, considering valid for offline use');
+      return true;
+    } catch (error) {
+      console.error('❌ Offline token validation failed:', error);
+      return false;
+    }
+  }
+
+  // Method to check authentication status with offline fallback
+  async checkAuthStatusWithOfflineFallback(): Promise<{ isAuthenticated: boolean; mode: 'online' | 'offline' | 'none' }> {
+    try {
+      // Check all tokens first
+      const accessToken = await SecureStore.getItemAsync('access_token');
+      const refreshToken = await SecureStore.getItemAsync('refresh_token');
+      const offlineToken = await SecureStore.getItemAsync('offline_token');
+      
+      console.log('🔑 Token status:', {
+        hasAccessToken: !!accessToken,
+        hasRefreshToken: !!refreshToken,
+        hasOfflineToken: !!offlineToken
+      });
+      
+      // First try online authentication
+      console.log('🌐 Attempting online authentication...');
+      
+      if (accessToken) {
+        try {
+          const userProfile = await this.getUserProfile();
+          console.log('✅ Online authentication successful');
+          return { isAuthenticated: true, mode: 'online' };
+        } catch (onlineError) {
+          console.log('⚠️ Online authentication failed:', onlineError);
+          console.log('📱 Falling back to offline authentication...');
+        }
+      } else {
+        console.log('📱 No access token found, trying offline authentication...');
+      }
+
+      // Fall back to offline authentication
+      console.log('📱 Attempting offline authentication...');
+      const isOfflineValid = await this.validateOfflineToken();
+      
+      if (isOfflineValid) {
+        console.log('✅ Offline authentication successful');
+        return { isAuthenticated: true, mode: 'offline' };
+      }
+
+      // Last resort: if we have any tokens at all, allow offline access
+      if (refreshToken || offlineToken) {
+        console.log('⚠️ Token validation failed but tokens exist, allowing offline access');
+        return { isAuthenticated: true, mode: 'offline' };
+      }
+
+      console.log('❌ Both online and offline authentication failed');
+      return { isAuthenticated: false, mode: 'none' };
+    } catch (error) {
+      console.error('❌ Error checking authentication status:', error);
+      
+      // If there's an error, still try offline authentication as a last resort
+      console.log('📱 Error occurred, trying offline authentication as fallback...');
+      try {
+        const refreshToken = await SecureStore.getItemAsync('refresh_token');
+        const offlineToken = await SecureStore.getItemAsync('offline_token');
+        
+        if (refreshToken || offlineToken) {
+          console.log('⚠️ Error occurred but tokens exist, allowing offline access');
+          return { isAuthenticated: true, mode: 'offline' };
+        }
+      } catch (offlineError) {
+        console.error('❌ Offline authentication also failed:', offlineError);
+      }
+      
+      return { isAuthenticated: false, mode: 'none' };
+    }
+  }
+
   // Test method to verify token refresh works
   async testTokenRefresh() {
     try {
@@ -1298,6 +1430,59 @@ class ApiService {
     } catch (error) {
       console.error('❌ Failed to get user currency preference:', error);
       return 'USD'; // Default fallback
+    }
+  }
+
+  // User deletion methods
+  async getDeletionInfo() {
+    const response = await this.api.get(API_ENDPOINTS.USER.DELETION_INFO);
+    return response.data;
+  }
+
+  async deleteUserAccount(confirmationPhrase: string, password: string) {
+    const response = await this.api.delete(API_ENDPOINTS.USER.DELETE_ACCOUNT, {
+      data: {
+        confirmation_phrase: confirmationPhrase,
+        password: password,
+      },
+    });
+    return response.data;
+  }
+
+  // Test method to debug offline authentication
+  async debugOfflineAuthentication() {
+    console.log('🔍 Debugging offline authentication...');
+    
+    try {
+      const accessToken = await SecureStore.getItemAsync('access_token');
+      const refreshToken = await SecureStore.getItemAsync('refresh_token');
+      const offlineToken = await SecureStore.getItemAsync('offline_token');
+      
+      console.log('🔑 Token status:', {
+        hasAccessToken: !!accessToken,
+        hasRefreshToken: !!refreshToken,
+        hasOfflineToken: !!offlineToken,
+        accessTokenLength: accessToken?.length || 0,
+        refreshTokenLength: refreshToken?.length || 0,
+        offlineTokenLength: offlineToken?.length || 0
+      });
+      
+      if (offlineToken) {
+        console.log('🔑 Offline token preview:', offlineToken.substring(0, 100) + '...');
+      }
+      
+      // Test offline validation
+      const isOfflineValid = await this.validateOfflineToken();
+      console.log('✅ Offline validation result:', isOfflineValid);
+      
+      return {
+        hasTokens: !!(accessToken || refreshToken || offlineToken),
+        isOfflineValid,
+        tokenCount: [accessToken, refreshToken, offlineToken].filter(Boolean).length
+      };
+    } catch (error) {
+      console.error('❌ Debug error:', error);
+      return { hasTokens: false, isOfflineValid: false, tokenCount: 0 };
     }
   }
 }

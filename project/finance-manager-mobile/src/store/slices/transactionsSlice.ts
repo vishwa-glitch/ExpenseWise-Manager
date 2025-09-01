@@ -96,6 +96,38 @@ export const fetchTransactions = createAsyncThunk(
   }
 );
 
+export const fetchTransactionsByAccount = createAsyncThunk(
+  "transactions/fetchTransactionsByAccount",
+  async ({ accountId, page = 1, limit = 20, filters = {} }: {
+    accountId: string;
+    page?: number;
+    limit?: number;
+    filters?: {
+      startDate?: string;
+      endDate?: string;
+      type?: string;
+      categoryId?: string;
+      minAmount?: number;
+      maxAmount?: number;
+    };
+  }) => {
+    const params = {
+      accountId,
+      page,
+      limit,
+      ...filters,
+    };
+    
+    console.log('🏦 Fetching transactions for account:', { accountId, page, limit, filters });
+    const response = await apiService.getTransactions(params);
+    console.log('📊 Account transactions response:', {
+      count: response.transactions?.length || 0,
+      pagination: response.pagination
+    });
+    return response;
+  }
+);
+
 export const fetchTransactionCalendar = createAsyncThunk(
   "transactions/fetchCalendar",
   async ({
@@ -111,7 +143,15 @@ export const fetchTransactionCalendar = createAsyncThunk(
   }) => {
     // If year and month are provided, use the calendar endpoint
     if (year && month) {
+      console.log('📅 Fetching calendar data for:', { year, month });
       const response = await apiService.getTransactionCalendar(year, month);
+      console.log('📅 Calendar API response:', {
+        hasData: !!response,
+        dataKeys: response ? Object.keys(response) : null,
+        hasCalendarData: !!(response?.calendar_data),
+        calendarDataKeys: response?.calendar_data ? Object.keys(response.calendar_data) : null,
+        sampleDayData: response?.calendar_data ? Object.values(response.calendar_data)[0] : null,
+      });
       return response;
     }
 
@@ -425,6 +465,38 @@ const transactionsSlice = createSlice({
       .addCase(fetchTransactionCalendar.rejected, (state, action) => {
         state.isLoading = false;
         state.error = action.error.message || "Failed to fetch calendar data";
+      })
+      // Fetch transactions by account
+      .addCase(fetchTransactionsByAccount.pending, (state) => {
+        state.isLoading = true;
+        state.error = null;
+      })
+      .addCase(fetchTransactionsByAccount.fulfilled, (state, action) => {
+        state.isLoading = false;
+        
+        const newTransactions = action.payload.transactions || [];
+        const pagination = action.payload.pagination;
+        
+        // If this is page 1, replace all transactions
+        // If this is a subsequent page, append new transactions
+        if (pagination && pagination.page === 1) {
+          state.transactions = newTransactions;
+        } else {
+          // Append new transactions to existing ones
+          state.transactions = [...state.transactions, ...newTransactions];
+        }
+        
+        state.pagination = pagination;
+        console.log('✅ Account transactions stored:', {
+          count: state.transactions.length,
+          pagination: state.pagination,
+          newTransactionsCount: newTransactions.length,
+          isPage1: pagination?.page === 1
+        });
+      })
+      .addCase(fetchTransactionsByAccount.rejected, (state, action) => {
+        state.isLoading = false;
+        state.error = action.error.message || "Failed to fetch account transactions";
       })
       // Create transaction
       .addCase(createTransaction.fulfilled, (state, action) => {

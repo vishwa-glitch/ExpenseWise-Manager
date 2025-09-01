@@ -1,5 +1,4 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
-import { apiService } from '../../services/api';
 
 interface NotificationsState {
   notifications: any[];
@@ -19,14 +18,10 @@ export const fetchNotifications = createAsyncThunk(
   'notifications/fetchNotifications',
   async (_, { rejectWithValue }) => {
     try {
-      const response = await apiService.getNotifications();
-      return response;
+      // Since we don't have backend integration, return empty notifications
+      console.log('🔔 Using local notifications - no backend integration');
+      return { notifications: [] };
     } catch (error: any) {
-      // Handle 404 errors gracefully
-      if (error.response?.status === 404) {
-        console.log('🔔 Notifications endpoint not available (404) - using empty notifications list');
-        return { notifications: [] };
-      }
       return rejectWithValue(error.message);
     }
   }
@@ -36,14 +31,10 @@ export const fetchUnreadNotifications = createAsyncThunk(
   'notifications/fetchUnreadNotifications',
   async (_, { rejectWithValue }) => {
     try {
-      const response = await apiService.getUnreadNotifications();
-      return response;
+      // Since we don't have backend integration, return 0 unread
+      console.log('🔔 Using local notifications - no backend integration');
+      return { count: 0 };
     } catch (error: any) {
-      // Handle 404 errors gracefully
-      if (error.response?.status === 404) {
-        console.log('🔔 Unread notifications endpoint not available (404) - using count 0');
-        return { count: 0 };
-      }
       return rejectWithValue(error.message);
     }
   }
@@ -52,7 +43,8 @@ export const fetchUnreadNotifications = createAsyncThunk(
 export const markAsRead = createAsyncThunk(
   'notifications/markAsRead',
   async (id: string) => {
-    await apiService.markNotificationAsRead(id);
+    // Since we don't have backend integration, just return the id
+    console.log('🔔 Marking notification as read locally:', id);
     return id;
   }
 );
@@ -68,6 +60,21 @@ const notificationsSlice = createSlice({
       if (state.unreadCount > 0) {
         state.unreadCount -= 1;
       }
+    },
+    addLocalNotification: (state, action) => {
+      state.notifications.unshift(action.payload);
+      state.unreadCount += 1;
+    },
+    markLocalNotificationAsRead: (state, action) => {
+      const index = state.notifications.findIndex(n => n.id === action.payload);
+      if (index !== -1) {
+        state.notifications[index].read = true;
+        state.unreadCount = Math.max(0, state.unreadCount - 1);
+      }
+    },
+    clearAllNotifications: (state) => {
+      state.notifications = [];
+      state.unreadCount = 0;
     },
   },
   extraReducers: (builder) => {
@@ -104,5 +111,11 @@ const notificationsSlice = createSlice({
   },
 });
 
-export const { clearError, decrementUnreadCount } = notificationsSlice.actions;
+export const { 
+  clearError, 
+  decrementUnreadCount, 
+  addLocalNotification, 
+  markLocalNotificationAsRead, 
+  clearAllNotifications 
+} = notificationsSlice.actions;
 export default notificationsSlice.reducer;

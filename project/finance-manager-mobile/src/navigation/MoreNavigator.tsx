@@ -7,6 +7,8 @@ import AnalyticsNavigator from './AnalyticsNavigator';
 import BillsScreen from '../screens/bills/BillsScreen';
 import ExportNavigator from './ExportNavigator';
 import HelpSupportScreen from '../screens/help/HelpSupportScreen';
+import NotificationSettingsScreen from '../screens/notifications/NotificationSettingsScreen';
+import DailyReminderSettingsScreen from '../screens/notifications/DailyReminderSettingsScreen';
 
 const Stack = createStackNavigator();
 
@@ -24,6 +26,8 @@ const MoreNavigator: React.FC = () => {
       <Stack.Screen name="Bills" component={BillsScreen} />
       <Stack.Screen name="Export" component={ExportNavigator} />
       <Stack.Screen name="HelpSupport" component={HelpSupportScreen} />
+      <Stack.Screen name="NotificationSettings" component={NotificationSettingsScreen} />
+      <Stack.Screen name="DailyReminderSettings" component={DailyReminderSettingsScreen} />
     </Stack.Navigator>
   );
 };

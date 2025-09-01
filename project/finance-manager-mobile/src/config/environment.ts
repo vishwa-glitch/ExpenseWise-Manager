@@ -11,7 +11,7 @@ export interface EnvironmentConfig {
 // Environment configurations
 const environments: Record<string, EnvironmentConfig> = {
   development: {
-    API_BASE_URL: "https://xp45ezql61.execute-api.us-east-1.amazonaws.com/fintech",
+    API_BASE_URL: "http://192.168.11.131:3000",
     API_PREFIX: "/api",
     API_TIMEOUT: 10000,
     ENVIRONMENT: 'development',
@@ -40,8 +40,7 @@ const environments: Record<string, EnvironmentConfig> = {
 const getCurrentEnvironment = (): string => {
   // Check if we're in development mode
   if (__DEV__) {
-    // Use production API for now since local server is not set up
-    return 'production';
+    return 'development';
   }
   
   // You can also check for specific environment variables

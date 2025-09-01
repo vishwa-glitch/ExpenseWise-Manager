@@ -1,90 +1,142 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, Animated } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Animated } from 'react-native';
+import { useNetworkState } from '../../utils/networkUtils';
+import OfflineQueueService from '../../services/offlineQueue';
 import { colors, typography, spacing } from '../../constants/colors';
 
 interface OfflineIndicatorProps {
-  showWhenOnline?: boolean;
-  autoHide?: boolean;
-  autoHideDelay?: number;
+  showQueueStatus?: boolean;
+  onRetry?: () => void;
 }
 
-export const OfflineIndicator: React.FC<OfflineIndicatorProps> = ({
-  showWhenOnline = false,
-  autoHide = true,
-  autoHideDelay = 3000,
+const OfflineIndicator: React.FC<OfflineIndicatorProps> = ({ 
+  showQueueStatus = true, 
+  onRetry 
 }) => {
-  const [isConnected, setIsConnected] = useState<boolean | null>(null);
-  const [slideAnim] = useState(new Animated.Value(-100));
+  const networkState = useNetworkState();
+  const [queueStatus, setQueueStatus] = useState<{ pending: number; failed: number }>({ pending: 0, failed: 0 });
+  const [isVisible, setIsVisible] = useState(false);
+  const slideAnim = React.useRef(new Animated.Value(-50)).current;
 
   useEffect(() => {
-    // For now, assume we're always online since NetInfo is not available
-    // In a real implementation, you would install @react-native-community/netinfo
-    setIsConnected(true);
+    const checkQueueStatus = async () => {
+      try {
+        const status = await OfflineQueueService.getInstance().getQueueStatus();
+        setQueueStatus(status);
+      } catch (error) {
+        console.error('Failed to get queue status:', error);
+      }
+    };
+
+    // Check queue status periodically
+    const interval = setInterval(checkQueueStatus, 5000);
+    checkQueueStatus(); // Initial check
+
+    return () => clearInterval(interval);
+  }, []);
+
+  useEffect(() => {
+    const shouldShow = !networkState.isConnected || queueStatus.pending > 0 || queueStatus.failed > 0;
     
-    // Show indicator briefly
-    Animated.timing(slideAnim, {
-      toValue: 0,
-      duration: 300,
-      useNativeDriver: true,
-    }).start();
-
-    // Auto hide if enabled
-    if (autoHide) {
-      setTimeout(() => {
-        Animated.timing(slideAnim, {
-          toValue: -100,
-          duration: 300,
-          useNativeDriver: true,
-        }).start();
-      }, autoHideDelay);
+    if (shouldShow !== isVisible) {
+      setIsVisible(shouldShow);
+      
+      Animated.timing(slideAnim, {
+        toValue: shouldShow ? 0 : -50,
+        duration: 300,
+        useNativeDriver: true,
+      }).start();
     }
-  }, [slideAnim, autoHide, autoHideDelay]);
+  }, [networkState.isConnected, queueStatus, isVisible, slideAnim]);
 
-  // Don't show anything if we haven't determined connection status yet
-  if (isConnected === null) {
-    return null;
-  }
+  const handleRetry = async () => {
+    if (onRetry) {
+      onRetry();
+    } else {
+      // Default retry behavior
+      try {
+        await OfflineQueueService.getInstance().processQueue();
+      } catch (error) {
+        console.error('Failed to process queue:', error);
+      }
+    }
+  };
 
-  // Don't show when online unless explicitly requested
-  if (isConnected && !showWhenOnline) {
+  const getStatusText = () => {
+    if (!networkState.isConnected) {
+      return 'You are offline';
+    }
+    
+    if (queueStatus.pending > 0) {
+      return `Syncing ${queueStatus.pending} items...`;
+    }
+    
+    if (queueStatus.failed > 0) {
+      return `${queueStatus.failed} items failed to sync`;
+    }
+    
+    return 'All data synced';
+  };
+
+  const getStatusColor = () => {
+    if (!networkState.isConnected) {
+      return colors.error;
+    }
+    
+    if (queueStatus.failed > 0) {
+      return colors.warning;
+    }
+    
+    if (queueStatus.pending > 0) {
+      return colors.primary;
+    }
+    
+    return colors.success;
+  };
+
+  if (!isVisible) {
     return null;
   }
 
   return (
-    <Animated.View
+    <Animated.View 
       style={[
         styles.container,
-        isConnected ? styles.onlineContainer : styles.offlineContainer,
-        { transform: [{ translateY: slideAnim }] },
+        { 
+          transform: [{ translateY: slideAnim }],
+          backgroundColor: getStatusColor(),
+        }
       ]}
     >
-      <Text style={styles.icon}>
-        {isConnected ? '✅' : '📶'}
-      </Text>
-      <Text style={[styles.text, isConnected ? styles.onlineText : styles.offlineText]}>
-        {isConnected ? 'Back online' : 'No internet connection'}
-      </Text>
+      <View style={styles.content}>
+        <View style={styles.statusContainer}>
+          <View style={[styles.indicator, { backgroundColor: colors.white }]} />
+          <Text style={styles.statusText}>{getStatusText()}</Text>
+        </View>
+        
+        {showQueueStatus && (queueStatus.pending > 0 || queueStatus.failed > 0) && (
+          <View style={styles.queueInfo}>
+            {queueStatus.pending > 0 && (
+              <Text style={styles.queueText}>
+                Pending: {queueStatus.pending}
+              </Text>
+            )}
+            {queueStatus.failed > 0 && (
+              <Text style={styles.queueText}>
+                Failed: {queueStatus.failed}
+              </Text>
+            )}
+          </View>
+        )}
+        
+        {onRetry && (
+          <TouchableOpacity style={styles.retryButton} onPress={handleRetry}>
+            <Text style={styles.retryText}>Retry</Text>
+          </TouchableOpacity>
+        )}
+      </View>
     </Animated.View>
   );
-};
-
-// Hook to get current network status
-export const useNetworkStatus = () => {
-  const [isConnected, setIsConnected] = useState<boolean | null>(true);
-  const [isInternetReachable, setIsInternetReachable] = useState<boolean | null>(true);
-
-  // For now, assume we're always online since NetInfo is not available
-  // In a real implementation, you would install @react-native-community/netinfo
-  useEffect(() => {
-    setIsConnected(true);
-    setIsInternetReachable(true);
-  }, []);
-
-  return {
-    isConnected,
-    isInternetReachable,
-    isOnline: isConnected && isInternetReachable,
-  };
 };
 
 const styles = StyleSheet.create({
@@ -93,31 +145,60 @@ const styles = StyleSheet.create({
     top: 0,
     left: 0,
     right: 0,
+    zIndex: 1000,
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.sm,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
+    elevation: 5,
+  },
+  content: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: spacing.sm,
-    paddingHorizontal: spacing.md,
-    zIndex: 1000,
+    justifyContent: 'space-between',
   },
-  offlineContainer: {
-    backgroundColor: colors.error,
+  statusContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
   },
-  onlineContainer: {
-    backgroundColor: colors.success,
+  indicator: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    marginRight: spacing.sm,
   },
-  icon: {
-    fontSize: 16,
-    marginRight: spacing.xs,
-  },
-  text: {
-    ...typography.caption,
+  statusText: {
+    ...typography.body,
+    color: colors.white,
     fontWeight: '600',
   },
-  offlineText: {
-    color: colors.background,
+  queueInfo: {
+    flexDirection: 'row',
+    marginRight: spacing.md,
   },
-  onlineText: {
-    color: colors.background,
+  queueText: {
+    ...typography.caption,
+    color: colors.white,
+    marginLeft: spacing.sm,
+    opacity: 0.9,
+  },
+  retryButton: {
+    backgroundColor: colors.white,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.xs,
+    borderRadius: 4,
+  },
+  retryText: {
+    ...typography.caption,
+    color: colors.primary,
+    fontWeight: '600',
   },
 });
+
+export default OfflineIndicator;

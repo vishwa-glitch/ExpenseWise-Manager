@@ -10,7 +10,7 @@ import {
   Alert,
 } from 'react-native';
 import { useAppDispatch } from '../../hooks/useAppDispatch';
-import { useTypedSelector } from '../../hooks/useTypedSelector';
+import { useTypedSelector, useUserData } from '../../hooks/useTypedSelector';
 import { fetchUserProfile } from '../../store/slices/userSlice';
 import { logout } from '../../store/slices/authSlice';
 import { CustomButton, LoadingSpinner, FeaturesList } from '../../components/common';
@@ -25,7 +25,7 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation }) => {
   const [refreshing, setRefreshing] = useState(false);
 
   const { profile, isLoading } = useTypedSelector((state) => state.user);
-  const { user, isAuthenticated } = useTypedSelector((state) => state.auth);
+  const { user, isAuthenticated } = useUserData();
 
   useEffect(() => {
     if (isAuthenticated) {

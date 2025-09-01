@@ -12,6 +12,7 @@ import {
   Keyboard,
   TouchableWithoutFeedback,
   KeyboardEvent,
+  Image,
 } from 'react-native';
 import { useAppDispatch } from '../../hooks/useAppDispatch';
 import { useTypedSelector } from '../../hooks/useTypedSelector';
@@ -249,9 +250,9 @@ const RegisterScreen: React.FC<RegisterScreenProps> = ({ navigation }) => {
           >
             <View style={styles.content}>
               <View style={styles.header}>
-                <Text style={styles.logo}>💰</Text>
+                <Image source={require('../../../assets/logo.png')} style={styles.logo} />
                 <Text style={styles.title}>Create Account</Text>
-                <Text style={styles.subtitle}>Join Finance Manager today</Text>
+                <Text style={styles.subtitle}>Join Expense Manager today</Text>
               </View>
 
               <View style={styles.form}>
@@ -374,8 +375,10 @@ const styles = StyleSheet.create({
     marginBottom: spacing.lg,
   },
   logo: {
-    fontSize: 48,
+    width: 80,
+    height: 80,
     marginBottom: spacing.sm,
+    resizeMode: 'contain',
   },
   title: {
     ...typography.h1,

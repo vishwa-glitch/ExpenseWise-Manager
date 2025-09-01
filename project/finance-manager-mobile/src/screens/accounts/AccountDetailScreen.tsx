@@ -14,15 +14,13 @@ import { useAppDispatch } from '../../hooks/useAppDispatch';
 import { useTypedSelector } from '../../hooks/useTypedSelector';
 import { 
   fetchAccount, 
-  fetchBalanceHistory, 
   fetchAccountSummary, 
   deleteAccount,
   clearAccountSummary 
 } from '../../store/slices/accountsSlice';
-import { fetchTransactions } from '../../store/slices/transactionsSlice';
+import { fetchTransactions, fetchTransactionsByAccount } from '../../store/slices/transactionsSlice';
 import { BalanceCard } from '../../components/common/BalanceCard';
 import { TransactionItem } from '../../components/common/TransactionItem';
-import { LineChart } from '../../components/charts/LineChart';
 import { LoadingSpinner } from '../../components/common/LoadingSpinner';
 import { CustomButton } from '../../components/common/CustomButton';
 import { colors, typography, spacing } from '../../constants/colors';
@@ -38,18 +36,21 @@ const AccountDetailScreen: React.FC<AccountDetailScreenProps> = ({ navigation, r
   const { accountId } = route.params;
   const [refreshing, setRefreshing] = useState(false);
 
-  const { selectedAccount, balanceHistory, accountSummary, isLoading } = useTypedSelector((state) => state.accounts);
-  const { transactions } = useTypedSelector((state) => state.transactions);
+  const { selectedAccount, accountSummary, isLoading } = useTypedSelector((state) => state.accounts);
+  const { transactions, pagination, isLoading: transactionsLoading } = useTypedSelector((state) => state.transactions);
   const { displayCurrency } = useTypedSelector((state) => state.user);
+
+  // Local pagination state
+  const [currentPage, setCurrentPage] = useState(1);
+  const [hasMoreTransactions, setHasMoreTransactions] = useState(true);
 
   const loadAccountData = useCallback(async () => {
     try {
       console.log('🏦 Loading account data for account:', accountId);
       await Promise.all([
         dispatch(fetchAccount(accountId)),
-        dispatch(fetchBalanceHistory({ id: accountId, days: 30 })),
         dispatch(fetchAccountSummary({ id: accountId, period: 'month' })),
-        dispatch(fetchTransactions({ accountId, limit: 20 })),
+        dispatch(fetchTransactionsByAccount({ accountId, page: 1, limit: 20 })),
       ]);
       console.log('✅ Account data loaded successfully');
     } catch (error) {
@@ -57,10 +58,42 @@ const AccountDetailScreen: React.FC<AccountDetailScreenProps> = ({ navigation, r
     }
   }, [dispatch, accountId]);
 
+  const loadMoreTransactions = async () => {
+    if (!hasMoreTransactions || transactionsLoading) return;
+    
+    const nextPage = currentPage + 1;
+    console.log('📄 Loading more transactions, page:', nextPage);
+    
+    try {
+      const result = await dispatch(fetchTransactionsByAccount({ 
+        accountId, 
+        page: nextPage,
+        limit: 20 
+      })).unwrap();
+      
+      if (result.transactions && result.transactions.length > 0) {
+        setCurrentPage(nextPage);
+        // Check if there are more pages
+        if (result.pagination && nextPage >= result.pagination.pages) {
+          setHasMoreTransactions(false);
+        }
+      } else {
+        // No more transactions to load
+        setHasMoreTransactions(false);
+        console.log('📄 No more transactions to load');
+      }
+    } catch (error) {
+      console.error('❌ Error loading more transactions:', error);
+    }
+  };
+
   // Use useFocusEffect to reload data when screen comes into focus
   useFocusEffect(
     useCallback(() => {
       console.log('🔄 AccountDetailScreen focused, reloading data...');
+      // Reset pagination state when screen is focused
+      setCurrentPage(1);
+      setHasMoreTransactions(true);
       loadAccountData();
       
       // Cleanup function to clear account summary when leaving screen
@@ -142,28 +175,11 @@ const AccountDetailScreen: React.FC<AccountDetailScreenProps> = ({ navigation, r
     });
   };
 
-  const getBalanceHistoryData = () => {
-    if (!balanceHistory || balanceHistory.length === 0) {
-      return { labels: [], datasets: [] };
-    }
 
-    const labels = balanceHistory.map((item: any) =>
-      new Date(item.date).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' })
-    );
-    const data = balanceHistory.map((item: any) => item.balance);
-
-    return {
-      labels,
-      datasets: [{
-        data,
-        color: (opacity = 1) => `rgba(46, 125, 87, ${opacity})`,
-        strokeWidth: 2,
-      }],
-    };
-  };
 
   const getAccountTransactions = () => {
-    return transactions.filter((t: any) => t.account_id === accountId).slice(0, 10);
+    // Return all transactions for this account (they're already filtered by accountId in the API call)
+    return transactions;
   };
 
   const getAccountTypeIcon = (type: string) => {
@@ -328,15 +344,6 @@ const AccountDetailScreen: React.FC<AccountDetailScreenProps> = ({ navigation, r
         {/* Account Summary */}
         {renderAccountSummary()}
 
-        {/* Balance History Chart */}
-        {balanceHistory && balanceHistory.length > 0 && (
-          <LineChart
-            data={getBalanceHistoryData()}
-            title="Balance History (Last 30 Days)"
-            yAxisSuffix=""
-          />
-        )}
-
         {/* Quick Actions */}
         <View style={styles.quickActions}>
           <Text style={styles.sectionTitle}>Quick Actions</Text>
@@ -368,20 +375,33 @@ const AccountDetailScreen: React.FC<AccountDetailScreenProps> = ({ navigation, r
         {/* Recent Transactions */}
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>Recent Transactions</Text>
+            <Text style={styles.sectionTitle}>Account Transactions</Text>
             <TouchableOpacity onPress={navigateToTransactionsList}>
               <Text style={styles.seeAllText}>See All</Text>
             </TouchableOpacity>
           </View>
           {getAccountTransactions().length > 0 ? (
-            getAccountTransactions().map((transaction: any) => (
-              <TransactionItem
-                key={transaction.id}
-                transaction={transaction}
-                showAccount={false}
-                onPress={() => navigateToTransactionDetail(transaction.id)}
-              />
-            ))
+            <>
+              {getAccountTransactions().map((transaction: any) => (
+                <TransactionItem
+                  key={transaction.id}
+                  transaction={transaction}
+                  showAccount={false}
+                  onPress={() => navigateToTransactionDetail(transaction.id)}
+                />
+              ))}
+              {hasMoreTransactions && (
+                <TouchableOpacity
+                  style={styles.loadMoreButton}
+                  onPress={loadMoreTransactions}
+                  disabled={transactionsLoading}
+                >
+                  <Text style={styles.loadMoreText}>
+                    {transactionsLoading ? 'Loading...' : 'Load More Transactions'}
+                  </Text>
+                </TouchableOpacity>
+              )}
+            </>
           ) : (
             <View style={styles.emptyTransactions}>
               <Text style={styles.emptyIcon}>📋</Text>
@@ -634,6 +654,21 @@ const styles = StyleSheet.create({
   addTransactionText: {
     ...typography.body,
     color: colors.background,
+    fontWeight: '600',
+  },
+  loadMoreButton: {
+    backgroundColor: colors.surface,
+    paddingVertical: spacing.md,
+    paddingHorizontal: spacing.lg,
+    borderRadius: 8,
+    alignItems: 'center',
+    marginTop: spacing.md,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  loadMoreText: {
+    ...typography.body,
+    color: colors.primary,
     fontWeight: '600',
   },
   managementButtons: {

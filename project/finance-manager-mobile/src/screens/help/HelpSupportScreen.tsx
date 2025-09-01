@@ -9,6 +9,7 @@ import {
   Linking,
   Alert,
 } from 'react-native';
+import { useNavigation } from '@react-navigation/native';
 import { colors, typography, spacing } from '../../constants/colors';
 import { useAppDispatch } from '../../hooks/useAppDispatch';
 import { resetOnboardingAsync } from '../../store/slices/onboardingSlice';
@@ -22,6 +23,7 @@ interface FAQItem {
 const HelpSupportScreen: React.FC = () => {
   const [expandedFAQ, setExpandedFAQ] = useState<number | null>(null);
   const dispatch = useAppDispatch();
+  const navigation = useNavigation();
 
   const faqs: FAQItem[] = [
     {
@@ -53,6 +55,11 @@ const HelpSupportScreen: React.FC = () => {
       question: "Do you sell my financial data?",
       answer: "No, we never sell your financial data. Your privacy is our top priority. We only use your data to provide you with the financial management services you've requested, such as transaction categorization, budget tracking, and financial insights. We don't share your personal or financial information with third parties for marketing or advertising purposes.",
       category: "Privacy"
+    },
+    {
+      question: "How do I delete my account?",
+      answer: "You can delete your account by going to Help & Support > Delete Account. This will permanently remove your account and all associated data including transactions, budgets, goals, and settings. Before deleting, consider exporting your data. The deletion process requires typing a confirmation phrase and entering your password for security.",
+      category: "Account"
     }
   ];
 
@@ -89,6 +96,12 @@ const HelpSupportScreen: React.FC = () => {
       description: "Go through the tutorial again",
       icon: "🔄",
       action: () => restartOnboarding()
+    },
+    {
+      title: "Delete Account",
+      description: "Permanently delete your account and data",
+      icon: "🗑️",
+      action: () => navigateToAccountDeletion()
     }
   ];
 
@@ -143,6 +156,10 @@ const HelpSupportScreen: React.FC = () => {
         },
       ]
     );
+  };
+
+  const navigateToAccountDeletion = () => {
+    navigation.navigate('AccountDeletion' as never);
   };
 
   const renderFAQItem = (faq: FAQItem, index: number) => (

@@ -15,7 +15,6 @@ import { CustomButton } from '../../components/common/CustomButton';
 import { LoadingSpinner } from '../../components/common/LoadingSpinner';
 import { colors, typography, spacing } from '../../constants/colors';
 import { formatCurrency } from '../../utils/currency';
-import { isGoalContribution, getGoalContributionDisplayName, getGoalContributionIcon } from '../../utils/goalUtils';
 
 interface TransactionDetailScreenProps {
   navigation: any;
@@ -59,12 +58,6 @@ const TransactionDetailScreen: React.FC<TransactionDetailScreenProps> = ({ navig
   const getCategoryIcon = (categoryName?: string) => {
     if (!categoryName) return '💰';
     
-    // Handle Goal Contribution category with special icon
-    if (categoryName.toLowerCase() === 'goal contribution' || 
-        categoryName.toLowerCase().includes('goal contribution')) {
-      return getGoalContributionIcon();
-    }
-    
     const iconMap: { [key: string]: string } = {
       'food & dining': '🍽️',
       'transportation': '🚗',
@@ -76,6 +69,7 @@ const TransactionDetailScreen: React.FC<TransactionDetailScreenProps> = ({ navig
       'travel': '✈️',
       'salary': '💼',
       'investment': '📈',
+      'goal contribution': '🎯',
       'other': '💰',
     };
     
@@ -186,7 +180,7 @@ const TransactionDetailScreen: React.FC<TransactionDetailScreenProps> = ({ navig
                 {getCategoryIcon(transaction.category_name)}
               </Text>
               <Text style={styles.detailValue}>
-                {getGoalContributionDisplayName(transaction)}
+                {transaction.category_name || 'Uncategorized'}
               </Text>
             </View>
           </View>

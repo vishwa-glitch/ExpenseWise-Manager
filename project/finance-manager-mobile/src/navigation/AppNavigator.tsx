@@ -9,6 +9,7 @@ import { fetchUserProfile, loadUserCurrency, setDisplayCurrency } from '../store
 import { checkOnboardingStatus } from '../store/slices/onboardingSlice';
 import { apiService } from '../services/api';
 import { LoadingSpinner } from '../components/common/LoadingSpinner';
+// import NetworkStatusIndicator from '../components/common/NetworkStatusIndicator';
 
 // Import navigators
 import AuthNavigator from './AuthNavigator';
@@ -97,20 +98,22 @@ const AppNavigator: React.FC = () => {
   });
 
   return (
-    <NavigationContainer>
-      <Stack.Navigator screenOptions={{ headerShown: false }}>
-        {!isAuthenticated ? (
-          <Stack.Screen name="Auth" component={AuthNavigator} />
-        ) : needsCurrencySelection ? (
-          <Stack.Screen 
-            name="CurrencySelection" 
-            component={CurrencySelectionScreen}
-          />
-                        ) : (
-          <Stack.Screen name="Main" component={MainNavigator} />
-        )}
-      </Stack.Navigator>
-    </NavigationContainer>
+    <>
+      <NavigationContainer>
+        <Stack.Navigator screenOptions={{ headerShown: false }}>
+          {!isAuthenticated ? (
+            <Stack.Screen name="Auth" component={AuthNavigator} />
+          ) : needsCurrencySelection ? (
+            <Stack.Screen 
+              name="CurrencySelection" 
+              component={CurrencySelectionScreen}
+            />
+                          ) : (
+            <Stack.Screen name="Main" component={MainNavigator} />
+          )}
+        </Stack.Navigator>
+      </NavigationContainer>
+    </>
   );
 };
 

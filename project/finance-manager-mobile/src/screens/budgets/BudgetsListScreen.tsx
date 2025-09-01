@@ -266,6 +266,11 @@ const BudgetsListScreen: React.FC<BudgetsListScreenProps> = ({ navigation }) => 
 
   return (
     <SafeAreaView style={styles.container}>
+      {/* Header */}
+      <View style={styles.screenHeader}>
+        <Text style={styles.screenTitle}>Budget</Text>
+      </View>
+      
       <FlatList
         ref={flatListRef}
         data={budgets}
@@ -316,6 +321,20 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: colors.background,
   },
+  screenHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.lg,
+    paddingTop: spacing.xl,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
+  },
+  screenTitle: {
+    ...typography.h2,
+    color: colors.text,
+  },
   listContent: {
     flexGrow: 1,
     paddingHorizontal: spacing.lg,
@@ -331,12 +350,14 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.sm, // Add some padding to center the smaller cards
   },
   summaryCard: {
-    width: '43.7%', // Increased from 40.8% by 7%
+    width: '48.07%', // Increased from 43.7% by 10%
     backgroundColor: colors.card,
     borderRadius: 10, // Reduced from 12
     padding: spacing.xs, // Reduced from spacing.sm
     alignItems: 'center',
     marginBottom: spacing.sm, // Reduced from spacing.md
+    minHeight: 110, // Added minimum height (10% taller than default)
+    justifyContent: 'center', // Center content vertically
     shadowColor: '#000',
     shadowOffset: {
       width: 0,
@@ -347,7 +368,7 @@ const styles = StyleSheet.create({
     elevation: 5,
   },
   summaryIcon: {
-    fontSize: 18, // Reduced from 20
+    fontSize: 19, // Increased by 5% from 18
     marginBottom: spacing.xs,
   },
   summaryLabel: {
@@ -356,14 +377,14 @@ const styles = StyleSheet.create({
     marginBottom: spacing.xs,
     fontWeight: '600',
     textAlign: 'center',
-    fontSize: 10, // Reduced from 11
+    fontSize: 11, // Increased by 5% from 10
   },
   summaryValue: {
     ...typography.h3,
     color: colors.text,
     fontWeight: 'bold',
     textAlign: 'center',
-    fontSize: 13, // Reduced from 14
+    fontSize: 14, // Increased by 5% from 13
   },
   sectionHeader: {
     flexDirection: 'row',
