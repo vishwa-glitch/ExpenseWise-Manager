@@ -32,6 +32,7 @@ const BudgetDetailScreen: React.FC<BudgetDetailScreenProps> = ({ navigation, rou
 
   const { selectedBudget, isLoading } = useTypedSelector((state) => state.budgets);
   const { transactions } = useTypedSelector((state) => state.transactions);
+  const { displayCurrency } = useTypedSelector((state) => state.user);
 
   useEffect(() => {
     loadBudgetData();
@@ -98,7 +99,7 @@ const BudgetDetailScreen: React.FC<BudgetDetailScreenProps> = ({ navigation, rou
   };
 
   const formatAmount = (amount: number) => {
-    const currency = selectedBudget?.currency || 'USD';
+    const currency = selectedBudget?.currency || displayCurrency || 'USD';
     return formatCurrency(amount, currency);
   };
 

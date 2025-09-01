@@ -1,5 +1,6 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import { apiService } from '../../services/api';
+import { isBudgetCurrentlyActive, calculateRemainingDays } from '../../utils/budgetUtils';
 
 interface BudgetStatusData {
   totalBudget: number;
@@ -105,17 +106,45 @@ const calculateBudgetStatus = (budgets: any[]): BudgetStatusData => {
     };
   }
 
-  const activeBudgets = budgets.filter(budget => budget.is_active !== false);
-  const totalBudget = activeBudgets.reduce((sum, budget) => sum + (budget.amount || 0), 0);
-  const totalSpent = activeBudgets.reduce((sum, budget) => sum + (budget.spent_amount || 0), 0);
+  // Filter for active budgets that are currently within their date range
+  const currentlyActiveBudgets = budgets.filter(budget => {
+    if (budget.is_active === false) return false;
+    
+    // If budget has start_date and end_date, check if it's currently active
+    if (budget.start_date && budget.end_date) {
+      return isBudgetCurrentlyActive(budget.start_date, budget.end_date);
+    }
+    
+    // Fallback to just checking is_active for budgets without proper date ranges
+    return true;
+  });
+
+  const totalBudget = currentlyActiveBudgets.reduce((sum, budget) => sum + (budget.amount || 0), 0);
+  const totalSpent = currentlyActiveBudgets.reduce((sum, budget) => sum + (budget.spent_amount || 0), 0);
   const percentage = totalBudget > 0 ? Math.round((totalSpent / totalBudget) * 100) : 0;
   const isOverBudget = totalSpent > totalBudget;
   const overBudgetAmount = isOverBudget ? totalSpent - totalBudget : undefined;
 
-  // Calculate days left in current month
-  const now = new Date();
-  const lastDayOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0);
-  const daysLeft = Math.max(0, lastDayOfMonth.getDate() - now.getDate());
+  // Calculate days left - use the earliest end date from active budgets
+  let daysLeft = 0;
+  if (currentlyActiveBudgets.length > 0) {
+    const endDates = currentlyActiveBudgets
+      .filter(budget => budget.end_date)
+      .map(budget => budget.end_date);
+    
+    if (endDates.length > 0) {
+      // Find the earliest end date
+      const earliestEndDate = endDates.reduce((earliest, current) => {
+        return new Date(current) < new Date(earliest) ? current : earliest;
+      });
+      daysLeft = calculateRemainingDays(earliestEndDate);
+    } else {
+      // Fallback to current month calculation for budgets without end dates
+      const now = new Date();
+      const lastDayOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+      daysLeft = Math.max(0, lastDayOfMonth.getDate() - now.getDate());
+    }
+  }
 
   return {
     totalBudget,
@@ -123,7 +152,7 @@ const calculateBudgetStatus = (budgets: any[]): BudgetStatusData => {
     percentage,
     daysLeft,
     isOverBudget,
-    budgetCount: activeBudgets.length,
+    budgetCount: currentlyActiveBudgets.length,
     overBudgetAmount,
   };
 };

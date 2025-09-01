@@ -10,8 +10,12 @@ import {
   Alert,
   ActivityIndicator,
 } from 'react-native';
+import * as SecureStore from 'expo-secure-store';
 import { colors, typography, spacing } from '../../constants/colors';
 import { apiService } from '../../services/api';
+import { useAppDispatch } from '../../hooks/useAppDispatch';
+import { forceLogout } from '../../store/slices/authSlice';
+import { clearAllAppData, debugAuthState } from '../../utils/authUtils';
 
 interface DeletionInfo {
   deletion_warning: {
@@ -37,6 +41,7 @@ interface DeletionInfo {
 }
 
 const AccountDeletionScreen: React.FC = () => {
+  const dispatch = useAppDispatch();
   const [deletionInfo, setDeletionInfo] = useState<DeletionInfo | null>(null);
   const [confirmationPhrase, setConfirmationPhrase] = useState('');
   const [password, setPassword] = useState('');
@@ -109,6 +114,13 @@ const AccountDeletionScreen: React.FC = () => {
       
       const response = await apiService.deleteUserAccount(confirmationPhrase, password);
 
+      // Clear all app data including tokens, persisted state, and Redux store
+      await clearAllAppData();
+      
+      // Debug: Check state after clearing data
+      console.log('🔍 Debugging state after account deletion...');
+      await debugAuthState();
+
       Alert.alert(
         'Account Deleted',
         'Your account and all associated data have been permanently deleted. You will be logged out.',
@@ -116,9 +128,17 @@ const AccountDeletionScreen: React.FC = () => {
           {
             text: 'OK',
             onPress: async () => {
-              // Logout the user
-              await apiService.logout();
-              // Navigate to auth screen (this will be handled by the app's navigation logic)
+              // Force logout to ensure navigation to auth screen
+              console.log('🔍 Debugging state before force logout...');
+              await debugAuthState();
+              
+              dispatch(forceLogout());
+              
+              // Debug: Check state after force logout
+              setTimeout(async () => {
+                console.log('🔍 Debugging state after force logout...');
+                await debugAuthState();
+              }, 1000);
             },
           },
         ]

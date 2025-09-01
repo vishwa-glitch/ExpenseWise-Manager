@@ -8,6 +8,7 @@ import {
   TouchableOpacity,
   Linking,
   Alert,
+  Image,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { colors, typography, spacing } from '../../constants/colors';
@@ -73,7 +74,7 @@ const HelpSupportScreen: React.FC = () => {
     {
       title: "Telegram Support",
       description: "Chat with us on Telegram",
-      icon: "📱",
+      icon: "telegram",
       action: () => openTelegram()
     },
     {
@@ -193,7 +194,14 @@ const HelpSupportScreen: React.FC = () => {
       onPress={contact.action}
       activeOpacity={0.7}
     >
-      <Text style={styles.contactIcon}>{contact.icon}</Text>
+      {contact.icon === "telegram" ? (
+        <Image 
+          source={require('../../../assets/telegram-logo.png')} 
+          style={styles.telegramIcon} 
+        />
+      ) : (
+        <Text style={styles.contactIcon}>{contact.icon}</Text>
+      )}
       <View style={styles.contactContent}>
         <Text style={styles.contactTitle}>{contact.title}</Text>
         <Text style={styles.contactDescription}>{contact.description}</Text>
@@ -359,6 +367,12 @@ const styles = StyleSheet.create({
   contactIcon: {
     fontSize: 20,
     marginRight: spacing.md,
+  },
+  telegramIcon: {
+    width: 20,
+    height: 20,
+    marginRight: spacing.md,
+    resizeMode: 'contain',
   },
   contactContent: {
     flex: 1,

@@ -495,13 +495,16 @@ const AddEditTransactionScreen: React.FC<AddEditTransactionScreenProps> = ({ nav
             leftIcon={<Text style={styles.inputIcon}>📝</Text>}
           />
 
-          <CustomTextInput
-            label="Date"
-            value={formData.transaction_date}
-            onChangeText={(value) => updateFormData('transaction_date', value)}
-            placeholder="YYYY-MM-DD"
-            leftIcon={<Text style={styles.inputIcon}>📅</Text>}
-          />
+          <View style={styles.dateInputContainer}>
+            <Text style={styles.dateFormatHint}>Date (YYYY-MM-DD)</Text>
+            <CustomTextInput
+              label=""
+              value={formData.transaction_date}
+              onChangeText={(value) => updateFormData('transaction_date', value)}
+              placeholder="YYYY-MM-DD"
+              leftIcon={<Text style={styles.inputIcon}>📅</Text>}
+            />
+          </View>
 
           <CustomTextInput
             label="Merchant (Optional)"
@@ -749,6 +752,15 @@ const styles = StyleSheet.create({
     color: colors.text,
     flex: 1,
     lineHeight: 18,
+  },
+  dateInputContainer: {
+    marginBottom: spacing.md,
+  },
+  dateFormatHint: {
+    ...typography.small,
+    color: colors.textSecondary,
+    marginBottom: spacing.xs,
+    fontWeight: '500',
   },
   footer: {
     padding: spacing.lg,

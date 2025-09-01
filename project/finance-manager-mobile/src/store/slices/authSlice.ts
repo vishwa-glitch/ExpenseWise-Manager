@@ -53,6 +53,12 @@ export const logout = createAsyncThunk('auth/logout', async () => {
   await apiService.logout();
 });
 
+export const forceLogout = createAsyncThunk('auth/forceLogout', async () => {
+  // Force logout without calling the API (useful for account deletion)
+  // The API call is already made in the account deletion flow
+  console.log('🚪 Force logout - clearing local data only');
+});
+
 export const checkAuthStatus = createAsyncThunk(
   'auth/checkStatus',
   async (_, { getState, dispatch }) => {
@@ -85,10 +91,10 @@ export const checkAuthStatus = createAsyncThunk(
           
           // Return the current user data from state if available
           if (currentUser) {
-            const needsCurrencySelection = !currentUser?.preferred_currency && !currentUser?.display_currency;
+            // Never force currency selection in offline mode
             return { 
               user: currentUser, 
-              needsCurrencySelection, 
+              needsCurrencySelection: false, 
               mode: 'offline' 
             };
           } else {
@@ -112,11 +118,11 @@ export const checkAuthStatus = createAsyncThunk(
           // Handle different response structures - some APIs return user directly, others nested
           const userData = userProfile.user || userProfile;
           
-          // Check if user needs currency selection (new users or users without preferred currency)
-          const needsCurrencySelection = !userData?.preferred_currency && !userData?.display_currency;
+          // Do not trigger currency selection here; only registration flow should set it
+          const needsCurrencySelection = false;
           
           console.log('👤 User profile fetched successfully');
-          console.log(`💰 Currency selection needed: ${needsCurrencySelection ? 'YES' : 'NO'}`);
+          console.log('💰 Currency selection needed: NO (only for registration)');
           console.log(`💰 User preferred currency: ${userData?.preferred_currency || userData?.display_currency || 'NOT SET'}`);
           console.log(`👤 User first name: ${userData?.first_name || 'NOT SET'}`);
           
@@ -127,11 +133,13 @@ export const checkAuthStatus = createAsyncThunk(
         
         // If we have persisted auth state but authentication failed, 
         // we should clear the auth state and require re-login
+        // BUT preserve the offline token as a last resort
         if (isCurrentlyAuthenticated) {
           console.log('⚠️ User was authenticated but authentication failed, clearing auth state');
           await SecureStore.deleteItemAsync('access_token').catch(() => {});
           await SecureStore.deleteItemAsync('refresh_token').catch(() => {});
-          await SecureStore.deleteItemAsync('offline_token').catch(() => {});
+          // DON'T clear offline token - it's our last resort for offline access
+          console.log('📱 Preserving offline token for offline authentication');
           dispatch(clearAuthState());
         }
         
@@ -142,11 +150,13 @@ export const checkAuthStatus = createAsyncThunk(
       
       // If we have persisted auth state but authentication failed, 
       // we should clear the auth state and require re-login
+      // BUT preserve the offline token as a last resort
       if (isCurrentlyAuthenticated) {
         console.log('⚠️ User was authenticated but authentication failed, clearing auth state');
         await SecureStore.deleteItemAsync('access_token').catch(() => {});
         await SecureStore.deleteItemAsync('refresh_token').catch(() => {});
-        await SecureStore.deleteItemAsync('offline_token').catch(() => {});
+        // DON'T clear offline token - it's our last resort for offline access
+        console.log('📱 Preserving offline token for offline authentication');
         dispatch(clearAuthState());
       }
       
@@ -255,6 +265,16 @@ const authSlice = createSlice({
       .addCase(logout.rejected, (state, action) => {
         state.isLoading = false;
         state.error = action.error.message || 'Logout failed';
+      })
+      // Force logout (for account deletion)
+      .addCase(forceLogout.fulfilled, (state) => {
+        state.isLoading = false;
+        state.isAuthenticated = false;
+        state.user = null;
+        state.error = null;
+        state.authMode = undefined;
+        state.needsCurrencySelection = false;
+        state.registrationCredentials = null;
       })
       // Check auth status
       .addCase(checkAuthStatus.fulfilled, (state, action) => {

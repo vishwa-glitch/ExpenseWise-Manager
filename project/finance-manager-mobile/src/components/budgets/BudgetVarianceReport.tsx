@@ -10,6 +10,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { colors, typography, spacing } from '../../constants/colors';
 import { BudgetVarianceReportResponse } from '../../types/api';
 import { PieChart } from '../charts/PieChart';
+import { useTypedSelector } from '../../hooks/useTypedSelector';
 
 interface BudgetVarianceReportProps {
   varianceReport: BudgetVarianceReportResponse;
@@ -21,11 +22,12 @@ const BudgetVarianceReport: React.FC<BudgetVarianceReportProps> = ({
   onBudgetPress,
 }) => {
   const { summary, detailed_analysis, top_over_budgets, top_under_budgets } = varianceReport;
+  const { displayCurrency } = useTypedSelector((state) => state.user);
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('en-US', {
       style: 'currency',
-      currency: 'USD',
+      currency: displayCurrency || 'USD',
       minimumFractionDigits: 0,
       maximumFractionDigits: 0,
     }).format(amount);
@@ -146,7 +148,7 @@ const BudgetVarianceReport: React.FC<BudgetVarianceReportProps> = ({
             title="Budget Status Distribution"
             showLegend={true}
             showPercentages={true}
-            displayCurrency="USD"
+            displayCurrency={displayCurrency || 'USD'}
           />
         </View>
       )}

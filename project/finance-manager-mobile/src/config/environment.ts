@@ -1,4 +1,6 @@
 // Environment configuration for the app
+import { getDevApiUrl } from './dev-config';
+
 export interface EnvironmentConfig {
   API_BASE_URL: string;
   API_PREFIX: string;
@@ -11,7 +13,7 @@ export interface EnvironmentConfig {
 // Environment configurations
 const environments: Record<string, EnvironmentConfig> = {
   development: {
-    API_BASE_URL: "http://192.168.11.131:3000",
+    API_BASE_URL: getDevApiUrl(),
     API_PREFIX: "/api",
     API_TIMEOUT: 10000,
     ENVIRONMENT: 'development',

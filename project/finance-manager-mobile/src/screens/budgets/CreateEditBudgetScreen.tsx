@@ -16,6 +16,7 @@ import { CustomTextInput } from '../../components/common/CustomTextInput';
 import { CustomButton } from '../../components/common/CustomButton';
 import DatePicker from '../../components/common/DatePicker';
 import { colors, typography, spacing } from '../../constants/colors';
+import { getDefaultBudgetDates, validateBudgetDates } from '../../utils/budgetUtils';
 import { getCurrencySymbol } from '../../utils/currency';
 
 interface CreateEditBudgetScreenProps {
@@ -91,42 +92,22 @@ const CreateEditBudgetScreen: React.FC<CreateEditBudgetScreenProps> = ({ navigat
   };
 
   const setDefaultDates = (period: string) => {
-    const today = new Date();
-    let startDate = new Date(today);
-    let endDate = new Date(today);
-
-    switch (period) {
-      case 'weekly':
-        // Start from Monday of current week
-        const dayOfWeek = today.getDay();
-        const daysToMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
-        startDate.setDate(today.getDate() - daysToMonday);
-        endDate = new Date(startDate);
-        endDate.setDate(startDate.getDate() + 6);
-        break;
-      case 'monthly':
-        startDate = new Date(today.getFullYear(), today.getMonth(), 1);
-        endDate = new Date(today.getFullYear(), today.getMonth() + 1, 0);
-        break;
-      case 'yearly':
-        startDate = new Date(today.getFullYear(), 0, 1);
-        endDate = new Date(today.getFullYear(), 11, 31);
-        break;
-      case 'custom':
-        // For custom, don't set default dates - let user choose
-        return;
-      default:
-        // Default to monthly if unknown period
-        startDate = new Date(today.getFullYear(), today.getMonth(), 1);
-        endDate = new Date(today.getFullYear(), today.getMonth() + 1, 0);
-        break;
+    const defaultDates = getDefaultBudgetDates(period as 'weekly' | 'monthly' | 'yearly' | 'custom');
+    
+    if (defaultDates) {
+      setFormData(prev => ({
+        ...prev,
+        start_date: defaultDates.start_date,
+        end_date: defaultDates.end_date,
+      }));
+    } else if (period === 'custom') {
+      // For custom, clear dates so user must choose
+      setFormData(prev => ({
+        ...prev,
+        start_date: '',
+        end_date: '',
+      }));
     }
-
-    setFormData(prev => ({
-      ...prev,
-      start_date: startDate.toISOString().split('T')[0],
-      end_date: endDate.toISOString().split('T')[0],
-    }));
   };
 
   const validateForm = () => {
@@ -161,27 +142,31 @@ const CreateEditBudgetScreen: React.FC<CreateEditBudgetScreenProps> = ({ navigat
       hasError = true;
     }
 
-    // Date validation - only required for custom period
-    if (formData.period === 'custom') {
+    // Date validation for all periods
+    if (formData.start_date && formData.end_date) {
+      const dateValidation = validateBudgetDates(
+        formData.start_date, 
+        formData.end_date, 
+        formData.period as 'weekly' | 'monthly' | 'yearly' | 'custom'
+      );
+      
+      if (!dateValidation.isValid) {
+        newErrors.end_date = dateValidation.error || 'Invalid date range';
+        hasError = true;
+      }
+    } else if (formData.period === 'custom') {
       if (!formData.start_date) {
         newErrors.start_date = 'Start date is required for custom period';
         hasError = true;
       }
-
       if (!formData.end_date) {
         newErrors.end_date = 'End date is required for custom period';
         hasError = true;
       }
-
-      if (formData.start_date && formData.end_date) {
-        const startDate = new Date(formData.start_date);
-        const endDate = new Date(formData.end_date);
-        
-        if (startDate >= endDate) {
-          newErrors.end_date = 'End date must be after start date';
-          hasError = true;
-        }
-      }
+    } else if (!formData.start_date || !formData.end_date) {
+      // Non-custom periods should have dates set automatically
+      newErrors.start_date = 'Budget dates are required';
+      hasError = true;
     }
 
     setErrors(newErrors);

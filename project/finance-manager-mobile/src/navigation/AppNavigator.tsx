@@ -8,6 +8,7 @@ import { checkAuthStatus, completeCurrencySelection } from '../store/slices/auth
 import { fetchUserProfile, loadUserCurrency, setDisplayCurrency } from '../store/slices/userSlice';
 import { checkOnboardingStatus } from '../store/slices/onboardingSlice';
 import { apiService } from '../services/api';
+import { initializeBudgetRenewal } from '../services/budgetRenewalService';
 import { LoadingSpinner } from '../components/common/LoadingSpinner';
 // import NetworkStatusIndicator from '../components/common/NetworkStatusIndicator';
 
@@ -58,6 +59,10 @@ const AppNavigator: React.FC = () => {
                 dispatch(setDisplayCurrency(userCurrency));
                 
                 await dispatch(fetchUserProfile());
+                
+                // Initialize budget renewal service after user data is loaded
+                console.log('🔄 Initializing budget renewal service...');
+                await initializeBudgetRenewal();
               } catch (error) {
                 console.error('❌ Error loading user data after delay:', error);
               }

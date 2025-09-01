@@ -228,10 +228,11 @@ class ApiService {
   async login(email: string, password: string) {
     console.log('🔐 Attempting login for:', email);
     
-    // Clear any existing tokens before login to ensure clean state
-    await SecureStore.deleteItemAsync('access_token').catch(() => {});
-    await SecureStore.deleteItemAsync('refresh_token').catch(() => {});
-    console.log('🧹 Cleared existing tokens before login');
+          // Clear any existing tokens before login to ensure clean state
+      await SecureStore.deleteItemAsync('access_token').catch(() => {});
+      await SecureStore.deleteItemAsync('refresh_token').catch(() => {});
+      await SecureStore.deleteItemAsync('account_deleted').catch(() => {});
+      console.log('🧹 Cleared existing tokens and account deletion flag before login');
     
     try {
       const response = await this.api.post(API_ENDPOINTS.AUTH.LOGIN, {
@@ -348,7 +349,8 @@ class ApiService {
     // Clear any existing tokens before registration to ensure clean state
     await SecureStore.deleteItemAsync('access_token').catch(() => {});
     await SecureStore.deleteItemAsync('refresh_token').catch(() => {});
-    console.log('🧹 Cleared existing tokens before registration');
+    await SecureStore.deleteItemAsync('account_deleted').catch(() => {});
+    console.log('🧹 Cleared existing tokens and account deletion flag before registration');
     
     try {
       console.log('🚀 Making API request to:', `${this.api.defaults.baseURL}${API_ENDPOINTS.AUTH.REGISTER}`);
@@ -504,6 +506,7 @@ class ApiService {
     } catch (error) {
       console.error('❌ Logout error:', error);
     } finally {
+      // Clear all authentication data
       await SecureStore.deleteItemAsync('access_token').catch(() => {});
       await SecureStore.deleteItemAsync('refresh_token').catch(() => {});
       await SecureStore.deleteItemAsync('offline_token').catch(() => {});
@@ -1243,6 +1246,13 @@ class ApiService {
 
   // Method to check authentication status with offline fallback
   async checkAuthStatusWithOfflineFallback(): Promise<{ isAuthenticated: boolean; mode: 'online' | 'offline' | 'none' }> {
+    // Check if account was recently deleted first
+    const accountDeleted = await SecureStore.getItemAsync('account_deleted');
+    if (accountDeleted === 'true') {
+      console.log('🚫 Account deletion detected, preventing authentication');
+      return { isAuthenticated: false, mode: 'none' };
+    }
+    
     try {
       // Check all tokens first
       const accessToken = await SecureStore.getItemAsync('access_token');
@@ -1281,7 +1291,8 @@ class ApiService {
       }
 
       // Last resort: if we have any tokens at all, allow offline access
-      if (refreshToken || offlineToken) {
+      // But only if account wasn't recently deleted
+      if ((refreshToken || offlineToken) && accountDeleted !== 'true') {
         console.log('⚠️ Token validation failed but tokens exist, allowing offline access');
         return { isAuthenticated: true, mode: 'offline' };
       }
@@ -1297,7 +1308,8 @@ class ApiService {
         const refreshToken = await SecureStore.getItemAsync('refresh_token');
         const offlineToken = await SecureStore.getItemAsync('offline_token');
         
-        if (refreshToken || offlineToken) {
+        // Only allow offline access if account wasn't recently deleted
+        if ((refreshToken || offlineToken) && accountDeleted !== 'true') {
           console.log('⚠️ Error occurred but tokens exist, allowing offline access');
           return { isAuthenticated: true, mode: 'offline' };
         }

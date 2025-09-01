@@ -15,6 +15,7 @@ import { useTypedSelector } from '../../hooks/useTypedSelector';
 import { fetchBudgets, deleteBudget } from '../../store/slices/budgetsSlice';
 import { fetchUserProfile } from '../../store/slices/userSlice';
 import { fetchCategories } from '../../store/slices/categoriesSlice';
+import { renewExpiredBudgets } from '../../services/budgetRenewalService';
 
 import { BudgetCard } from '../../components/common/BudgetCard';
 import { LoadingSpinner } from '../../components/common/LoadingSpinner';
@@ -54,9 +55,18 @@ const BudgetsListScreen: React.FC<BudgetsListScreenProps> = ({ navigation }) => 
   // Handle screen focus to refresh data and restore scroll functionality
   useFocusEffect(
     React.useCallback(() => {
-      // Refresh data when screen comes into focus (e.g., after creating a new budget)
+      // Only refresh data if we're coming back from budget creation/editing
+      // Don't refresh on every focus to prevent double loading
       if (isAuthenticated) {
-        loadData();
+        // Check if we need to refresh (e.g., coming from CreateBudget or EditBudget)
+        const shouldRefresh = navigation.getState()?.routes?.some((route: any) => 
+          route.name === 'CreateBudget' || route.name === 'EditBudget'
+        );
+        
+        if (shouldRefresh) {
+          console.log('🔄 Refreshing budget data after budget creation/editing');
+          loadData();
+        }
       }
       
       // Reset scroll position and ensure FlatList is properly initialized
@@ -66,7 +76,7 @@ const BudgetsListScreen: React.FC<BudgetsListScreenProps> = ({ navigation }) => 
           flatListRef.current?.scrollToOffset({ offset: 0, animated: false });
         }, 100);
       }
-    }, [isAuthenticated])
+    }, [isAuthenticated, navigation])
   );
 
   const restoreScrollPosition = () => {
@@ -83,6 +93,18 @@ const BudgetsListScreen: React.FC<BudgetsListScreenProps> = ({ navigation }) => 
 
     try {
       console.log(' Loading budgets data for authenticated user');
+      
+      // Check for budget renewals before loading data
+      try {
+        console.log('🔄 Checking for budget renewals...');
+        const renewalResult = await renewExpiredBudgets();
+        if (renewalResult.renewed.length > 0) {
+          console.log(`✅ Renewed ${renewalResult.renewed.length} budget(s)`);
+        }
+      } catch (error) {
+        console.error('❌ Error during budget renewal check:', error);
+      }
+      
       await Promise.all([
         dispatch(fetchBudgets()),
         dispatch(fetchUserProfile()),

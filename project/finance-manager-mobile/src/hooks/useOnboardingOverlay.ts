@@ -1,6 +1,6 @@
 import { useTypedSelector } from './useTypedSelector';
 import { useAppDispatch } from './useAppDispatch';
-import { nextStep, skipOnboarding, completeOnboarding } from '../store/slices/onboardingSlice';
+import { nextStep, completeOnboarding } from '../store/slices/onboardingSlice';
 import { useNavigation } from '@react-navigation/native';
 
 export interface OnboardingStep {
@@ -117,47 +117,10 @@ export const useOnboardingOverlay = () => {
   };
 
   const handleSkip = () => {
-    // Skip to next step instead of skipping entire onboarding
-    if (currentStep < totalSteps - 1) {
-      dispatch(nextStep());
-      
-      // Navigate to the appropriate screen for the next step
-      const nextStepIndex = currentStep + 1;
-      const nextStepData = onboardingSteps[nextStepIndex];
-      
-      // Add a small delay for smooth transition
-      setTimeout(() => {
-        switch (nextStepData.id) {
-          case 'accounts':
-            (navigation as any).navigate('Accounts', { screen: 'AddEditAccount' });
-            break;
-          case 'transactions':
-            (navigation as any).navigate('Home', { screen: 'Transactions' });
-            break;
-          case 'calendar':
-            // Navigate to Transactions and then programmatically switch to Calendar tab
-            (navigation as any).navigate('Home', { screen: 'Transactions' });
-            // We'll handle the tab switch in the TransactionsNavigator
-            break;
-          case 'budgets':
-            // Navigate to Budget tab
-            (navigation as any).navigate('Home', { screen: 'Budget' });
-            break;
-          case 'goals':
-            // Goals navigation removed for now - functionality kept for future use
-            (navigation as any).navigate('Home', { screen: 'Dashboard' });
-            break;
-          case 'categories':
-            (navigation as any).navigate('Home', { screen: 'More' });
-            break;
-          case 'complete':
-            (navigation as any).navigate('Home', { screen: 'Dashboard' });
-            break;
-        }
-      }, 300);
-    } else {
-      dispatch(completeOnboarding());
-    }
+    // Skip the entire onboarding flow
+    dispatch(completeOnboarding());
+    // Optionally ensure user lands on a sensible screen
+    (navigation as any).navigate('Home', { screen: 'Dashboard' });
   };
 
   const handleComplete = () => {

@@ -10,6 +10,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { colors, typography, spacing } from '../../constants/colors';
 import { BudgetAnalyticsResponse } from '../../types/api';
 import { PieChart } from '../charts/PieChart';
+import { useTypedSelector } from '../../hooks/useTypedSelector';
 
 interface BudgetAnalyticsSummaryProps {
   analytics: BudgetAnalyticsResponse;
@@ -21,6 +22,7 @@ const BudgetAnalyticsSummary: React.FC<BudgetAnalyticsSummaryProps> = ({
   onPress,
 }) => {
   const { summary, efficiency_metrics, category_performance } = analytics;
+  const { displayCurrency } = useTypedSelector((state) => state.user);
 
   const getEfficiencyColor = (efficiency: number) => {
     if (efficiency >= 80) return colors.success;
@@ -34,10 +36,15 @@ const BudgetAnalyticsSummary: React.FC<BudgetAnalyticsSummaryProps> = ({
     return 'trending-down';
   };
 
+  const getDisplayEfficiency = () => {
+    // Backend now provides the correct efficiency calculation
+    return efficiency_metrics.overall_efficiency;
+  };
+
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('en-US', {
       style: 'currency',
-      currency: 'USD',
+      currency: displayCurrency || 'USD',
       minimumFractionDigits: 0,
       maximumFractionDigits: 0,
     }).format(amount);
@@ -106,13 +113,13 @@ const BudgetAnalyticsSummary: React.FC<BudgetAnalyticsSummaryProps> = ({
           <View style={styles.efficiencyHeader}>
             <Text style={styles.metricLabel}>Efficiency</Text>
             <Ionicons 
-              name={getEfficiencyIcon(efficiency_metrics.overall_efficiency)} 
+              name={getEfficiencyIcon(getDisplayEfficiency())} 
               size={16} 
-              color={getEfficiencyColor(efficiency_metrics.overall_efficiency)} 
+              color={getEfficiencyColor(getDisplayEfficiency())} 
             />
           </View>
-          <Text style={[styles.metricValue, { color: getEfficiencyColor(efficiency_metrics.overall_efficiency) }]}>
-            {formatPercentage(efficiency_metrics.overall_efficiency)}
+          <Text style={[styles.metricValue, { color: getEfficiencyColor(getDisplayEfficiency()) }]}>
+            {formatPercentage(getDisplayEfficiency())}
           </Text>
           <Text style={styles.metricSubtext}>
             {efficiency_metrics.budgets_on_track} on track
@@ -151,7 +158,7 @@ const BudgetAnalyticsSummary: React.FC<BudgetAnalyticsSummaryProps> = ({
             title="Category Spending"
             showLegend={true}
             showPercentages={true}
-            displayCurrency="USD"
+            displayCurrency={displayCurrency || 'USD'}
           />
         </View>
       )}
@@ -223,7 +230,7 @@ const styles = StyleSheet.create({
     marginBottom: spacing.xs,
   },
   metricValue: {
-    ...typography.h4,
+    ...typography.h3,
     color: colors.text,
     fontWeight: '700',
     marginBottom: spacing.xs,

@@ -94,55 +94,16 @@ const OnboardingOverlay: React.FC<OnboardingOverlayProps> = ({
   const currentStepData = steps[currentStep];
   const isLastStep = currentStep === steps.length - 1;
 
-  // Get position styles based on step position - 20% smaller
+  // Always anchor the overlay to the bottom-center for thumb reach
   const getPositionStyles = () => {
-    switch (currentStepData.position) {
-      case 'bottom-center':
-        return {
-          top: undefined,
-          bottom: spacing.xl,
-          left: spacing.xl,
-          right: spacing.xl,
-          width: undefined,
-          height: 128, // 160 * 0.8 = 128
-        };
-      case 'top-left':
-        return {
-          top: spacing.xl,
-          left: spacing.xl,
-          right: undefined,
-          bottom: undefined,
-          width: 176, // 220 * 0.8 = 176
-          height: 176, // 220 * 0.8 = 176
-        };
-      case 'bottom-left':
-        return {
-          top: undefined,
-          bottom: spacing.xl,
-          left: spacing.xl,
-          right: undefined,
-          width: 176, // 220 * 0.8 = 176
-          height: 176, // 220 * 0.8 = 176
-        };
-      case 'bottom-right':
-        return {
-          top: undefined,
-          bottom: spacing.xl,
-          right: spacing.xl,
-          left: undefined,
-          width: 176, // 220 * 0.8 = 176
-          height: 176, // 220 * 0.8 = 176
-        };
-      default: // top-right
-        return {
-          top: spacing.xl,
-          right: spacing.xl,
-          left: undefined,
-          bottom: undefined,
-          width: 176, // 220 * 0.8 = 176
-          height: 176, // 220 * 0.8 = 176
-        };
-    }
+    return {
+      top: undefined,
+      bottom: spacing.xl,
+      left: spacing.xl,
+      right: spacing.xl,
+      width: undefined,
+      height: 128,
+    };
   };
 
   return (

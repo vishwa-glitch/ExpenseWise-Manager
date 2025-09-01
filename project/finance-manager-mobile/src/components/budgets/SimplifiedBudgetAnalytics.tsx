@@ -7,6 +7,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { colors, typography, spacing } from '../../constants/colors';
+import { useTypedSelector } from '../../hooks/useTypedSelector';
 
 interface SimplifiedBudgetAnalyticsProps {
   analytics: any;
@@ -18,11 +19,12 @@ const SimplifiedBudgetAnalytics: React.FC<SimplifiedBudgetAnalyticsProps> = ({
   onBudgetPress,
 }) => {
   const { summary, efficiency_metrics, category_performance } = analytics;
+  const { displayCurrency } = useTypedSelector((state) => state.user);
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('en-US', {
       style: 'currency',
-      currency: 'USD',
+      currency: displayCurrency || 'USD',
       minimumFractionDigits: 0,
       maximumFractionDigits: 0,
     }).format(amount);
@@ -33,17 +35,17 @@ const SimplifiedBudgetAnalytics: React.FC<SimplifiedBudgetAnalyticsProps> = ({
   };
 
   const getOverallStatus = () => {
-    const efficiency = efficiency_metrics.overall_efficiency;
+    const efficiency = getDisplayEfficiency();
     
-    // 100% efficiency means perfect budget adherence
-    if (efficiency >= 100) return { status: 'Perfect', color: colors.success, icon: 'checkmark-circle' };
+    // Higher efficiency means better budget management
+    if (efficiency >= 95) return { status: 'Perfect', color: colors.success, icon: 'checkmark-circle' };
     if (efficiency >= 80) return { status: 'Great', color: colors.success, icon: 'checkmark-circle' };
     if (efficiency >= 60) return { status: 'Good', color: colors.warning, icon: 'warning' };
     return { status: 'Needs Attention', color: colors.error, icon: 'alert-circle' };
   };
 
   const getDisplayEfficiency = () => {
-    // Use the backend's efficiency calculation directly
+    // Backend now provides the correct efficiency calculation
     return efficiency_metrics.overall_efficiency;
   };
 
@@ -68,7 +70,7 @@ const SimplifiedBudgetAnalytics: React.FC<SimplifiedBudgetAnalyticsProps> = ({
       {/* Overall Status */}
       <View style={styles.overallStatus}>
         <View style={styles.statusHeader}>
-          <Ionicons name={overallStatus.icon} size={24} color={overallStatus.color} />
+          <Ionicons name={overallStatus.icon as any} size={24} color={overallStatus.color} />
           <Text style={styles.statusTitle}>Overall Budget Status</Text>
         </View>
         <Text style={[styles.statusValue, { color: overallStatus.color }]}>
@@ -194,7 +196,7 @@ const styles = StyleSheet.create({
     marginBottom: spacing.sm,
   },
   statusTitle: {
-    ...typography.h4,
+    ...typography.h3,
     color: colors.text,
     marginLeft: spacing.sm,
   },
@@ -224,7 +226,7 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   numberValue: {
-    ...typography.h4,
+    ...typography.h3,
     fontWeight: 'bold',
     textAlign: 'center',
   },
@@ -232,7 +234,7 @@ const styles = StyleSheet.create({
     marginBottom: spacing.lg,
   },
   sectionTitle: {
-    ...typography.h4,
+    ...typography.h3,
     color: colors.text,
     fontWeight: '600',
     marginBottom: spacing.md,
@@ -279,7 +281,7 @@ const styles = StyleSheet.create({
     marginBottom: spacing.md,
   },
   alertTitle: {
-    ...typography.h4,
+    ...typography.h3,
     color: colors.text,
     fontWeight: '600',
     marginLeft: spacing.sm,
@@ -316,7 +318,7 @@ const styles = StyleSheet.create({
     marginBottom: spacing.xs,
   },
   summaryValue: {
-    ...typography.h4,
+    ...typography.h3,
     fontWeight: 'bold',
   },
 });

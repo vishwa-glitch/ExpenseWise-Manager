@@ -16,10 +16,15 @@
     "preview": {
       "distribution": "internal",
       "android": {
-        "buildType": "apk"
+        "buildType": "app-bundle"
       }
     },
-    "production": {},
+    "production": {
+      "distribution": "store",
+      "android": {
+        "buildType": "app-bundle"
+      }
+    },
     "development-simulator": {
       "developmentClient": true,
       "distribution": "internal",

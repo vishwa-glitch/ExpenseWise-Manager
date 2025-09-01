@@ -20,7 +20,9 @@ export interface Budget {
   spent_amount: number;
   category_id?: string;
   is_active: boolean;
-  period: 'monthly' | 'weekly' | 'yearly';
+  period: 'monthly' | 'weekly' | 'yearly' | 'custom';
+  start_date: string;
+  end_date: string;
   created_at: string;
   updated_at: string;
 }
