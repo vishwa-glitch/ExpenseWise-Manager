@@ -43,16 +43,22 @@ export const colors = {
   info: '#17a2b8',
   light: '#f8f9fa',
   dark: '#343a40',
-  white: '#FFFFFF'
+  white: '#FFFFFF',
+  
+  // Additional colors for compatibility
+  secondary: '#6C757D'
 };
 
 export const typography = {
   h1: { fontSize: 28, fontWeight: 'bold' as const },
   h2: { fontSize: 24, fontWeight: 'bold' as const },
   h3: { fontSize: 20, fontWeight: '600' as const },
+  h4: { fontSize: 18, fontWeight: '600' as const },
   body: { fontSize: 16, fontWeight: 'normal' as const },
   caption: { fontSize: 14, fontWeight: 'normal' as const },
-  small: { fontSize: 12, fontWeight: 'normal' as const }
+  small: { fontSize: 12, fontWeight: 'normal' as const },
+  subtitle: { fontSize: 18, fontWeight: '600' as const },
+  button: { fontSize: 16, fontWeight: '600' as const }
 };
 
 export const spacing = {

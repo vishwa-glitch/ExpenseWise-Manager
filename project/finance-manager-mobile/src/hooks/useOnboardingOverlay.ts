@@ -42,7 +42,7 @@ export const useOnboardingOverlay = () => {
     {
       id: 'calendar',
       title: 'Calendar View',
-      description: 'Tap any date to see daily transactions.',
+      description: 'Swipe left or tap Calendar to see your transactions by date.',
       position: 'top-right',
     },
     {
@@ -53,22 +53,16 @@ export const useOnboardingOverlay = () => {
       targetElement: 'addBudgetButton',
     },
     {
-      id: 'goals',
-      title: 'Financial Goals',
-      description: 'Set goals and watch your progress grow!',
-      position: 'top-right',
-    },
-    {
       id: 'categories',
       title: 'Custom Categories',
-      description: 'Create categories like "Netflix" or "Coffee".',
+      description: 'You can make custom categories to organize your spending better.',
       position: 'top-right',
       targetElement: 'addCategoryButton',
     },
     {
       id: 'complete',
       title: 'All Set!',
-      description: 'You\'re ready to manage your finances.',
+      description: 'Now, let\'s get your finances in shape 💪💰',
       position: 'top-right',
     },
   ];
@@ -91,20 +85,21 @@ export const useOnboardingOverlay = () => {
             (navigation as any).navigate('Home', { screen: 'Transactions' });
             break;
           case 'calendar':
-            // Navigate to Transactions and then programmatically switch to Calendar tab
-            (navigation as any).navigate('Home', { screen: 'Transactions' });
-            // We'll handle the tab switch in the TransactionsNavigator
+            // Navigate to Transactions and switch to Calendar tab
+            (navigation as any).navigate('Home', { 
+              screen: 'Transactions', 
+              params: { 
+                screen: 'TransactionsMain',
+                params: { initialTab: 'calendar' }
+              }
+            });
             break;
           case 'budgets':
             // Navigate to Budget tab
             (navigation as any).navigate('Home', { screen: 'Budget' });
             break;
-          case 'goals':
-            // Goals navigation removed for now - functionality kept for future use
-            (navigation as any).navigate('Home', { screen: 'Dashboard' });
-            break;
           case 'categories':
-            (navigation as any).navigate('Home', { screen: 'More' });
+            (navigation as any).navigate('Home', { screen: 'More', params: { screen: 'Categories' } });
             break;
           case 'complete':
             (navigation as any).navigate('Home', { screen: 'Dashboard' });
@@ -113,6 +108,10 @@ export const useOnboardingOverlay = () => {
       }, 300);
     } else {
       dispatch(completeOnboarding());
+      // Navigate back to dashboard when completing onboarding
+      setTimeout(() => {
+        (navigation as any).navigate('Home', { screen: 'Dashboard' });
+      }, 300);
     }
   };
 
@@ -125,7 +124,21 @@ export const useOnboardingOverlay = () => {
 
   const handleComplete = () => {
     dispatch(completeOnboarding());
+    // Navigate back to dashboard when completing onboarding
+    setTimeout(() => {
+      (navigation as any).navigate('Home', { screen: 'Dashboard' });
+    }, 300);
   };
+
+  // Debug logging
+  console.log('🎯 useOnboardingOverlay state:', {
+    isOverlayVisible,
+    isOnboardingComplete,
+    currentStep,
+    totalSteps,
+    isVisible: isOverlayVisible && !isOnboardingComplete,
+    currentStepId: onboardingSteps[currentStep]?.id,
+  });
 
   return {
     isVisible: isOverlayVisible && !isOnboardingComplete,

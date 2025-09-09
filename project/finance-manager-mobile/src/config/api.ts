@@ -15,6 +15,11 @@ export const API_CONFIG = {
   },
 };
 
+export const SUBSCRIPTION_TIERS = {
+  FREE: 'free',
+  PREMIUM: 'premium'
+} as const;
+
 export const API_ENDPOINTS = {
   // Authentication
   AUTH: {
@@ -121,6 +126,7 @@ export const API_ENDPOINTS = {
     DELETE: (id: string) => `/goals/${id}`,
     CONTRIBUTE: (id: string) => `/goals/${id}/contribute`,
     PROGRESS: (id: string) => `/goals/${id}/progress`,
+    PREDICTIONS: (id: string) => `/goals/${id}/predictions`,
     AI_START_SESSION: "/goals/ai/start-session",
     AI_CHAT: "/goals/ai/chat",
     AI_SESSION: (sessionId: string) => `/goals/ai/session/${sessionId}`,

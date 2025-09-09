@@ -10,7 +10,7 @@ export { EmptyState } from './EmptyState';
 export { ErrorBoundary } from './ErrorBoundary';
 export { ExpandableBalanceCard } from './ExpandableBalanceCard';
 export { FadeInView } from './FadeInView';
-// export { GoalCard } from './GoalCard'; // removed for now - file kept for future use
+export { GoalCard } from './GoalCard';
 
 export { LoadingSkeleton } from './LoadingSkeleton';
 export { LoadingSpinner } from './LoadingSpinner';

@@ -14,10 +14,10 @@ interface OnboardingState {
 }
 
 const initialState: OnboardingState = {
-  isOnboardingComplete: false,
+  isOnboardingComplete: true, // Set to true to disable onboarding by default
   currentStep: 0,
-  totalSteps: 8, // Welcome, Accounts, Transactions, Calendar, Budgets, Goals, Categories, Complete
-  isOverlayVisible: true, // Start with overlay visible for new users
+  totalSteps: 7, // Welcome, Accounts, Transactions, Calendar, Budgets, Categories, Complete (Goals step removed)
+  isOverlayVisible: false, // Start with overlay hidden to prevent automatic navigation
   hasCreatedAccount: false,
   hasCreatedTransaction: false,
   hasCreatedBudget: false,
@@ -35,16 +35,20 @@ export const checkOnboardingStatus = createAsyncThunk(
       const hasCreatedTransaction = await SecureStore.getItemAsync('onboarding_transaction_created');
       const hasCreatedBudget = await SecureStore.getItemAsync('onboarding_budget_created');
       
+      // If onboarding_complete is not set, assume it's complete (for existing users)
+      const isComplete = onboardingComplete === 'true' || onboardingComplete === null;
+      
       return {
-        isOnboardingComplete: onboardingComplete === 'true',
+        isOnboardingComplete: isComplete,
         hasCreatedAccount: hasCreatedAccount === 'true',
         hasCreatedTransaction: hasCreatedTransaction === 'true',
         hasCreatedBudget: hasCreatedBudget === 'true',
       };
     } catch (error) {
       console.error('Error checking onboarding status:', error);
+      // Default to completed for existing users
       return {
-        isOnboardingComplete: false,
+        isOnboardingComplete: true,
         hasCreatedAccount: false,
         hasCreatedTransaction: false,
         hasCreatedBudget: false,
@@ -184,6 +188,8 @@ const onboardingSlice = createSlice({
         state.hasCreatedAccount = action.payload.hasCreatedAccount;
         state.hasCreatedTransaction = action.payload.hasCreatedTransaction;
         state.hasCreatedBudget = action.payload.hasCreatedBudget;
+        // Set overlay visibility based on onboarding completion status
+        state.isOverlayVisible = !action.payload.isOnboardingComplete;
       })
       .addCase(checkOnboardingStatus.rejected, (state, action) => {
         state.isLoading = false;
@@ -192,6 +198,7 @@ const onboardingSlice = createSlice({
       // Complete onboarding
       .addCase(completeOnboarding.fulfilled, (state) => {
         state.isOnboardingComplete = true;
+        state.isOverlayVisible = false;
       })
       // Mark account created
       .addCase(markAccountCreated.fulfilled, (state) => {

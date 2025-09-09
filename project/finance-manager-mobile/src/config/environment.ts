@@ -30,7 +30,7 @@ const environments: Record<string, EnvironmentConfig> = {
   },
   production: {
     API_BASE_URL: "https://xp45ezql61.execute-api.us-east-1.amazonaws.com/fintech", // Your actual API Gateway URL
-    API_PREFIX: "/api",
+    API_PREFIX: "/api", // API Gateway includes /api prefix
     API_TIMEOUT: 15000,
     ENVIRONMENT: 'production',
     ENABLE_LOGGING: false,

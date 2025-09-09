@@ -25,7 +25,7 @@ import OnboardingOverlay from '../../components/common/OnboardingOverlay';
 import { useOnboardingOverlay } from '../../hooks/useOnboardingOverlay';
 
 import { RootState } from '../../store';
-import { formatCurrency } from '../../utils/currency';
+import { formatCurrency, getCurrencySymbol } from '../../utils/currency';
 
 interface GoalsListScreenProps {
   navigation: any;
@@ -226,7 +226,7 @@ const GoalsListScreen: React.FC<GoalsListScreenProps> = ({ navigation }) => {
         </View>
         
         <View style={styles.summaryCard}>
-          <Text style={styles.summaryIcon}>💰</Text>
+          <Text style={styles.summaryIcon}>💵</Text>
           <Text style={styles.summaryLabel}>Total Saved</Text>
           <Text style={[styles.summaryValue, { color: colors.income }]}>
             {formatCurrencyAmount(calculateTotalSavings())}
@@ -246,7 +246,7 @@ const GoalsListScreen: React.FC<GoalsListScreenProps> = ({ navigation }) => {
           onPress={() => navigation.navigate('GoalAnalytics')}
           activeOpacity={0.8}
         >
-          <Text style={styles.summaryIcon}>📊</Text>
+          <Text style={styles.summaryIcon}>📈</Text>
           <Text style={styles.summaryLabel}>Analytics</Text>
           <Text style={[styles.summaryValue, { color: colors.primary }]}>
             View
@@ -287,7 +287,7 @@ const GoalsListScreen: React.FC<GoalsListScreenProps> = ({ navigation }) => {
             <Text style={styles.exampleText}>Dream Vacation</Text>
           </View>
           <View style={styles.exampleItem}>
-            <Text style={styles.exampleIcon}>🏠</Text>
+            <Text style={styles.exampleIcon}>🏡</Text>
             <Text style={styles.exampleText}>Home Down Payment</Text>
           </View>
         </View>
@@ -314,7 +314,7 @@ const GoalsListScreen: React.FC<GoalsListScreenProps> = ({ navigation }) => {
             onChangeText={setContributionAmount}
             placeholder="0.00"
             keyboardType="numeric"
-            leftIcon={<Text style={styles.inputIcon}>💰</Text>}
+            leftIcon={<Text style={styles.inputIcon}>{getCurrencySymbol(displayCurrency || 'USD')}</Text>}
             inputStyle={styles.amountInput}
             style={styles.amountInputContainer}
           />
@@ -393,18 +393,7 @@ const GoalsListScreen: React.FC<GoalsListScreenProps> = ({ navigation }) => {
 
       {renderContributeModal()}
 
-      {/* Onboarding Overlay - show for step 5 (goals) */}
-      {onboardingOverlay.isVisible && onboardingOverlay.currentStep === 5 && (
-        <OnboardingOverlay
-          isVisible={onboardingOverlay.isVisible}
-          currentStep={onboardingOverlay.currentStep}
-          totalSteps={onboardingOverlay.totalSteps}
-          steps={onboardingOverlay.steps}
-          onNext={onboardingOverlay.handleNext}
-          onSkip={onboardingOverlay.handleSkip}
-          onComplete={onboardingOverlay.handleComplete}
-        />
-      )}
+      {/* Onboarding Overlay - Goals step removed from onboarding flow */}
     </SafeAreaView>
   );
 };

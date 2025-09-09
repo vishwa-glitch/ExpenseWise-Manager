@@ -50,3 +50,16 @@ export const checkExportLimit = (): boolean => false;
 export const getSubscriptionTierDisplayName = (): string => 'Active Member';
 export const getSubscriptionTierBadge = (): string => '✨';
 export const isPremiumUser = (): boolean => true;
+
+// Add missing functions that are being imported
+export const getUserStats = (): UserStats => ({
+  total_transactions: 0,
+  total_accounts: 0,
+  total_categories: 0,
+  total_goals: 0
+});
+
+export const getUserProfile = (): UserProfile => ({
+  subscription_tier: 'premium',
+  stats: getUserStats()
+});

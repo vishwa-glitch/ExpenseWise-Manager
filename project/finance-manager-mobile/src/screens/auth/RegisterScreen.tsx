@@ -286,7 +286,7 @@ const RegisterScreen: React.FC<RegisterScreenProps> = ({ navigation }) => {
                   placeholder="Enter your email"
                   keyboardType="email-address"
                   error={errors.email}
-                  leftIcon={<Text style={styles.inputIcon}>📧</Text>}
+                  leftIcon={<Text style={styles.inputIcon}>✉️</Text>}
                   onFocus={handleInputFocus}
                 />
 
@@ -297,7 +297,7 @@ const RegisterScreen: React.FC<RegisterScreenProps> = ({ navigation }) => {
                   placeholder="Create a password"
                   secureTextEntry
                   error={errors.password}
-                  leftIcon={<Text style={styles.inputIcon}>🔒</Text>}
+                  leftIcon={<Text style={styles.inputIcon}>🔐</Text>}
                   onFocus={handleInputFocus}
                 />
 
@@ -310,7 +310,7 @@ const RegisterScreen: React.FC<RegisterScreenProps> = ({ navigation }) => {
                   placeholder="Confirm your password"
                   secureTextEntry
                   error={errors.confirmPassword}
-                  leftIcon={<Text style={styles.inputIcon}>🔒</Text>}
+                  leftIcon={<Text style={styles.inputIcon}>🔐</Text>}
                   onFocus={handleInputFocus}
                 />
 

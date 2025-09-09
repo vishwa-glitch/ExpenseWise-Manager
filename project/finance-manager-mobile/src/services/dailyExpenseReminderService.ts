@@ -175,7 +175,7 @@ class DailyExpenseReminderService {
     } catch (error) {
       console.error('❌ Error getting settings:', error);
       return {
-        enabled: false,
+        enabled: true,
         time: '09:00',
         timezone: Intl.DateTimeFormat().resolvedOptions().timeZone
       };
@@ -270,14 +270,14 @@ class DailyExpenseReminderService {
       }
       
       return {
-        enabled: false,
+        enabled: true,
         time: '09:00',
         timezone: Intl.DateTimeFormat().resolvedOptions().timeZone
       };
     } catch (error) {
       console.error('❌ Error getting stored settings:', error);
       return {
-        enabled: false,
+        enabled: true,
         time: '09:00',
         timezone: Intl.DateTimeFormat().resolvedOptions().timeZone
       };

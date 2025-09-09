@@ -33,6 +33,16 @@ const CategoriesScreen: React.FC<CategoriesScreenProps> = ({ navigation }) => {
   
   // Onboarding overlay hook
   const onboardingOverlay = useOnboardingOverlay();
+  
+  // Debug logging for onboarding state
+  useEffect(() => {
+    console.log('🏷️ CategoriesScreen - Onboarding state:', {
+      isVisible: onboardingOverlay.isVisible,
+      currentStep: onboardingOverlay.currentStep,
+      totalSteps: onboardingOverlay.totalSteps,
+      stepId: onboardingOverlay.steps[onboardingOverlay.currentStep]?.id,
+    });
+  }, [onboardingOverlay.isVisible, onboardingOverlay.currentStep]);
 
   const { categories, isLoading } = useTypedSelector((state) => state.categories);
   const { profile } = useTypedSelector((state) => state.user);
@@ -132,7 +142,7 @@ const CategoriesScreen: React.FC<CategoriesScreenProps> = ({ navigation }) => {
         'plane': '✈️',
         'briefcase': '💼',
         'trending-up': '📈',
-        'home': '🏠',
+        'home': '🏡',
         'phone': '📱',
         'gift': '🎁',
         'coffee': '☕',
@@ -381,8 +391,8 @@ const CategoriesScreen: React.FC<CategoriesScreenProps> = ({ navigation }) => {
          showsVerticalScrollIndicator={false}
        />
 
-       {/* Onboarding Overlay - show for step 6 (categories) */}
-       {onboardingOverlay.isVisible && onboardingOverlay.currentStep === 6 && (
+       {/* Onboarding Overlay - show for step 5 (categories) */}
+       {onboardingOverlay.isVisible && onboardingOverlay.currentStep === 5 && (
          <OnboardingOverlay
            isVisible={onboardingOverlay.isVisible}
            currentStep={onboardingOverlay.currentStep}

@@ -1,32 +1,80 @@
-import React, { useEffect } from 'react';
-import { createMaterialTopTabNavigator } from '@react-navigation/material-top-tabs';
+import React from 'react';
 import { createStackNavigator } from '@react-navigation/stack';
-import { View, Text, StyleSheet, SafeAreaView, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, SafeAreaView, TouchableOpacity, Dimensions, Animated } from 'react-native';
+import { TabView, SceneMap } from 'react-native-tab-view';
 import TransactionsListScreen from '../screens/transactions/TransactionsListScreen';
 import TransactionDetailScreen from '../screens/transactions/TransactionDetailScreen';
 import AddEditTransactionScreen from '../screens/transactions/AddEditTransactionScreen';
 import TransactionCalendarScreen from '../screens/transactions/TransactionCalendarScreen';
-import StatementImportScreen from '../screens/statements/StatementImportScreen';
 import { colors, typography, spacing } from '../constants/colors';
-import { useTypedSelector } from '../hooks/useTypedSelector';
 
-const Tab = createMaterialTopTabNavigator();
 const Stack = createStackNavigator();
 
-// Top Tab Navigator for main transaction views
-const TransactionTopTabs: React.FC<{ navigation: any }> = ({ navigation }) => {
-  const { currentStep } = useTypedSelector((state) => state.onboarding);
+// Transactions screen with horizontal swipe tabs (All Transactions / Calendar)
+const TransactionMainScreen: React.FC<{ navigation: any; route?: any }> = ({ navigation, route }) => {
+  const initialLayout = { width: Dimensions.get('window').width };
   
-  // Auto-switch to Calendar tab when onboarding step is 3 (calendar)
-  useEffect(() => {
-    if (currentStep === 3) {
-      // Small delay to ensure navigation is ready
-      const timer = setTimeout(() => {
-        navigation.navigate('Calendar');
-      }, 100);
-      return () => clearTimeout(timer);
-    }
-  }, [currentStep, navigation]);
+  // Get initial tab from route params (for onboarding navigation)
+  // Only act when param is explicitly provided; avoid defaulting to 'all' to prevent snap-back
+  const initialTabParam = route?.params?.initialTab as 'all' | 'calendar' | undefined;
+  const initialIndex = initialTabParam === 'calendar' ? 1 : 0;
+
+  const renderAll = React.useCallback(() => (
+    <TransactionsListScreen navigation={navigation} />
+  ), [navigation]);
+
+  const renderCalendar = React.useCallback(() => (
+    <TransactionCalendarScreen navigation={navigation} />
+  ), [navigation]);
+
+  const renderScene = SceneMap({
+    all: renderAll,
+    calendar: renderCalendar,
+  });
+
+  const [index, setIndex] = React.useState(initialIndex);
+  
+  // Apply initialTab only when provided, then clear it to avoid future resets
+  React.useEffect(() => {
+    if (!initialTabParam) return;
+    setIndex(initialTabParam === 'calendar' ? 1 : 0);
+    // Clear the param so user-driven swipes don't get overridden
+    navigation.setParams({ initialTab: undefined });
+  }, [initialTabParam]);
+  const [routes] = React.useState([
+    { key: 'all', title: 'All Transactions' },
+    { key: 'calendar', title: 'Calendar' },
+  ]);
+
+  // Custom Tab Bar compatible with current tab-view version
+  const TabBarTop: React.FC<any> = ({ navigationState, position }) => {
+    const tabWidth = Dimensions.get('window').width / navigationState.routes.length;
+    const hasInterpolate = position && typeof position.interpolate === 'function';
+    const translateX = hasInterpolate
+      ? position.interpolate({
+          inputRange: navigationState.routes.map((_: any, i: number) => i),
+          outputRange: navigationState.routes.map((_: any, i: number) => i * tabWidth),
+        })
+      : new Animated.Value(navigationState.index * tabWidth);
+
+    return (
+      <View style={styles.tabBarContainer}>
+        <View style={styles.tabsRow}>
+          {navigationState.routes.map((r: any, i: number) => {
+            const focused = navigationState.index === i;
+            return (
+              <TouchableOpacity key={r.key} style={[styles.tabItem, { width: tabWidth }]} onPress={() => setIndex(i)}>
+                <Text style={[styles.tabLabel, { color: focused ? colors.primary : colors.textSecondary }]}>
+                  {r.title}
+                </Text>
+              </TouchableOpacity>
+            );
+          })}
+        </View>
+        <Animated.View style={[styles.tabIndicator, { width: tabWidth, transform: [{ translateX }] }]} />
+      </View>
+    );
+  };
 
   return (
     <View style={styles.container}>
@@ -35,67 +83,29 @@ const TransactionTopTabs: React.FC<{ navigation: any }> = ({ navigation }) => {
         <View style={styles.header}>
           <TouchableOpacity
             style={styles.backButton}
-            onPress={() => navigation.goBack()}
+            onPress={() => navigation.canGoBack() && navigation.goBack()}
           >
             <Text style={styles.backIcon}>←</Text>
           </TouchableOpacity>
           <Text style={styles.headerTitle}>Transactions</Text>
-          <View style={styles.menuButton} />
+          <View style={{ width: 40 }} />
         </View>
       </SafeAreaView>
 
-      {/* Top Tab Navigator */}
-      <Tab.Navigator
-        screenOptions={{
-          tabBarActiveTintColor: colors.primary,
-          tabBarInactiveTintColor: colors.textSecondary,
-          tabBarIndicatorStyle: {
-            backgroundColor: colors.primary,
-            height: 3,
-          },
-          tabBarStyle: {
-            backgroundColor: colors.background,
-            elevation: 4,
-            shadowColor: '#000',
-            shadowOffset: {
-              width: 0,
-              height: 2,
-            },
-            shadowOpacity: 0.1,
-            shadowRadius: 3.84,
-          },
-          tabBarLabelStyle: {
-            fontSize: 14,
-            fontWeight: '600',
-            textTransform: 'none',
-          },
-          tabBarPressColor: colors.primary + '20',
-          swipeEnabled: true,
-          lazy: true,
-          lazyPreloadDistance: 1,
-        }}
-        initialRouteName="AllTransactions"
-      >
-        <Tab.Screen
-          name="AllTransactions"
-          component={TransactionsListScreen}
-          options={{
-            tabBarLabel: 'All Transactions',
-          }}
-        />
-        <Tab.Screen
-          name="Calendar"
-          component={TransactionCalendarScreen}
-          options={{
-            tabBarLabel: 'Calendar',
-          }}
-        />
-      </Tab.Navigator>
+      <TabView
+        navigationState={{ index, routes }}
+        renderScene={renderScene}
+        onIndexChange={setIndex}
+        initialLayout={initialLayout}
+        swipeEnabled
+        lazy
+        renderTabBar={(props) => <TabBarTop {...props} />}
+      />
     </View>
   );
 };
 
-// Main Stack Navigator for transactions
+// Main Stack Navigator for transactions - Working Version
 const TransactionsNavigator: React.FC = () => {
   return (
     <Stack.Navigator
@@ -103,7 +113,9 @@ const TransactionsNavigator: React.FC = () => {
         headerShown: false,
       }}
     >
-      <Stack.Screen name="TransactionsMain" component={TransactionTopTabs} />
+      <Stack.Screen name="TransactionsMain" component={TransactionMainScreen} />
+      <Stack.Screen name="AllTransactions" component={TransactionsListScreen} />
+      <Stack.Screen name="Calendar" component={TransactionCalendarScreen} />
       <Stack.Screen name="TransactionDetail" component={TransactionDetailScreen} />
       <Stack.Screen name="AddEditTransaction" component={AddEditTransactionScreen} />
     </Stack.Navigator>
@@ -114,6 +126,23 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.background,
+  },
+  tabBarContainer: {
+    backgroundColor: colors.background,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
+  },
+  tabsRow: {
+    flexDirection: 'row',
+  },
+  tabItem: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: spacing.md,
+  },
+  tabIndicator: {
+    height: 3,
+    backgroundColor: colors.primary,
   },
   headerContainer: {
     backgroundColor: colors.background,
@@ -141,10 +170,22 @@ const styles = StyleSheet.create({
   },
   menuButton: {
     padding: spacing.sm,
+    backgroundColor: colors.primary,
+    borderRadius: 20,
+    width: 40,
+    height: 40,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   menuIcon: {
-    fontSize: 24,
-    color: colors.text,
+    fontSize: 20,
+    color: 'white',
+    fontWeight: 'bold',
+  },
+  tabLabel: {
+    fontSize: 14,
+    fontWeight: '600',
+    textTransform: 'none',
   },
 });
 

@@ -101,6 +101,8 @@ export const getCurrencySymbol = (currency: string): string => {
   return symbols[currency] || currency;
 };
 
+export const getDefaultCurrency = (): string => 'USD';
+
 export const groupAccountsByCurrency = (accounts: Account[]): Record<string, Account[]> => {
   return accounts.reduce((groups, account) => {
     const currency = account.currency;

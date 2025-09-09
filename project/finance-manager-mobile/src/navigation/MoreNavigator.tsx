@@ -15,6 +15,7 @@ const Stack = createStackNavigator();
 const MoreNavigator: React.FC = () => {
   return (
     <Stack.Navigator
+      initialRouteName="MoreMain"
       screenOptions={{
         headerShown: false,
       }}

@@ -1,5 +1,6 @@
 import { Dimensions } from 'react-native';
 import { colors, spacing } from './colors';
+import { formatCurrency, getCurrencySymbol } from '../utils/currency';
 
 const screenWidth = Dimensions.get('window').width;
 
@@ -80,21 +81,16 @@ export const chartColors = {
 export const chartUtils = {
   // Format currency values for chart labels
   formatCurrency: (value: number, currencyCode = 'INR') => {
-    // Import the main formatCurrency function dynamically
-    const { formatCurrency: mainFormatCurrency } = require('../utils/currency');
-    
     if (value >= 100000) {
       // For large values, use abbreviated format but with proper currency symbol
-      const { getCurrencySymbol } = require('../utils/currency');
       const symbol = getCurrencySymbol(currencyCode);
       return `${symbol}${(value / 100000).toFixed(1)}L`;
     } else if (value >= 1000) {
-      const { getCurrencySymbol } = require('../utils/currency');
       const symbol = getCurrencySymbol(currencyCode);
       return `${symbol}${(value / 1000).toFixed(1)}K`;
     }
     // For smaller values, use the main formatCurrency function
-    return mainFormatCurrency(value, currencyCode, { maximumFractionDigits: 0 });
+    return formatCurrency(value, currencyCode, { maximumFractionDigits: 0 });
   },
 
   // Format percentage values

@@ -65,12 +65,30 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
       email: user?.email,
     });
   }, [user, isAuthenticated]);
-  const { accounts } = useTypedSelector((state) => state.accounts);
-  const { transactions } = useTypedSelector((state) => state.transactions);
+  const { accounts: rawAccounts } = useTypedSelector((state) => state.accounts);
+  
+  // Ensure accounts is always an array and filter out any null/undefined accounts
+  const accounts = rawAccounts && Array.isArray(rawAccounts) 
+    ? rawAccounts.filter(account => account && account.id) 
+    : [];
+  const { transactions: rawTransactions } = useTypedSelector((state) => state.transactions);
   // const { goals, isLoading: goalsLoading } = useTypedSelector((state) => state.goals); // removed for now
   const { budgets, budgetStatus, isLoading: budgetsLoading } = useTypedSelector((state) => state.budgets);
-  const { recommendations } = useTypedSelector((state) => state.recommendations);
-  const { displayCurrency } = useTypedSelector((state) => state.user);
+  const { recommendations: rawRecommendations } = useTypedSelector((state) => state.recommendations);
+  
+  // Ensure transactions is always an array and filter out any null/undefined transactions
+  const transactions = rawTransactions && Array.isArray(rawTransactions) 
+    ? rawTransactions.filter(transaction => transaction && transaction.id) 
+    : [];
+    
+  // Ensure recommendations is always an array and filter out any null/undefined recommendations
+  const recommendations = rawRecommendations && Array.isArray(rawRecommendations) 
+    ? rawRecommendations.filter(recommendation => recommendation && recommendation.id) 
+    : [];
+  const { displayCurrency: rawDisplayCurrency } = useTypedSelector((state) => state.user);
+  
+  // Ensure displayCurrency is always a valid currency string
+  const displayCurrency = rawDisplayCurrency && rawDisplayCurrency.trim() !== '' ? rawDisplayCurrency : 'USD';
   const { dashboardInsights, isLoading: analyticsLoading } = useTypedSelector((state) => state.analytics);
 
   // Debug logging for currency
@@ -134,7 +152,7 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
         return 0;
       }
       return accounts
-        .filter(account => account.currency === displayCurrency)
+        .filter(account => account && account.currency && account.currency === displayCurrency)
         .reduce((total, account) => {
           if (!account || typeof account.balance !== 'number' || isNaN(account.balance)) {
             return total;
@@ -153,7 +171,7 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
       if (!transactions || !Array.isArray(transactions)) {
         return [];
       }
-      return transactions.slice(0, 3).filter(transaction => transaction);
+      return transactions.slice(0, 3);
     } catch (error) {
       return [];
     }
@@ -178,7 +196,7 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
 
       // Find the budget with the highest percentage used (most urgent)
       const budgetWithHighestUsage = budgets
-        .filter(budget => budget && budget.is_active === true)
+        .filter(budget => budget && budget.id && budget.is_active === true)
         .map(budget => {
           const percentageUsed = budget.spent_amount && budget.amount 
             ? (budget.spent_amount / budget.amount) * 100 
@@ -347,9 +365,9 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
       
       switch (type.toLowerCase()) {
         case 'checking':
-          return '🏦';
+          return '🏛️';
         case 'savings':
-          return '💰';
+          return '💵';
         case 'credit':
           return '💳';
         case 'investment':
@@ -365,6 +383,11 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
   // Show loading spinner if not authenticated
   if (!isAuthenticated) {
     return <LoadingSpinner />;
+  }
+
+  // Additional safety check for critical data
+  if (!accounts || !Array.isArray(accounts)) {
+    console.warn('⚠️ Dashboard: Accounts data is not properly initialized');
   }
 
   const totalBalance = calculateTotalBalance();
@@ -415,7 +438,7 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
                   {`${totalBalance < 0 ? '-' : ''}${formatBalance(Math.abs(totalBalance))}`}
                 </Text>
                 <Text style={styles.balanceSubtitle}>
-                  In {displayCurrency} (from {accounts.filter(a => a.currency === displayCurrency).length} of {accounts.length} accounts)
+                  In {displayCurrency || 'USD'} (from {accounts.filter(a => a && a.currency && a.currency === displayCurrency).length} of {accounts.length} accounts)
                 </Text>
               </View>
             
@@ -443,8 +466,8 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
                 {accounts.map((account) => (
                   <TouchableOpacity
                     key={account.id}
-                    style={[styles.accountItem, !account.is_active && styles.inactiveAccount]}
-                    onPress={() => handleAccountPress(account.id)}
+                    style={[styles.accountItem, account.is_active === false && styles.inactiveAccount]}
+                    onPress={() => account.id ? handleAccountPress(account.id) : null}
                     activeOpacity={0.7}
                   >
                     <View style={styles.accountLeft}>
@@ -453,10 +476,10 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
                       </Text>
                       <View style={styles.accountDetails}>
                         <Text style={styles.accountName} numberOfLines={1}>
-                          {account.name || 'Unnamed Account'}
+                          {account.name && typeof account.name === 'string' ? account.name : 'Unnamed Account'}
                         </Text>
                         <Text style={styles.accountType}>
-                          {account.type ? account.type.charAt(0).toUpperCase() + account.type.slice(1) : 'Account'}
+                          {account.type && typeof account.type === 'string' ? account.type.charAt(0).toUpperCase() + account.type.slice(1) : 'Account'}
                         </Text>
                       </View>
                     </View>
@@ -464,7 +487,7 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
                       styles.accountBalance,
                       { color: (account.balance || 0) >= 0 ? colors.income : colors.expense }
                     ]}>
-                      {formatCurrency(account.balance || 0, account.currency || displayCurrency)}
+                      {formatCurrency(account.balance || 0, account.currency || displayCurrency || 'USD')}
                     </Text>
                   </TouchableOpacity>
                 ))}
@@ -515,7 +538,7 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
             ))
           ) : (
             <View style={styles.emptyState}>
-              <Text style={styles.emptyIcon}>📋</Text>
+              <Text style={styles.emptyIcon}>📄</Text>
               <Text style={styles.emptyTitle}>No Transactions Yet</Text>
               <Text style={styles.emptyMessage}>
                 Add your first transaction to get started
@@ -600,8 +623,8 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
         <Text style={styles.fabIcon}>+</Text>
       </TouchableOpacity>
 
-      {/* Onboarding Overlay - show for step 0 (welcome) and step 7 (complete) */}
-      {onboardingOverlay.isVisible && (onboardingOverlay.currentStep === 0 || onboardingOverlay.currentStep === 7) && (
+      {/* Onboarding Overlay - show for step 0 (welcome) and step 6 (complete) */}
+      {onboardingOverlay.isVisible && (onboardingOverlay.currentStep === 0 || onboardingOverlay.currentStep === 6) && (
         <OnboardingOverlay
           isVisible={onboardingOverlay.isVisible}
           currentStep={onboardingOverlay.currentStep}

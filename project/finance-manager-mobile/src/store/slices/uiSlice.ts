@@ -7,6 +7,7 @@ interface UIState {
 
   showAddTransactionModal: boolean;
   showAddGoalModal: boolean;
+  showPremiumModal: boolean;
   // Font settings
   fontSize: 'small' | 'medium' | 'large';
   fontFamily: 'system' | 'serif' | 'monospace';
@@ -20,6 +21,7 @@ const initialState: UIState = {
 
   showAddTransactionModal: false,
   showAddGoalModal: false,
+  showPremiumModal: false,
   // Font settings defaults
   fontSize: 'medium',
   fontFamily: 'system',
@@ -52,6 +54,12 @@ const uiSlice = createSlice({
     hideAddGoalModal: (state) => {
       state.showAddGoalModal = false;
     },
+    showPremiumModal: (state) => {
+      state.showPremiumModal = true;
+    },
+    hidePremiumModal: (state) => {
+      state.showPremiumModal = false;
+    },
     // Font settings actions
     setFontSize: (state, action: PayloadAction<'small' | 'medium' | 'large'>) => {
       state.fontSize = action.payload;
@@ -74,6 +82,8 @@ export const {
   hideAddTransactionModal,
   showAddGoalModal,
   hideAddGoalModal,
+  showPremiumModal,
+  hidePremiumModal,
   setFontSize,
   setFontFamily,
   setBoldNumbers,

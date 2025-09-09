@@ -13,11 +13,18 @@ interface CurrencyBalances {
 }
 
 const CurrencySummary: React.FC<CurrencySummaryProps> = ({ accounts }) => {
+  // Safety check for accounts array
+  if (!accounts || !Array.isArray(accounts) || accounts.length === 0) {
+    return null;
+  }
+
   const currencyBalances = accounts.reduce((acc, account) => {
+    if (!account || !account.currency) return acc;
+    
     if (!acc[account.currency]) {
       acc[account.currency] = 0;
     }
-    acc[account.currency] += account.balance;
+    acc[account.currency] += account.balance || 0;
     return acc;
   }, {} as CurrencyBalances);
 

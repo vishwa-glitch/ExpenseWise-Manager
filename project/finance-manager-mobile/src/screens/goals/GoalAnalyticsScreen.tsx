@@ -305,6 +305,7 @@ const GoalAnalyticsScreen: React.FC<GoalAnalyticsScreenProps> = ({ navigation })
             timePeriod={selectedPeriod}
             isLoading={isLoading}
             showPercentages={true}
+            displayCurrency={displayCurrency}
           />
         )}
 

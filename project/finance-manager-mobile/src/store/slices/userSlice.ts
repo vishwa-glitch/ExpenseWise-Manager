@@ -6,6 +6,7 @@ interface UserState {
   profile: any | null;
   subscriptionStatus: any | null;
   displayCurrency: string;
+  preferredCurrency: string;
   isLoading: boolean;
   error: string | null;
 }
@@ -14,6 +15,7 @@ const initialState: UserState = {
   profile: null,
   subscriptionStatus: null,
   displayCurrency: 'USD', // Default to USD, will be updated when user preference is loaded
+  preferredCurrency: 'USD', // Default to USD
   isLoading: false,
   error: null,
 };

@@ -2,34 +2,37 @@
   "expo": {
     "name": "finance-manager-mobile",
     "slug": "fintech",
-    "version": "1.0.0",
-    "orientation": "portrait",
-    "icon": "./assets/icon.png",
-    "userInterfaceStyle": "light",
-    "splash": {
-      "image": "./assets/splash-icon.png",
-      "resizeMode": "contain",
-      "backgroundColor": "#ffffff"
-    },
-    "ios": {
-      "supportsTablet": true
-    },
-    "android": {
-      "adaptiveIcon": {
-        "foregroundImage": "./assets/adaptive-icon.png",
-        "backgroundColor": "#ffffff"
-      },
-      "package": "com.vishwa567.fintech"
-    },
+    "version": "1.0.1",
+    "sdkVersion": "53.0.0",
+    "jsEngine": "hermes",
     "web": {
       "favicon": "./assets/favicon.png"
     },
-    "plugins": [],
+    "plugins": [
+      "expo-secure-store",
+      [
+        "expo-build-properties",
+        {
+          "android": {
+            "compileSdkVersion": 35,
+            "targetSdkVersion": 35,
+            "buildToolsVersion": "35.0.0",
+            "minSdkVersion": 24,
+            "versionCode": 3,
+            "newArchEnabled": false
+          }
+        }
+      ]
+    ],
     "extra": {
       "eas": {
         "projectId": "08cb1df3-0c2c-4482-9bcc-68006b5f2ab8"
       }
     },
-    "owner": "vishwa567"
+    "owner": "vishwa567",
+    "android": {
+      "package": "com.vishwa567.fintech",
+      "jsEngine": "hermes"
+    }
   }
 }

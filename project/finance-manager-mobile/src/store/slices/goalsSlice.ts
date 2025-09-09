@@ -5,6 +5,8 @@ interface GoalsState {
   goals: any[];
   selectedGoal: any | null;
   aiSession: any | null;
+  goalProgress: any | null;
+  goalPredictions: any | null;
   isLoading: boolean;
   error: string | null;
 }

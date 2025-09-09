@@ -11,6 +11,7 @@ import {
   Keyboard,
   TouchableWithoutFeedback,
   Image,
+  Linking,
 } from 'react-native';
 import { useAppDispatch } from '../../hooks/useAppDispatch';
 import { useTypedSelector } from '../../hooks/useTypedSelector';
@@ -44,6 +45,10 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ navigation, route }) => {
   const validateEmail = (email: string) => {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     return emailRegex.test(email);
+  };
+
+  const openSupportEmail = () => {
+    Linking.openURL('mailto:wealthwise523@gmail.com?subject=Login Support Request');
   };
 
   const handleLogin = async () => {
@@ -85,8 +90,8 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ navigation, route }) => {
           [
             { text: 'OK' },
             {
-              text: 'Forgot Password?',
-              onPress: () => navigation.navigate('ForgotPassword'),
+              text: 'Contact Support',
+              onPress: openSupportEmail,
             },
           ]
         );
@@ -137,7 +142,7 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ navigation, route }) => {
                   placeholder="Enter your email"
                   keyboardType="email-address"
                   error={emailError}
-                  leftIcon={<Text style={styles.inputIcon}>📧</Text>}
+                  leftIcon={<Text style={styles.inputIcon}>✉️</Text>}
                   onFocus={handleInputFocus}
                 />
 
@@ -148,7 +153,7 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ navigation, route }) => {
                   placeholder="Enter your password"
                   secureTextEntry
                   error={passwordError}
-                  leftIcon={<Text style={styles.inputIcon}>🔒</Text>}
+                  leftIcon={<Text style={styles.inputIcon}>🔐</Text>}
                   onFocus={handleInputFocus}
                 />
 

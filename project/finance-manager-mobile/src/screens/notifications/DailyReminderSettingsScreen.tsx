@@ -13,7 +13,7 @@ import { colors, typography, spacing } from '../../constants/colors';
 import { dailyExpenseReminderService } from '../../services/dailyExpenseReminderService';
 
 const DailyReminderSettingsScreen: React.FC = () => {
-  const [isEnabled, setIsEnabled] = useState(false);
+  const [isEnabled, setIsEnabled] = useState(true);
   const [reminderTime, setReminderTime] = useState('09:00');
   const [loading, setLoading] = useState(false);
   const [hasLoggedToday, setHasLoggedToday] = useState(false);

@@ -7,12 +7,14 @@ import accountsSlice from './slices/accountsSlice';
 import transactionsSlice from './slices/transactionsSlice';
 import categoriesSlice from './slices/categoriesSlice';
 import budgetsSlice from './slices/budgetsSlice';
-// goalsSlice import removed for now - file kept for future use
+import goalsSlice from './slices/goalsSlice';
+import notificationsSlice from './slices/notificationsSlice';
 import recommendationsSlice from './slices/recommendationsSlice';
 import analyticsSlice from './slices/analyticsSlice';
 import budgetAnalyticsSlice from './slices/budgetAnalyticsSlice';
 import uiSlice from './slices/uiSlice';
 import onboardingSlice from './slices/onboardingSlice';
+import appUpdateSlice from './slices/appUpdateSlice';
 
 // Persist configuration for critical data
 const persistConfig = {
@@ -22,7 +24,8 @@ const persistConfig = {
     'auth',         // Important: Authentication state
     'transactions', // Critical: User's transaction data
     'budgets',      // Critical: Budget information
-    // 'goals',        // Critical: Financial goals - removed for now
+    'goals',        // Critical: Financial goals
+    'notifications', // Important: Notification preferences
     'accounts',     // Important: Account information
     'categories',   // Important: Transaction categories
     'user',         // Important: User preferences
@@ -56,10 +59,15 @@ const persistedBudgetsReducer = persistReducer(
   budgetsSlice
 );
 
-// const persistedGoalsReducer = persistReducer(
-//   { key: 'goals', storage: AsyncStorage },
-//   goalsSlice
-// );
+const persistedGoalsReducer = persistReducer(
+  { key: 'goals', storage: AsyncStorage },
+  goalsSlice
+);
+
+const persistedNotificationsReducer = persistReducer(
+  { key: 'notifications', storage: AsyncStorage },
+  notificationsSlice
+);
 
 const persistedAccountsReducer = persistReducer(
   { key: 'accounts', storage: AsyncStorage },
@@ -89,12 +97,14 @@ export const store = configureStore({
     transactions: persistedTransactionsReducer,
     categories: persistedCategoriesReducer,
     budgets: persistedBudgetsReducer,
-    // goals: persistedGoalsReducer, // removed for now
+    goals: persistedGoalsReducer,
+    notifications: persistedNotificationsReducer,
     recommendations: recommendationsSlice,
     analytics: analyticsSlice,
     budgetAnalytics: budgetAnalyticsSlice,
     ui: uiSlice,
     onboarding: persistedOnboardingReducer,
+    appUpdate: appUpdateSlice,
   },
   middleware: (getDefaultMiddleware) =>
     getDefaultMiddleware({

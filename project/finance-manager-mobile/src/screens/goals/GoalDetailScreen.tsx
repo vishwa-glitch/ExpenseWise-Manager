@@ -22,7 +22,7 @@ import { CustomButton } from '../../components/common/CustomButton';
 import { LoadingSpinner } from '../../components/common/LoadingSpinner';
 import { ProgressDonut } from '../../components/charts/ProgressDonut';
 import { colors, typography, spacing } from '../../constants/colors';
-import { formatCurrency } from '../../utils/currency';
+import { formatCurrency, getCurrencySymbol } from '../../utils/currency';
 
 interface GoalDetailScreenProps {
   navigation: any;
@@ -37,6 +37,7 @@ const GoalDetailScreen: React.FC<GoalDetailScreenProps> = ({ navigation, route }
   const { accounts } = useTypedSelector((state) => state.accounts);
   const { isAuthenticated } = useTypedSelector((state) => state.auth);
   const { categories } = useTypedSelector((state) => state.categories);
+  const { displayCurrency } = useTypedSelector((state) => state.user);
 
   const [showContributeModal, setShowContributeModal] = useState(false);
   const [contributionAmount, setContributionAmount] = useState('');
@@ -175,7 +176,7 @@ const GoalDetailScreen: React.FC<GoalDetailScreenProps> = ({ navigation, route }
             onChangeText={setContributionAmount}
             placeholder="0.00"
             keyboardType="numeric"
-            leftIcon={<Text style={styles.inputIcon}>💰</Text>}
+            leftIcon={<Text style={styles.inputIcon}>{getCurrencySymbol(displayCurrency || 'USD')}</Text>}
             inputStyle={styles.amountInput}
             style={styles.amountInputContainer}
           />

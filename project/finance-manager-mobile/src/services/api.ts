@@ -857,6 +857,22 @@ class ApiService {
     return response.data;
   }
 
+  async getGoalPredictions(id: string) {
+    try {
+      const response = await this.api.get(API_ENDPOINTS.GOALS.PREDICTIONS(id));
+      return response.data;
+    } catch (error) {
+      console.error('❌ Error fetching goal predictions:', error);
+      // Return fallback data if predictions endpoint is not available
+      return {
+        estimated_completion_date: null,
+        monthly_contribution_needed: 0,
+        probability_of_success: 0,
+        suggestions: []
+      };
+    }
+  }
+
   async contributeToGoal(id: string, amount: number, accountId: string, description?: string) {
     // First create a transaction for the contribution
     const transactionData: any = {

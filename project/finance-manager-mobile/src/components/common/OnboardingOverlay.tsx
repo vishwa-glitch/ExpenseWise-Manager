@@ -43,18 +43,7 @@ const OnboardingOverlay: React.FC<OnboardingOverlayProps> = ({
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const scaleAnim = useRef(new Animated.Value(0.8)).current;
 
-  // Auto-dismiss timer
-  useEffect(() => {
-    let timer: NodeJS.Timeout;
-    if (isVisible) {
-      timer = setTimeout(() => {
-        onSkip(); // Auto-dismiss by skipping to next step
-      }, 8000);
-    }
-    return () => {
-      if (timer) clearTimeout(timer);
-    };
-  }, [isVisible, onSkip]);
+  // Auto-dismiss timer removed - user must manually proceed
 
   useEffect(() => {
     if (isVisible) {
@@ -114,12 +103,8 @@ const OnboardingOverlay: React.FC<OnboardingOverlayProps> = ({
       statusBarTranslucent
     >
       <View style={styles.container}>
-        {/* Semi-transparent overlay - allows interaction */}
-        <TouchableOpacity 
-          style={styles.overlay} 
-          activeOpacity={1}
-          onPress={() => {}} // Empty onPress to allow touch events to pass through
-        />
+        {/* Semi-transparent overlay - blocks interaction */}
+        <View style={styles.overlay} />
         
         {/* Overlay */}
         <Animated.View
@@ -198,7 +183,7 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     bottom: 0,
-    backgroundColor: 'rgba(0, 0, 0, 0.15)',
+    backgroundColor: 'rgba(0, 0, 0, 0.3)',
   },
   quarterCircleContainer: {
     position: 'absolute',
@@ -251,15 +236,15 @@ const styles = StyleSheet.create({
   },
   title: {
     color: colors.background,
-    fontSize: 14, // Reduced from 16
+    fontSize: 17, // Increased by 20% from 14
     fontWeight: 'bold',
     marginBottom: spacing.xs, // Reduced from spacing.sm
     textAlign: 'center',
   },
   description: {
     color: colors.background,
-    fontSize: 11, // Reduced from 13
-    lineHeight: 16, // Reduced from 18
+    fontSize: 13, // Increased by 20% from 11
+    lineHeight: 19, // Increased proportionally from 16
     textAlign: 'center',
     opacity: 0.9,
   },

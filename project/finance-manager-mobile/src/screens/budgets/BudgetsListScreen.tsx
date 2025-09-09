@@ -13,8 +13,6 @@ import { useFocusEffect } from '@react-navigation/native';
 import { useAppDispatch } from '../../hooks/useAppDispatch';
 import { useTypedSelector } from '../../hooks/useTypedSelector';
 import { fetchBudgets, deleteBudget } from '../../store/slices/budgetsSlice';
-import { fetchUserProfile } from '../../store/slices/userSlice';
-import { fetchCategories } from '../../store/slices/categoriesSlice';
 import { renewExpiredBudgets } from '../../services/budgetRenewalService';
 
 import { BudgetCard } from '../../components/common/BudgetCard';
@@ -38,11 +36,9 @@ const BudgetsListScreen: React.FC<BudgetsListScreenProps> = ({ navigation }) => 
   const onboardingOverlay = useOnboardingOverlay();
 
   const budgetsSelector = (state: RootState) => state.budgets;
-  const userSelector = (state: RootState) => state.user;
   const authSelector = (state: RootState) => state.auth;
 
   const { budgets, isLoading } = useTypedSelector(budgetsSelector);
-  const { profile } = useTypedSelector(userSelector);
   const { isAuthenticated } = useTypedSelector(authSelector);
   const { displayCurrency } = useTypedSelector((state) => state.user);
 
@@ -104,12 +100,9 @@ const BudgetsListScreen: React.FC<BudgetsListScreenProps> = ({ navigation }) => 
       } catch (error) {
         console.error('❌ Error during budget renewal check:', error);
       }
-      
-      await Promise.all([
-        dispatch(fetchBudgets()),
-        dispatch(fetchUserProfile()),
-        dispatch(fetchCategories()),
-      ]);
+
+      // Only fetch budgets here to avoid redundant fetching that can cause extra re-renders
+      await dispatch(fetchBudgets());
     } catch (error) {
       console.error('Error loading budgets:', error);
     }
@@ -134,12 +127,7 @@ const BudgetsListScreen: React.FC<BudgetsListScreenProps> = ({ navigation }) => 
     return budgets.filter((budget: any) => !budget.is_active);
   };
 
-  const canCreateBudget = () => {
-    if (!profile) return false;
-    
-    // TEMPORARY: All users can create unlimited budgets for app launch
-    return true;
-  };
+  const canCreateBudget = () => true;
 
   const handleCreateBudget = () => {
     if (canCreateBudget()) {
@@ -218,7 +206,7 @@ const BudgetsListScreen: React.FC<BudgetsListScreenProps> = ({ navigation }) => 
       {/* Summary Cards */}
       <View style={styles.summaryContainer}>
         <View style={styles.summaryCard}>
-          <Text style={styles.summaryIcon}>📊</Text>
+          <Text style={styles.summaryIcon}>📈</Text>
           <Text style={styles.summaryLabel}>Total Budget</Text>
           <Text style={styles.summaryValue}>
             {formatCurrencyAmount(calculateTotalBudgetAmount())}
@@ -234,7 +222,7 @@ const BudgetsListScreen: React.FC<BudgetsListScreenProps> = ({ navigation }) => 
         </View>
         
         <View style={styles.summaryCard}>
-          <Text style={styles.summaryIcon}>💰</Text>
+          <Text style={styles.summaryIcon}>💵</Text>
           <Text style={styles.summaryLabel}>Remaining</Text>
           <Text style={[
             styles.summaryValue,
@@ -268,7 +256,7 @@ const BudgetsListScreen: React.FC<BudgetsListScreenProps> = ({ navigation }) => 
 
   const renderEmptyState = () => (
     <View style={styles.emptyState}>
-      <Text style={styles.emptyIcon}>📊</Text>
+      <Text style={styles.emptyIcon}>📈</Text>
       <Text style={styles.emptyTitle}>No Budgets Yet</Text>
       <Text style={styles.emptyMessage}>
         Create your first budget to start tracking your spending and stay on top of your finances.

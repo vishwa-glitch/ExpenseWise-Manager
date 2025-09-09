@@ -124,7 +124,7 @@ const MoreScreen: React.FC<MoreScreenProps> = ({ navigation }) => {
                 })
               }
             >
-              <Text style={styles.quickActionIcon}>💰</Text>
+              <Text style={styles.quickActionIcon}>💵</Text>
               <Text style={styles.quickActionText}>Add Transaction</Text>
             </TouchableOpacity>
             {/* Goals functionality removed for now - kept for future use */}
@@ -147,7 +147,7 @@ const MoreScreen: React.FC<MoreScreenProps> = ({ navigation }) => {
                 })
               }
             >
-              <Text style={styles.quickActionIcon}>🏦</Text>
+              <Text style={styles.quickActionIcon}>🏛️</Text>
               <Text style={styles.quickActionText}>Add Account</Text>
             </TouchableOpacity>
             <TouchableOpacity
@@ -158,7 +158,7 @@ const MoreScreen: React.FC<MoreScreenProps> = ({ navigation }) => {
                 })
               }
             >
-              <Text style={styles.quickActionIcon}>📊</Text>
+              <Text style={styles.quickActionIcon}>📈</Text>
               <Text style={styles.quickActionText}>Create Budget</Text>
             </TouchableOpacity>
           </View>

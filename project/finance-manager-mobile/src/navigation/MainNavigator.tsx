@@ -1,8 +1,8 @@
 import React from 'react';
 
-import { createMaterialTopTabNavigator } from '@react-navigation/material-top-tabs';
+import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createStackNavigator } from '@react-navigation/stack';
-import { View, Text, TouchableOpacity, StyleSheet, Dimensions } from 'react-native';
+import { Text, View } from 'react-native';
 import { colors } from '../constants/colors';
 
 // Import tab screens
@@ -33,83 +33,35 @@ import AccountSharingScreen from '../screens/accounts/AccountSharingScreen';
 
 
 
-const Tab = createMaterialTopTabNavigator();
+const Tab = createBottomTabNavigator();
 const Stack = createStackNavigator();
 
-const { width: screenWidth } = Dimensions.get('window');
+// Custom hamburger menu icon component
+const HamburgerIcon: React.FC<{ focused: boolean }> = ({ focused }) => (
+  <View style={{ alignItems: 'center', justifyContent: 'center' }}>
+    <View style={{
+      width: 20,
+      height: 2,
+      backgroundColor: focused ? colors.primary : colors.textSecondary,
+      marginBottom: 3,
+    }} />
+    <View style={{
+      width: 20,
+      height: 2,
+      backgroundColor: focused ? colors.primary : colors.textSecondary,
+      marginBottom: 3,
+    }} />
+    <View style={{
+      width: 20,
+      height: 2,
+      backgroundColor: focused ? colors.primary : colors.textSecondary,
+    }} />
+  </View>
+);
 
-// Tab Bar Icon Component
-const TabBarIcon: React.FC<{ name: string; focused: boolean }> = ({ name, focused }) => {
-  const iconMap: { [key: string]: string } = {
-    Dashboard: '🏠',
-    Transactions: '📋',
-    Budget: '📊',
-    More: '☰',
-  };
+// Dimensions removed - not needed for simplified tab navigator
 
-  return (
-    <View style={styles.tabIconContainer}>
-      <Text style={[styles.tabIcon, { opacity: focused ? 1 : 0.6 }]}>
-        {iconMap[name] || '📱'}
-      </Text>
-      <Text style={[styles.tabLabel, { color: focused ? colors.primary : colors.textSecondary }]}>
-        {name}
-      </Text>
-    </View>
-  );
-};
-
-// Custom Bottom Tab Bar Component
-const CustomBottomTabBar: React.FC<any> = ({ state, descriptors, navigation }) => {
-  return (
-    <View style={styles.customTabBar}>
-      {state.routes.map((route: any, index: number) => {
-        const { options } = descriptors[route.key];
-        const label = options.tabBarLabel !== undefined 
-          ? options.tabBarLabel 
-          : options.title !== undefined 
-          ? options.title 
-          : route.name;
-
-        const isFocused = state.index === index;
-
-        const onPress = () => {
-          const event = navigation.emit({
-            type: 'tabPress',
-            target: route.key,
-            canPreventDefault: true,
-          });
-
-          if (!isFocused && !event.defaultPrevented) {
-            navigation.jumpTo(route.name);
-          }
-        };
-
-        const onLongPress = () => {
-          navigation.emit({
-            type: 'tabLongPress',
-            target: route.key,
-          });
-        };
-
-        return (
-          <TouchableOpacity
-            key={route.key}
-            accessibilityRole="button"
-            accessibilityState={isFocused ? { selected: true } : {}}
-            accessibilityLabel={options.tabBarAccessibilityLabel}
-            testID={options.tabBarTestID}
-            onPress={onPress}
-            onLongPress={onLongPress}
-            style={styles.tabButton}
-          >
-            <TabBarIcon name={label} focused={isFocused} />
-          </TouchableOpacity>
-        );
-      })}
-    </View>
-  );
-};
+// Custom tab bar components removed - using default bottom tab navigator
 
 // Account Stack Navigator (for direct navigation from dashboard)
 const AccountStackNavigator: React.FC = () => {
@@ -127,39 +79,72 @@ const AccountStackNavigator: React.FC = () => {
   );
 };
 
-// Swipeable Tab Navigator (removed Accounts tab)
+// Bottom Tab Navigator - Simplified to prevent crashes
 const TabNavigator: React.FC = () => {
   return (
     <Tab.Navigator
-      tabBarPosition="bottom"
-      tabBar={(props) => <CustomBottomTabBar {...props} />}
       screenOptions={{
-        swipeEnabled: false,
+        headerShown: false,
         lazy: true,
-        lazyPreloadDistance: 1,
-        animationEnabled: true,
+        tabBarStyle: {
+          backgroundColor: colors.background,
+          borderTopColor: colors.border,
+          borderTopWidth: 1,
+          height: 80,
+          paddingBottom: 10,
+          paddingTop: 5,
+        },
+        tabBarActiveTintColor: colors.primary,
+        tabBarInactiveTintColor: colors.textSecondary,
+        tabBarLabelStyle: {
+          fontSize: 12,
+          fontWeight: '500',
+        },
       }}
-      initialLayout={{ width: screenWidth }}
     >
       <Tab.Screen 
         name="Dashboard" 
         component={DashboardNavigator}
-        options={{ tabBarLabel: 'Dashboard' }}
+        options={{ 
+          tabBarLabel: 'Dashboard',
+          title: 'Dashboard',
+          tabBarIcon: ({ focused }) => (
+            <Text style={{ fontSize: 24, opacity: focused ? 1 : 0.6 }}>🏡</Text>
+          )
+        }}
       />
       <Tab.Screen 
         name="Transactions" 
         component={TransactionsNavigator}
-        options={{ tabBarLabel: 'Transactions' }}
+        options={{ 
+          tabBarLabel: 'Transactions',
+          title: 'Transactions',
+          tabBarIcon: ({ focused }) => (
+            <Text style={{ fontSize: 24, opacity: focused ? 1 : 0.6 }}>📄</Text>
+          )
+        }}
       />
       <Tab.Screen 
         name="Budget" 
         component={BudgetNavigator}
-        options={{ tabBarLabel: 'Budget' }}
+        options={{ 
+          tabBarLabel: 'Budget',
+          title: 'Budget',
+          tabBarIcon: ({ focused }) => (
+            <Text style={{ fontSize: 24, opacity: focused ? 1 : 0.6 }}>🎯</Text>
+          )
+        }}
       />
       <Tab.Screen 
         name="More" 
         component={MoreNavigator}
-        options={{ tabBarLabel: 'More' }}
+        options={{ 
+          tabBarLabel: 'More',
+          title: 'More',
+          tabBarIcon: ({ focused }) => (
+            <HamburgerIcon focused={focused} />
+          )
+        }}
       />
     </Tab.Navigator>
   );
@@ -191,43 +176,6 @@ const MainNavigator: React.FC = () => {
   );
 };
 
-const styles = StyleSheet.create({
-  customTabBar: {
-    flexDirection: 'row',
-    backgroundColor: colors.background,
-    borderTopColor: colors.border,
-    borderTopWidth: 1,
-    height: 80,
-    paddingBottom: 10,
-    paddingTop: 5,
-    elevation: 8,
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: -2,
-    },
-    shadowOpacity: 0.1,
-    shadowRadius: 3,
-  },
-  tabButton: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 5,
-  },
-  tabIconContainer: {
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  tabIcon: {
-    fontSize: 24,
-    marginBottom: 2,
-  },
-  tabLabel: {
-    fontSize: 12,
-    fontWeight: '500',
-    textAlign: 'center',
-  },
-});
+// Styles removed - using default bottom tab navigator styles
 
 export default MainNavigator;

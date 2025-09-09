@@ -265,21 +265,19 @@ const TransactionCalendarScreen: React.FC<TransactionCalendarScreenProps> = ({ n
           hasTransactions && styles.dayWithTransactions,
         ]}
         onPress={() => {
-          if (hasTransactions) {
-            // Navigate to transactions list for this specific day
-            const selectedDate = `${currentDate.getFullYear()}-${String(currentDate.getMonth() + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-            console.log('📅 Navigating to transactions for date:', selectedDate);
-            
-            // Navigate to the parent navigator and pass the date filter
-            navigation.navigate('TransactionsMain', {
-              screen: 'AllTransactions',
-              params: {
-                filterDate: selectedDate,
-              },
-            });
-          }
+          // Navigate to transactions list for this specific day (allow all dates, not just those with transactions)
+          const selectedDate = `${currentDate.getFullYear()}-${String(currentDate.getMonth() + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+          console.log('📅 Date tapped:', day, 'Selected date:', selectedDate, 'Has transactions:', hasTransactions);
+          console.log('📅 Navigating to transactions for date:', selectedDate);
+          
+          // Navigate to the parent navigator and pass the date filter
+          navigation.navigate('TransactionsMain', {
+            screen: 'AllTransactions',
+            params: {
+              filterDate: selectedDate,
+            },
+          });
         }}
-        disabled={!hasTransactions}
       >
         <Text style={[
           styles.dayNumber,
