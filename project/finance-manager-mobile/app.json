@@ -2,7 +2,7 @@
   "expo": {
     "name": "finance-manager-mobile",
     "slug": "fintech",
-    "version": "1.0.1",
+    "version": "1.0.2",
     "sdkVersion": "53.0.0",
     "jsEngine": "hermes",
     "web": {
@@ -18,7 +18,7 @@
             "targetSdkVersion": 35,
             "buildToolsVersion": "35.0.0",
             "minSdkVersion": 24,
-            "versionCode": 3,
+            "versionCode": 4,
             "newArchEnabled": false
           }
         }

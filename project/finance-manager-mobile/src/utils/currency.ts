@@ -96,9 +96,12 @@ export const getCurrencySymbol = (currency: string): string => {
     'JPY': '¥',
     'CAD': 'C$',
     'AUD': 'A$',
-    'INR': '₹'
+    'INR': '₹',
+    'CHF': 'CHF',
+    'CNY': '¥',
+    'SEK': 'kr'
   };
-  return symbols[currency] || currency;
+  return symbols[currency] || '$';
 };
 
 export const getDefaultCurrency = (): string => 'USD';

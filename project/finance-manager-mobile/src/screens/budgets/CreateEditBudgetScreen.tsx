@@ -667,6 +667,7 @@ const styles = StyleSheet.create({
   },
   inputIcon: {
     fontSize: 20,
+    color: colors.text,
   },
   label: {
     ...typography.caption,

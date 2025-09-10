@@ -114,7 +114,25 @@ const TransactionsNavigator: React.FC = () => {
       }}
     >
       <Stack.Screen name="TransactionsMain" component={TransactionMainScreen} />
-      <Stack.Screen name="AllTransactions" component={TransactionsListScreen} />
+      <Stack.Screen 
+        name="AllTransactions" 
+        component={TransactionsListScreen}
+        options={{
+          headerShown: true,
+          headerTitle: 'Transactions',
+          headerStyle: {
+            backgroundColor: colors.background,
+            borderBottomWidth: 1,
+            borderBottomColor: colors.border,
+          },
+          headerTitleStyle: {
+            ...typography.h2,
+            color: colors.text,
+            fontWeight: 'bold',
+          },
+          headerTintColor: colors.text,
+        }}
+      />
       <Stack.Screen name="Calendar" component={TransactionCalendarScreen} />
       <Stack.Screen name="TransactionDetail" component={TransactionDetailScreen} />
       <Stack.Screen name="AddEditTransaction" component={AddEditTransactionScreen} />

@@ -22,15 +22,19 @@ import OnboardingOverlay from '../../components/common/OnboardingOverlay';
 import { useOnboardingOverlay } from '../../hooks/useOnboardingOverlay';
 
 // Define your stack navigator's params list
-// This is a basic example; you should replace it with your actual navigator's params
 type RootStackParamList = {
   TransactionsMain: { 
-    screen: string;
-    params: { 
+    screen?: string;
+    params?: { 
       filterDate?: string;
       startDate?: string;
       endDate?: string;
     };
+  };
+  AllTransactions: {
+    filterDate?: string;
+    startDate?: string;
+    endDate?: string;
   };
   // Add other screens here
 };
@@ -56,6 +60,19 @@ const TransactionCalendarScreen: React.FC<TransactionCalendarScreenProps> = ({ n
   const { calendarData } = useTypedSelector((state) => state.transactions);
   const { isAuthenticated } = useTypedSelector((state) => state.auth);
   const { displayCurrency } = useTypedSelector((state) => state.user);
+
+  // Debug calendar data whenever it changes
+  useEffect(() => {
+    console.log('📊 CALENDAR DATA CHANGED:', {
+      hasCalendarData: !!calendarData,
+      calendarDataType: typeof calendarData,
+      calendarDataKeys: calendarData ? Object.keys(calendarData) : null,
+      hasCalendarDataProperty: !!(calendarData?.calendar_data),
+      calendarDataCount: calendarData?.calendar_data ? Object.keys(calendarData.calendar_data).length : 0,
+      sampleDayKeys: calendarData?.calendar_data ? Object.keys(calendarData.calendar_data).slice(0, 5) : null,
+      sampleDayData: calendarData?.calendar_data ? Object.values(calendarData.calendar_data)[0] : null,
+    });
+  }, [calendarData]);
 
   useEffect(() => {
     if (isAuthenticated) {
@@ -239,12 +256,65 @@ const TransactionCalendarScreen: React.FC<TransactionCalendarScreenProps> = ({ n
   };
 
   const getTransactionDataForDay = (day: number) => {
-    if (!calendarData?.calendar_data) return null;
-    return calendarData.calendar_data[day.toString()];
+    console.log('🔍 getTransactionDataForDay called for day:', day, {
+      hasCalendarData: !!calendarData,
+      hasCalendarDataProperty: !!(calendarData?.calendar_data),
+      calendarDataKeys: calendarData?.calendar_data ? Object.keys(calendarData.calendar_data) : null,
+      dayKey: day.toString(),
+      dayDataExists: !!(calendarData?.calendar_data?.[day.toString()]),
+    });
+    
+    if (!calendarData?.calendar_data) {
+      console.log('❌ No calendar data available for day:', day);
+      return null;
+    }
+    
+    const dayData = calendarData.calendar_data[day.toString()];
+    console.log('📊 Day data for', day, ':', {
+      dayData,
+      hasIncome: !!(dayData?.income),
+      hasExpenses: !!(dayData?.expenses),
+      transactionCount: dayData?.transaction_count,
+      transactionsArray: dayData?.transactions?.length || 0,
+    });
+    
+    return dayData;
   };
 
   const formatAmount = (amount: number) => {
-    return formatCurrency(amount, displayCurrency || 'USD', { maximumFractionDigits: 0 });
+    // For calendar display, use compact formatting for better readability
+    if (amount >= 1000000) {
+      return formatCurrency(amount / 1000000, displayCurrency || 'USD', { maximumFractionDigits: 1 }) + 'M';
+    } else if (amount >= 1000) {
+      return formatCurrency(amount / 1000, displayCurrency || 'USD', { maximumFractionDigits: 1 }) + 'K';
+    } else {
+      return formatCurrency(amount, displayCurrency || 'USD', { maximumFractionDigits: 0 });
+    }
+  };
+
+  const getTransactionCountForDay = (dayData: any) => {
+    if (!dayData) return 0;
+    
+    // Try to get count from transaction_count field first
+    if (typeof dayData.transaction_count === 'number' && dayData.transaction_count > 0) {
+      return dayData.transaction_count;
+    }
+    
+    // Fallback to counting transactions array
+    if (Array.isArray(dayData.transactions) && dayData.transactions.length > 0) {
+      return dayData.transactions.length;
+    }
+    
+    // Fallback to estimating from income/expense amounts
+    let estimatedCount = 0;
+    if (dayData.income && dayData.income > 0) {
+      estimatedCount++;
+    }
+    if (dayData.expenses && dayData.expenses > 0) {
+      estimatedCount++;
+    }
+    
+    return estimatedCount;
   };
 
   const renderCalendarDay = (day: number | null, index: number) => {
@@ -253,8 +323,17 @@ const TransactionCalendarScreen: React.FC<TransactionCalendarScreenProps> = ({ n
     }
 
     const dayData = getTransactionDataForDay(day);
-    const hasTransactions = dayData && (dayData.income > 0 || dayData.expenses > 0);
+    const transactionCount = getTransactionCountForDay(dayData);
+    const hasTransactions = transactionCount > 0;
     const isToday = new Date().toDateString() === new Date(currentDate.getFullYear(), currentDate.getMonth(), day).toDateString();
+    
+    console.log('📊 Rendering calendar day:', day, {
+      dayData,
+      transactionCount,
+      hasTransactions,
+      hasIncome: !!(dayData?.income && dayData.income > 0),
+      hasExpenses: !!(dayData?.expenses && dayData.expenses > 0),
+    });
 
     return (
       <TouchableOpacity
@@ -267,16 +346,33 @@ const TransactionCalendarScreen: React.FC<TransactionCalendarScreenProps> = ({ n
         onPress={() => {
           // Navigate to transactions list for this specific day (allow all dates, not just those with transactions)
           const selectedDate = `${currentDate.getFullYear()}-${String(currentDate.getMonth() + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-          console.log('📅 Date tapped:', day, 'Selected date:', selectedDate, 'Has transactions:', hasTransactions);
-          console.log('📅 Navigating to transactions for date:', selectedDate);
           
-          // Navigate to the parent navigator and pass the date filter
-          navigation.navigate('TransactionsMain', {
-            screen: 'AllTransactions',
-            params: {
-              filterDate: selectedDate,
-            },
+          console.log('🎯 CALENDAR DATE TAP DEBUG:', {
+            day,
+            selectedDate,
+            hasTransactions,
+            dayData,
+            currentDate: currentDate.toISOString(),
+            navigationObject: !!navigation,
+            navigationMethods: navigation ? Object.keys(navigation) : null,
           });
+          
+          try {
+            console.log('🚀 Attempting navigation with params:', {
+              screen: 'AllTransactions',
+              params: { filterDate: selectedDate },
+            });
+            
+            // Navigate directly to AllTransactions screen with date filter
+            navigation.navigate('AllTransactions', {
+              filterDate: selectedDate,
+            });
+            
+            console.log('✅ Navigation call completed successfully');
+          } catch (error) {
+            console.error('❌ Navigation failed:', error);
+            Alert.alert('Navigation Error', 'Failed to navigate to transactions. Please try again.');
+          }
         }}
       >
         <Text style={[
@@ -289,16 +385,19 @@ const TransactionCalendarScreen: React.FC<TransactionCalendarScreenProps> = ({ n
         
         {hasTransactions && (
           <View style={styles.transactionSummary}>
-            {dayData.income > 0 && (
-              <Text style={styles.incomeAmount}>
-                +{formatAmount(dayData.income)}
-              </Text>
-            )}
-            {dayData.expenses > 0 && (
-              <Text style={styles.expenseAmount}>
-                -{formatAmount(dayData.expenses)}
-              </Text>
-            )}
+            {/* Income and expense amounts only */}
+            <View style={styles.amountContainer}>
+              {dayData.income > 0 && (
+                <Text style={styles.incomeAmount} numberOfLines={1}>
+                  +{formatAmount(dayData.income)}
+                </Text>
+              )}
+              {dayData.expenses > 0 && (
+                <Text style={styles.expenseAmount} numberOfLines={1}>
+                  -{formatAmount(dayData.expenses)}
+                </Text>
+              )}
+            </View>
           </View>
         )}
       </TouchableOpacity>
@@ -623,12 +722,9 @@ const TransactionCalendarScreen: React.FC<TransactionCalendarScreenProps> = ({ n
           style={styles.viewTransactionsButton}
           onPress={() => {
             console.log('📅 Viewing transactions for date range:', { selectedStartDate, selectedEndDate });
-            navigation.navigate('TransactionsMain', {
-              screen: 'AllTransactions',
-              params: {
-                startDate: selectedStartDate,
-                endDate: selectedEndDate,
-              },
+            navigation.navigate('AllTransactions', {
+              startDate: selectedStartDate,
+              endDate: selectedEndDate,
             });
           }}
         >
@@ -995,19 +1091,20 @@ const styles = StyleSheet.create({
   },
   emptyDay: {
     width: '14.285714%', // Exactly 1/7 of the width
-    height: 50,
+    height: 60,
     borderWidth: 0.5,
     borderColor: colors.border + '40',
   },
   calendarDay: {
     width: '14.285714%', // Exactly 1/7 of the width
-    height: 50,
+    height: 60,
     padding: spacing.xs,
     alignItems: 'center',
-    justifyContent: 'center',
+    justifyContent: 'flex-start',
     borderWidth: 0.5,
     borderColor: colors.border + '40',
     backgroundColor: colors.card,
+    position: 'relative',
   },
   today: {
     backgroundColor: colors.primary + '20',
@@ -1035,19 +1132,29 @@ const styles = StyleSheet.create({
   },
   transactionSummary: {
     alignItems: 'center',
+    justifyContent: 'center',
+    flex: 1,
+  },
+  amountContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 2,
   },
   incomeAmount: {
-    fontSize: 8,
+    fontSize: 9,
     color: colors.income,
     fontWeight: 'bold',
     textAlign: 'center',
+    lineHeight: 11,
   },
   expenseAmount: {
-    fontSize: 8,
+    fontSize: 9,
     color: colors.expense,
     fontWeight: 'bold',
     textAlign: 'center',
+    lineHeight: 11,
   },
+
 
   loadingOverlay: {
     position: 'absolute',
