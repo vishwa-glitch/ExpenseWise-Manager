@@ -19,6 +19,9 @@ web-build/
 android/app/build/
 android/build/
 android/.gradle/
+android/gradlew
+android/gradlew.bat
+android/gradle/wrapper/gradle-wrapper.jar
 ios/build/
 ios/DerivedData/
 
