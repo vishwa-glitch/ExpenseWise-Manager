@@ -2419,59 +2419,7 @@ const checkExportEligibility = async (accessToken) => {
 }
 ```
 
-#### Process Reward Ad Completion
-```javascript
-// POST /api/user/reward-ad-completed
-const processRewardAd = async (accessToken, featureType, adData) => {
-  const response = await fetch(`${API_BASE_URL}/user/reward-ad-completed`, {
-    method: 'POST',
-    headers: { 
-      'Authorization': `Bearer ${accessToken}`,
-      'Content-Type': 'application/json'
-    },
-    body: JSON.stringify({
-      feature_type: featureType, // 'export', 'upload', 'goal'
-      ad_network: 'admob',
-      ad_unit_id: 'your_ad_unit_id',
-      reward_amount: 1,
-      reward_type: 'export_unlock'
-    })
-  });
-  return response.json();
-};
 
-// Response
-{
-  "success": true,
-  "message": "Ad reward granted successfully",
-  "unlock_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
-  "expires_in": 600,
-  "feature_unlocked": "export",
-  "ad_transaction_id": "uuid-here"
-}
-```
-
-#### Export with Ad Unlock Token
-```javascript
-// GET /api/transactions/export?unlock_token=TOKEN
-const exportWithAdUnlock = async (accessToken, unlockToken, format = 'excel') => {
-  const response = await fetch(
-    `${API_BASE_URL}/transactions/export?format=${format}&unlock_token=${unlockToken}`, 
-    {
-      headers: { 'Authorization': `Bearer ${accessToken}` }
-    }
-  );
-  
-  // Handle file download
-  const blob = await response.blob();
-  const url = window.URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = `transactions_${new Date().toISOString().split('T')[0]}.${format}`;
-  a.click();
-  window.URL.revokeObjectURL(url);
-};
-```
 
 #### Get Usage Statistics (Updated)
 ```javascript
@@ -2533,31 +2481,7 @@ if (eligibility.can_export) {
 }
 ```
 
-#### 2. Handle Ad Watching Flow
-```javascript
-async function handleWatchAd() {
-  try {
-    // Show ad (integrate with AdMob SDK)
-    const adResult = await showRewardedAd();
-    
-    if (adResult.completed) {
-      // Process ad completion on backend
-      const rewardResult = await processRewardAd(accessToken, 'export', {
-        ad_unit_id: adResult.adUnitId,
-        reward_amount: adResult.rewardAmount
-      });
-      
-      // Use unlock token for export
-      await exportWithAdUnlock(accessToken, rewardResult.unlock_token, 'excel');
-      
-      // Show success message
-      showSuccessMessage('Export unlocked! Your file is downloading.');
-    }
-  } catch (error) {
-    showErrorMessage('Failed to process ad reward. Please try again.');
-  }
-}
-```
+
 
 #### 3. Show Export Options Modal
 ```javascript
@@ -2659,15 +2583,7 @@ node scripts/test-reward-ads.js
 curl -X GET "http://localhost:3000/api/user/export-eligibility" \
   -H "Authorization: Bearer YOUR_TOKEN"
 
-# Process reward ad
-curl -X POST "http://localhost:3000/api/user/reward-ad-completed" \
-  -H "Authorization: Bearer YOUR_TOKEN" \
-  -H "Content-Type: application/json" \
-  -d '{"feature_type": "export", "ad_network": "admob"}'
 
-# Export with unlock token
-curl -X GET "http://localhost:3000/api/transactions/export?format=excel&unlock_token=TOKEN" \
-  -H "Authorization: Bearer YOUR_TOKEN"
 ```
 
 ### Configuration
@@ -2677,39 +2593,16 @@ curl -X GET "http://localhost:3000/api/transactions/export?format=excel&unlock_t
 # JWT Secret for unlock tokens
 JWT_SECRET=your-super-secret-jwt-key
 
-# Ad Network Configuration
-ADMOB_APP_ID=ca-app-pub-xxxxxxxxxxxxxxxx~yyyyyyyyyy
-ADMOB_REWARDED_AD_UNIT_ID=ca-app-pub-xxxxxxxxxxxxxxxx/zzzzzzzzzz
-```
-
 #### Database Tables
 ```sql
--- Reward ad transactions
-CREATE TABLE reward_ad_transactions (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    user_id UUID REFERENCES users(id) ON DELETE CASCADE,
-    feature_type VARCHAR(50) NOT NULL CHECK (feature_type IN ('export', 'upload', 'goal')),
-    ad_network VARCHAR(20) DEFAULT 'admob',
-    reward_granted BOOLEAN DEFAULT FALSE,
-    used_at TIMESTAMP,
-    watched_at TIMESTAMP DEFAULT NOW(),
-    expires_at TIMESTAMP,
-    ip_address INET,
-    device_info JSONB,
-    created_at TIMESTAMP DEFAULT NOW()
-);
-
 -- Daily usage limits
 CREATE TABLE user_daily_limits (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     user_id UUID REFERENCES users(id) ON DELETE CASCADE,
     date DATE DEFAULT CURRENT_DATE,
     exports_used INTEGER DEFAULT 0,
-    exports_from_ads INTEGER DEFAULT 0,
     uploads_used INTEGER DEFAULT 0,
-    uploads_from_ads INTEGER DEFAULT 0,
     goals_used INTEGER DEFAULT 0,
-    goals_from_ads INTEGER DEFAULT 0,
     created_at TIMESTAMP DEFAULT NOW(),
     updated_at TIMESTAMP DEFAULT NOW(),
     UNIQUE(user_id, date)

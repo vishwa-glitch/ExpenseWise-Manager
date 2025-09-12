@@ -702,29 +702,7 @@ class ApiService {
     return response.data;
   }
 
-  // Check export eligibility with reward ads options
-  async checkExportEligibility() {
-    const response = await this.api.get(API_ENDPOINTS.USER.EXPORT_ELIGIBILITY);
-    return response.data;
-  }
 
-  // Process reward ad completion
-  async processRewardAd(featureType: 'export' | 'upload' | 'goal', adData: any) {
-    const response = await this.api.post(API_ENDPOINTS.USER.REWARD_AD_COMPLETED, {
-      feature_type: featureType,
-      ad_network: 'admob',
-      ad_unit_id: adData.adUnitId || 'test_ad_unit_id',
-      reward_amount: adData.rewardAmount || 1,
-      reward_type: `${featureType}_unlock`
-    });
-    return response.data;
-  }
-
-  // Get user usage statistics
-  async getUserUsage() {
-    const response = await this.api.get(API_ENDPOINTS.USER.USAGE);
-    return response.data;
-  }
 
   // Category methods
   async getCategories() {

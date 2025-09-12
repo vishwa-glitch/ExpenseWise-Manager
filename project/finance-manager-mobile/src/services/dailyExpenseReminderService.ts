@@ -1,5 +1,5 @@
-import { notificationService } from './notificationService';
-import * as SecureStore from 'expo-secure-store';
+import { notificationService } from "./notificationService";
+import * as SecureStore from "expo-secure-store";
 
 interface DailyReminderSettings {
   enabled: boolean;
@@ -9,8 +9,8 @@ interface DailyReminderSettings {
 }
 
 class DailyExpenseReminderService {
-  private readonly STORAGE_KEY = 'daily_expense_reminder_settings';
-  private readonly LAST_SENT_KEY = 'daily_reminder_last_sent';
+  private readonly STORAGE_KEY = "daily_expense_reminder_settings";
+  private readonly LAST_SENT_KEY = "daily_reminder_last_sent";
 
   /**
    * Initialize daily expense reminder
@@ -19,10 +19,10 @@ class DailyExpenseReminderService {
     try {
       // Set up daily reminder
       await this.setupDailyReminder();
-      
-      console.log('✅ Daily expense reminder initialized');
+
+      console.log("✅ Daily expense reminder initialized");
     } catch (error) {
-      console.error('❌ Error initializing daily reminder:', error);
+      console.error("❌ Error initializing daily reminder:", error);
     }
   }
 
@@ -34,52 +34,52 @@ class DailyExpenseReminderService {
       // Schedule multiple daily reminders
       const reminders = [
         {
-          time: '10:00',
-          title: 'Morning Expense Check',
-          body: 'Good morning! Don\'t forget to log any expenses from yesterday or this morning 💰'
+          time: "10:00",
+          title: "Morning Expense Check",
+          body: "Good morning! Don't forget to log any expenses from yesterday or this morning 💰",
         },
         {
-          time: '17:00',
-          title: 'Afternoon Expense Check',
-          body: 'Afternoon reminder: Log your expenses to stay on top of your budget! 💰'
+          time: "17:00",
+          title: "Afternoon Expense Check",
+          body: "Afternoon reminder: Log your expenses to stay on top of your budget! 💰",
         },
         {
-          time: '21:00',
-          title: 'Evening Expense Check',
-          body: 'Evening reminder: Log today\'s expenses before you wrap up for the day 💰'
-        }
+          time: "21:00",
+          title: "Evening Expense Check",
+          body: "Evening reminder: Log today's expenses before you wrap up for the day 💰",
+        },
       ];
 
       for (const reminder of reminders) {
-        const [hour, minute] = reminder.time.split(':').map(Number);
-        
+        const [hour, minute] = reminder.time.split(":").map(Number);
+
         await notificationService.scheduleRecurringNotification(
           reminder.title,
           reminder.body,
           hour,
           minute,
-          1  // Every day (no specific weekday)
+          1 // Every day (no specific weekday)
         );
 
         console.log(`✅ Daily reminder scheduled for ${reminder.time}`);
       }
 
-      console.log('✅ All daily reminders scheduled successfully');
+      console.log("✅ All daily reminders scheduled successfully");
     } catch (error) {
-      console.error('❌ Error scheduling daily reminders:', error);
+      console.error("❌ Error scheduling daily reminders:", error);
     }
   }
 
   /**
    * Enable daily expense reminders
    */
-  async enableDailyReminders(time: string = '09:00') {
+  async enableDailyReminders(time: string = "09:00") {
     try {
       const settings: DailyReminderSettings = {
         enabled: true,
         time,
         timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
-        lastSentDate: new Date().toISOString().split('T')[0]
+        lastSentDate: new Date().toISOString().split("T")[0],
       };
 
       // Save settings locally
@@ -88,10 +88,10 @@ class DailyExpenseReminderService {
       // Reschedule all daily reminders
       await this.rescheduleReminder(time);
 
-      console.log('✅ Daily expense reminders enabled');
+      console.log("✅ Daily expense reminders enabled");
       return true;
     } catch (error) {
-      console.error('❌ Error enabling daily reminders:', error);
+      console.error("❌ Error enabling daily reminders:", error);
       return false;
     }
   }
@@ -103,8 +103,8 @@ class DailyExpenseReminderService {
     try {
       const settings: DailyReminderSettings = {
         enabled: false,
-        time: '09:00',
-        timezone: Intl.DateTimeFormat().resolvedOptions().timeZone
+        time: "09:00",
+        timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
       };
 
       // Save settings locally
@@ -113,10 +113,10 @@ class DailyExpenseReminderService {
       // Cancel scheduled reminder
       await notificationService.cancelAllNotifications();
 
-      console.log('✅ Daily expense reminders disabled');
+      console.log("✅ Daily expense reminders disabled");
       return true;
     } catch (error) {
-      console.error('❌ Error disabling daily reminders:', error);
+      console.error("❌ Error disabling daily reminders:", error);
       return false;
     }
   }
@@ -130,7 +130,7 @@ class DailyExpenseReminderService {
       // This can be enhanced later with local storage checking
       return false;
     } catch (error) {
-      console.error('❌ Error checking today\'s expenses:', error);
+      console.error("❌ Error checking today's expenses:", error);
       return false;
     }
   }
@@ -141,26 +141,28 @@ class DailyExpenseReminderService {
   async sendManualReminder() {
     try {
       const hasLogged = await this.hasLoggedExpensesToday();
-      
-      let title = 'Log Today\'s Expenses';
-      let body = 'Take a moment to log your expenses for today and stay on track with your budget! 💰';
-      
+
+      let title = "Log Today's Expenses";
+      let body =
+        "Take a moment to log your expenses for today and stay on track with your budget! 💰";
+
       if (hasLogged) {
-        title = 'Great Job! 🎉';
-        body = 'You\'ve already logged your expenses today. Keep up the good work!';
+        title = "Great Job! 🎉";
+        body =
+          "You've already logged your expenses today. Keep up the good work!";
       }
 
       // Send immediate notification
       await notificationService.sendImmediateNotification(title, body, {
-        type: 'daily_reminder',
+        type: "daily_reminder",
         has_logged_today: hasLogged,
-        screen: 'Transactions'
+        screen: "Transactions",
       });
 
-      console.log('✅ Manual reminder sent');
+      console.log("✅ Manual reminder sent");
       return true;
     } catch (error) {
-      console.error('❌ Error sending manual reminder:', error);
+      console.error("❌ Error sending manual reminder:", error);
       return false;
     }
   }
@@ -173,11 +175,11 @@ class DailyExpenseReminderService {
       const settings = await this.getStoredSettings();
       return settings;
     } catch (error) {
-      console.error('❌ Error getting settings:', error);
+      console.error("❌ Error getting settings:", error);
       return {
         enabled: true,
-        time: '09:00',
-        timezone: Intl.DateTimeFormat().resolvedOptions().timeZone
+        time: "09:00",
+        timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
       };
     }
   }
@@ -189,14 +191,14 @@ class DailyExpenseReminderService {
     try {
       const settings = await this.getSettings();
       settings.time = time;
-      
+
       await this.saveSettings(settings);
       await this.rescheduleReminder(time);
 
-      console.log('✅ Reminder time updated to', time);
+      console.log("✅ Reminder time updated to", time);
       return true;
     } catch (error) {
-      console.error('❌ Error updating reminder time:', error);
+      console.error("❌ Error updating reminder time:", error);
       return false;
     }
   }
@@ -208,43 +210,43 @@ class DailyExpenseReminderService {
     try {
       // Cancel existing reminders
       await notificationService.cancelAllNotifications();
-      
+
       // Schedule multiple daily reminders
       const reminders = [
         {
-          time: '10:00',
-          title: 'Morning Expense Check',
-          body: 'Good morning! Don\'t forget to log any expenses from yesterday or this morning 💰'
+          time: "10:00",
+          title: "Morning Expense Check",
+          body: "Good morning! Don't forget to log any expenses from yesterday or this morning 💰",
         },
         {
-          time: '17:00',
-          title: 'Afternoon Expense Check',
-          body: 'Afternoon reminder: Log your expenses to stay on top of your budget! 💰'
+          time: "17:00",
+          title: "Afternoon Expense Check",
+          body: "Afternoon reminder: Log your expenses to stay on top of your budget! 💰",
         },
         {
-          time: '21:00',
-          title: 'Evening Expense Check',
-          body: 'Evening reminder: Log today\'s expenses before you wrap up for the day 💰'
-        }
+          time: "21:00",
+          title: "Evening Expense Check",
+          body: "Evening reminder: Log today's expenses before you wrap up for the day 💰",
+        },
       ];
 
       for (const reminder of reminders) {
-        const [hour, minute] = reminder.time.split(':').map(Number);
-        
+        const [hour, minute] = reminder.time.split(":").map(Number);
+
         await notificationService.scheduleRecurringNotification(
           reminder.title,
           reminder.body,
           hour,
           minute,
-          1  // Every day
+          1 // Every day
         );
 
         console.log(`✅ Reminder rescheduled for ${reminder.time}`);
       }
 
-      console.log('✅ All daily reminders rescheduled successfully');
+      console.log("✅ All daily reminders rescheduled successfully");
     } catch (error) {
-      console.error('❌ Error rescheduling reminders:', error);
+      console.error("❌ Error rescheduling reminders:", error);
     }
   }
 
@@ -253,9 +255,12 @@ class DailyExpenseReminderService {
    */
   private async saveSettings(settings: DailyReminderSettings) {
     try {
-      await SecureStore.setItemAsync(this.STORAGE_KEY, JSON.stringify(settings));
+      await SecureStore.setItemAsync(
+        this.STORAGE_KEY,
+        JSON.stringify(settings)
+      );
     } catch (error) {
-      console.error('❌ Error saving settings:', error);
+      console.error("❌ Error saving settings:", error);
     }
   }
 
@@ -268,18 +273,18 @@ class DailyExpenseReminderService {
       if (stored) {
         return JSON.parse(stored);
       }
-      
+
       return {
         enabled: true,
-        time: '09:00',
-        timezone: Intl.DateTimeFormat().resolvedOptions().timeZone
+        time: "09:00",
+        timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
       };
     } catch (error) {
-      console.error('❌ Error getting stored settings:', error);
+      console.error("❌ Error getting stored settings:", error);
       return {
         enabled: true,
-        time: '09:00',
-        timezone: Intl.DateTimeFormat().resolvedOptions().timeZone
+        time: "09:00",
+        timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
       };
     }
   }
@@ -289,9 +294,9 @@ class DailyExpenseReminderService {
    */
   async wasReminderSentToday(): Promise<boolean> {
     try {
-      const today = new Date().toISOString().split('T')[0];
+      const today = new Date().toISOString().split("T")[0];
       const lastSent = await SecureStore.getItemAsync(this.LAST_SENT_KEY);
-      
+
       return lastSent === today;
     } catch (error) {
       return false;
@@ -303,10 +308,10 @@ class DailyExpenseReminderService {
    */
   async markReminderSentToday() {
     try {
-      const today = new Date().toISOString().split('T')[0];
+      const today = new Date().toISOString().split("T")[0];
       await SecureStore.setItemAsync(this.LAST_SENT_KEY, today);
     } catch (error) {
-      console.error('❌ Error marking reminder as sent:', error);
+      console.error("❌ Error marking reminder as sent:", error);
     }
   }
 
@@ -315,12 +320,15 @@ class DailyExpenseReminderService {
    */
   async getScheduledReminders() {
     try {
-      const notifications = await notificationService.getScheduledNotifications();
-      return notifications.filter(notification => 
-        notification.content.title && notification.content.title.includes('Expense Check')
+      const notifications =
+        await notificationService.getScheduledNotifications();
+      return notifications.filter(
+        (notification) =>
+          notification.content.title &&
+          notification.content.title.includes("Expense Check")
       );
     } catch (error) {
-      console.error('❌ Error getting scheduled reminders:', error);
+      console.error("❌ Error getting scheduled reminders:", error);
       return [];
     }
   }
@@ -330,9 +338,9 @@ class DailyExpenseReminderService {
    */
   getReminderSchedule() {
     return [
-      { time: '10:00', period: 'Morning', title: 'Morning Expense Check' },
-      { time: '17:00', period: 'Afternoon', title: 'Afternoon Expense Check' },
-      { time: '21:00', period: 'Evening', title: 'Evening Expense Check' }
+      { time: "10:00", period: "Morning", title: "Morning Expense Check" },
+      { time: "17:00", period: "Afternoon", title: "Afternoon Expense Check" },
+      { time: "21:00", period: "Evening", title: "Evening Expense Check" },
     ];
   }
 }

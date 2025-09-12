@@ -27,8 +27,4 @@ export { TransactionItem } from './TransactionItem';
 
 export { default as FeaturesList } from './FeaturesList';
 
-// Ad Components
-// BannerAd and AdaptiveBannerAd exports removed for now - files kept for future use
-// See BANNER_ADS_IMPLEMENTATION.md for re-enabling instructions
-// export { default as BannerAd } from './BannerAd';
-// export { default as AdaptiveBannerAd } from './AdaptiveBannerAd';
+

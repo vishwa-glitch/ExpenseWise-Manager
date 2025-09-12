@@ -34,8 +34,7 @@ import { SmartAlertCard } from '../../components/dashboard/widgets/SmartAlertCar
 import { CategoryBreakdownSection } from '../../components/dashboard/CategoryBreakdownSection';
 import OnboardingOverlay from '../../components/common/OnboardingOverlay';
 import { useOnboardingOverlay } from '../../hooks/useOnboardingOverlay';
-// AdaptiveBannerAd import removed for now - files kept for future use
-// See BANNER_ADS_IMPLEMENTATION.md for re-enabling instructions
+
 
 
 interface DashboardScreenProps {
@@ -608,8 +607,7 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
            </View>
          ) : null}
 
-        {/* Banner Ad Section - Removed for now, files kept for future use */}
-        {/* See BANNER_ADS_IMPLEMENTATION.md for re-enabling instructions */}
+
 
         {/* Bottom Spacing */}
         <View style={styles.bottomSpacing} />
@@ -895,8 +893,6 @@ const styles = StyleSheet.create({
    bottomSpacing: {
     height: spacing.lg,
   },
-  // bannerAdSection style removed for now - files kept for future use
-  // See BANNER_ADS_IMPLEMENTATION.md for re-enabling instructions
 });
 
 export default DashboardScreen;

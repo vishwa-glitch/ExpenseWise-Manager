@@ -28,8 +28,7 @@ import {
   validateExportBlob, 
   generateExportFileName 
 } from '../../utils/exportUtils';
-// useExportLimits hook removed - simplified export functionality
-// AdPromptModal component removed - no ad functionality needed
+
 
 interface ExportScreenProps {
   navigation: any;
@@ -53,7 +52,6 @@ const ExportScreen: React.FC<ExportScreenProps> = ({ navigation }) => {
     startDate: new Date(new Date().getFullYear(), new Date().getMonth(), 1), // First day of current month
     endDate: new Date(), // Today
   });
-  // showAdModal state removed - no ad functionality needed
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [isSelectingStartDate, setIsSelectingStartDate] = useState(true);
 
@@ -404,7 +402,7 @@ const ExportScreen: React.FC<ExportScreenProps> = ({ navigation }) => {
           />
         </View>
 
-        {/* Remove premium upgrade prompt - all users have unlimited exports during launch */}
+
           </>
         )}
       </ScrollView>
@@ -503,7 +501,7 @@ const ExportScreen: React.FC<ExportScreenProps> = ({ navigation }) => {
         </View>
       </Modal>
 
-      {/* Ad Prompt Modal removed - no ad functionality needed */}
+
     </SafeAreaView>
   );
 };

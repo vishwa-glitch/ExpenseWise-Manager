@@ -36,9 +36,6 @@ export const API_ENDPOINTS = {
     SUBSCRIPTION_STATUS: "/user/subscription-status",
     UPGRADE_PREMIUM: "/user/upgrade-premium",
     CANCEL_PREMIUM: "/user/cancel-premium",
-    EXPORT_ELIGIBILITY: "/user/export-eligibility",
-    REWARD_AD_COMPLETED: "/user/reward-ad-completed",
-    USAGE: "/user/usage",
     DELETION_INFO: "/user/deletion-info",
     DELETE_ACCOUNT: "/user/account",
   },
@@ -66,16 +63,13 @@ export const API_ENDPOINTS = {
     UPDATE: (id: string) => `/transactions/${id}`,
     DELETE: (id: string) => `/transactions/${id}`,
     BULK_IMPORT: "/transactions/bulk-import",
-    EXPORT: (format = "excel", startDate?: string, endDate?: string, unlockToken?: string) => {
+    EXPORT: (format = "excel", startDate?: string, endDate?: string) => {
       let url = `/transactions/export?format=${format}`;
       if (startDate) {
         url += `&start_date=${startDate}`;
       }
       if (endDate) {
         url += `&end_date=${endDate}`;
-      }
-      if (unlockToken) {
-        url += `&unlock_token=${unlockToken}`;
       }
       return url;
     },

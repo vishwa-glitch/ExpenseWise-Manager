@@ -175,4 +175,10 @@ Desktop.ini
 *.njsproj
 *.sln
 *.sw?
-project/finance-manager-mobile/%ProgramData%/Microsoft/Windows/UUS/State/_active.uusver
+
+# EAS Build
+.easignore
+
+# Sensitive files
+google-services.json
+GoogleService-Info.plist

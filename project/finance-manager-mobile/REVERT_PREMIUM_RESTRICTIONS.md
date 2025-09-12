@@ -19,7 +19,6 @@ This document outlines the changes made to temporarily remove premium restrictio
 - **EditProfileScreen.tsx**: Shows premium status for all users
 
 ### 4. Export Functionality
-- **useExportLimits.ts**: All users have unlimited exports
 - **ExportSection.tsx**: Shows "Unlimited exports" for all users
 
 ### 5. Premium Guards

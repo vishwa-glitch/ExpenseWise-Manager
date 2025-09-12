@@ -1,10 +1,11 @@
 {
   "expo": {
-    "name": "finance-manager-mobile",
+    "name": "ExpenseWise Manager & Budgets",
     "slug": "fintech",
-    "version": "1.0.2",
+    "version": "1.0.5",
     "sdkVersion": "53.0.0",
     "jsEngine": "hermes",
+    "icon": "./assets/icon.png",
     "web": {
       "favicon": "./assets/favicon.png"
     },
@@ -18,7 +19,7 @@
             "targetSdkVersion": 35,
             "buildToolsVersion": "35.0.0",
             "minSdkVersion": 24,
-            "versionCode": 4,
+            "versionCode": 7,
             "newArchEnabled": false
           }
         }
@@ -32,7 +33,12 @@
     "owner": "vishwa567",
     "android": {
       "package": "com.vishwa567.fintech",
-      "jsEngine": "hermes"
+      "jsEngine": "hermes",
+      "icon": "./assets/icon.png",
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/icon.png",
+        "backgroundColor": "#ffffff"
+      }
     }
   }
 }
