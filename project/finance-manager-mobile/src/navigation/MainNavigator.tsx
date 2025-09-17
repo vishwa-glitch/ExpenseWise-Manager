@@ -8,8 +8,7 @@ import { colors } from '../constants/colors';
 // Import tab screens
 import DashboardNavigator from './DashboardNavigator';
 import TransactionsNavigator from './TransactionsNavigator';
-// GoalsNavigator import removed for now - file kept for future use
-import BudgetNavigator from './BudgetNavigator';
+import GoalsBudgetNavigator from './GoalsBudgetNavigator';
 import MoreNavigator from './MoreNavigator';
 
 // Import drawer screens
@@ -44,17 +43,20 @@ const HamburgerIcon: React.FC<{ focused: boolean }> = ({ focused }) => (
       height: 2,
       backgroundColor: focused ? colors.primary : colors.textSecondary,
       marginBottom: 3,
+      opacity: focused ? 1 : 0.3,
     }} />
     <View style={{
       width: 20,
       height: 2,
       backgroundColor: focused ? colors.primary : colors.textSecondary,
       marginBottom: 3,
+      opacity: focused ? 1 : 0.3,
     }} />
     <View style={{
       width: 20,
       height: 2,
       backgroundColor: focused ? colors.primary : colors.textSecondary,
+      opacity: focused ? 1 : 0.3,
     }} />
   </View>
 );
@@ -109,7 +111,7 @@ const TabNavigator: React.FC = () => {
           tabBarLabel: 'Dashboard',
           title: 'Dashboard',
           tabBarIcon: ({ focused }) => (
-            <Text style={{ fontSize: 24, opacity: focused ? 1 : 0.6 }}>🏡</Text>
+            <Text style={{ fontSize: 24, opacity: focused ? 1 : 0.3 }}>🏡</Text>
           )
         }}
       />
@@ -120,18 +122,18 @@ const TabNavigator: React.FC = () => {
           tabBarLabel: 'Transactions',
           title: 'Transactions',
           tabBarIcon: ({ focused }) => (
-            <Text style={{ fontSize: 24, opacity: focused ? 1 : 0.6 }}>📄</Text>
+            <Text style={{ fontSize: 24, opacity: focused ? 1 : 0.3 }}>📄</Text>
           )
         }}
       />
       <Tab.Screen 
-        name="Budget" 
-        component={BudgetNavigator}
+        name="GoalsBudget" 
+        component={GoalsBudgetNavigator}
         options={{ 
-          tabBarLabel: 'Budget',
-          title: 'Budget',
+          tabBarLabel: 'Goals & Budget',
+          title: 'Goals & Budget',
           tabBarIcon: ({ focused }) => (
-            <Text style={{ fontSize: 24, opacity: focused ? 1 : 0.6 }}>🎯</Text>
+            <Text style={{ fontSize: 24, opacity: focused ? 1 : 0.3 }}>🎯</Text>
           )
         }}
       />
@@ -145,6 +147,20 @@ const TabNavigator: React.FC = () => {
             <HamburgerIcon focused={focused} />
           )
         }}
+        listeners={({ navigation }) => ({
+          tabPress: (e) => {
+            // Prevent default behavior
+            e.preventDefault();
+            
+            // Navigate to More tab and ensure it shows MoreMain screen
+            navigation.navigate('More', { 
+              screen: 'MoreMain',
+              initial: false 
+            });
+            
+            console.log('🔄 More tab pressed - navigating to MoreMain');
+          },
+        })}
       />
     </Tab.Navigator>
   );

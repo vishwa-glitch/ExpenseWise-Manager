@@ -15,6 +15,7 @@ import { CustomButton } from '../../components/common/CustomButton';
 import { LoadingSpinner } from '../../components/common/LoadingSpinner';
 import { colors, typography, spacing } from '../../constants/colors';
 import { formatCurrency } from '../../utils/currency';
+import { getCategoryColor, isGoalContribution, getCategoryDisplayName } from '../../utils/categoryColors';
 
 interface TransactionDetailScreenProps {
   navigation: any;
@@ -55,9 +56,27 @@ const TransactionDetailScreen: React.FC<TransactionDetailScreenProps> = ({ navig
     });
   };
 
+  // Determine the actual category based on tags and category_name
+  const getActualCategory = () => {
+    // Check if this is a goal contribution based on tags
+    if (transaction?.tags && Array.isArray(transaction.tags)) {
+      const hasGoalTag = transaction.tags.some((tag: any) => {
+        if (typeof tag !== 'string') return false;
+        return tag.toLowerCase().includes('goal') ||
+          tag.toLowerCase().includes('contribution');
+      });
+      if (hasGoalTag) {
+        return 'Goal Contribution';
+      }
+    }
+
+    // Return the original category or 'Uncategorized'
+    return transaction?.category_name || 'Uncategorized';
+  };
+
   const getCategoryIcon = (categoryName?: string) => {
-    if (!categoryName) return '💰';
-    
+    const actualCategory = getActualCategory();
+
     const iconMap: { [key: string]: string } = {
       'food & dining': '🍽️',
       'transportation': '🚗',
@@ -72,8 +91,8 @@ const TransactionDetailScreen: React.FC<TransactionDetailScreenProps> = ({ navig
       'goal contribution': '🎯',
       'other': '💰',
     };
-    
-    return iconMap[categoryName.toLowerCase()] || '💰';
+
+    return iconMap[actualCategory.toLowerCase()] || '💰';
   };
 
   const getAmountColor = () => {
@@ -140,7 +159,12 @@ const TransactionDetailScreen: React.FC<TransactionDetailScreenProps> = ({ navig
             </Text>
           </View>
           <View style={styles.headerInfo}>
-            <Text style={styles.description}>{transaction.category_name || 'Uncategorized'}</Text>
+            <Text style={[
+              styles.description,
+              isGoalContribution(getActualCategory()) && styles.goalContributionText
+            ]}>
+              {getCategoryDisplayName(getActualCategory())}
+            </Text>
             <Text style={[styles.amount, { color: getAmountColor() }]}>
               {formatAmount(transaction.amount, transaction.type)}
             </Text>
@@ -150,7 +174,7 @@ const TransactionDetailScreen: React.FC<TransactionDetailScreenProps> = ({ navig
         {/* Transaction Details */}
         <View style={styles.detailsSection}>
           <Text style={styles.sectionTitle}>Details</Text>
-          
+
           <View style={styles.detailItem}>
             <Text style={styles.detailLabel}>Type</Text>
             <View style={styles.typeContainer}>
@@ -177,10 +201,13 @@ const TransactionDetailScreen: React.FC<TransactionDetailScreenProps> = ({ navig
             <Text style={styles.detailLabel}>Category</Text>
             <View style={styles.categoryContainer}>
               <Text style={styles.categoryIcon}>
-                {getCategoryIcon(transaction.category_name)}
+                {getCategoryIcon()}
               </Text>
-              <Text style={styles.detailValue}>
-                {transaction.category_name || 'Uncategorized'}
+              <Text style={[
+                styles.detailValue,
+                isGoalContribution(getActualCategory()) && styles.goalContributionText
+              ]}>
+                {getCategoryDisplayName(getActualCategory())}
               </Text>
             </View>
           </View>
@@ -223,7 +250,7 @@ const TransactionDetailScreen: React.FC<TransactionDetailScreenProps> = ({ navig
         {/* Actions */}
         <View style={styles.actionsSection}>
           <Text style={styles.sectionTitle}>Actions</Text>
-          
+
           <View style={styles.actionButtons}>
             <CustomButton
               title="Edit"
@@ -425,6 +452,10 @@ const styles = StyleSheet.create({
   },
   bottomSpacing: {
     height: spacing.md,
+  },
+  goalContributionText: {
+    color: '#4CAF50',
+    fontWeight: '600',
   },
 });
 

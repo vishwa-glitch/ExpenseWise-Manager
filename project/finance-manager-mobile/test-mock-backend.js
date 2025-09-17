@@ -132,18 +132,18 @@ function compareVersions(version1, version2) {
 }
 
 const PORT = 3001;
-const HOST = 'localhost';
+const HOST = '0.0.0.0'; // Listen on all interfaces for Expo Go
 
 server.listen(PORT, HOST, () => {
   console.log('🚀 Mock Backend Server Started!');
-  console.log(`📡 Server running at http://${HOST}:${PORT}`);
+  console.log(`📡 Server running at http://10.21.139.131:${PORT}`);
   console.log('📱 Available endpoints:');
   console.log(`   GET /api/app/version?platform=android&current_version=1.0.0`);
   console.log(`   GET /api/app/version/stats`);
   console.log(`   GET /health`);
   console.log('');
   console.log('🧪 Test the API:');
-  console.log(`   curl "http://${HOST}:${PORT}/api/app/version?platform=android&current_version=1.0.0"`);
+  console.log(`   curl "http://10.21.139.131:${PORT}/api/app/version?platform=android&current_version=1.0.0"`);
   console.log('');
   console.log('Press Ctrl+C to stop the server');
 });

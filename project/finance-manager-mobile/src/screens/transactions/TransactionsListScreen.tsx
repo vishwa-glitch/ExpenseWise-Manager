@@ -20,7 +20,6 @@ import { TransactionItem, LoadingSpinner } from "../../components/common";
 import { colors, spacing } from "../../constants/colors";
 import { formatCurrency } from "../../utils/currency";
 import { Transaction } from "../../types/transaction";
-import { ExportSection } from "../../components/export";
 import OnboardingOverlay from "../../components/common/OnboardingOverlay";
 import { useOnboardingOverlay } from "../../hooks/useOnboardingOverlay";
 
@@ -43,7 +42,7 @@ const TransactionsListScreen: React.FC<TransactionsListScreenProps> = ({
   route,
 }) => {
   const dispatch = useAppDispatch();
-  
+
   // Onboarding overlay hook
   const onboardingOverlay = useOnboardingOverlay();
 
@@ -91,7 +90,7 @@ const TransactionsListScreen: React.FC<TransactionsListScreenProps> = ({
   // Debounced search
   const { searchQuery, setSearchQuery: setLocalSearchQuery } =
     useSearchWithDebounce({
-      onSearch: () => {}, // We'll handle search in the main query
+      onSearch: () => { }, // We'll handle search in the main query
       debounceMs: 300,
     });
 
@@ -233,10 +232,10 @@ const TransactionsListScreen: React.FC<TransactionsListScreenProps> = ({
     // Helper function to extract date key in local timezone
     const getDateKey = (transaction: any) => {
       const date = new Date(transaction.transaction_date);
-      
+
       // Convert to local timezone for grouping
       const localDate = new Date(date.getTime() - (date.getTimezoneOffset() * 60000));
-      
+
       // Return date in YYYY-MM-DD format
       return localDate.toISOString().split('T')[0];
     };
@@ -574,7 +573,7 @@ const TransactionsListScreen: React.FC<TransactionsListScreenProps> = ({
             {hasActiveFiltersFromHook && " (Active)"}
           </Text>
         </TouchableOpacity>
-        
+
         {hasActiveFiltersFromHook && (
           <TouchableOpacity
             style={styles.clearAllFiltersButton}
@@ -601,14 +600,6 @@ const TransactionsListScreen: React.FC<TransactionsListScreenProps> = ({
           {startDate && endDate && " in selected date range"}
         </Text>
       </View>
-
-      {/* Export Section */}
-      <ExportSection 
-        navigation={navigation} 
-        title="Export Transactions"
-        showTitle={true}
-        isCompact={true}
-      />
     </View>
   );
 
@@ -619,19 +610,19 @@ const TransactionsListScreen: React.FC<TransactionsListScreenProps> = ({
         {hasActiveFiltersFromHook || searchQuery
           ? "No Matching Transactions"
           : filterDate
-          ? "No Transactions on This Date"
-          : startDate && endDate
-          ? "No Transactions in This Date Range"
-          : "No Transactions Yet"}
+            ? "No Transactions on This Date"
+            : startDate && endDate
+              ? "No Transactions in This Date Range"
+              : "No Transactions Yet"}
       </Text>
       <Text style={styles.emptyMessage}>
         {hasActiveFiltersFromHook || searchQuery
           ? "Try adjusting your filters or search terms"
           : filterDate
-          ? "No transactions were recorded on this date"
-          : startDate && endDate
-          ? "No transactions were recorded in this date range"
-          : "Add your first transaction to get started tracking your finances"}
+            ? "No transactions were recorded on this date"
+            : startDate && endDate
+              ? "No transactions were recorded in this date range"
+              : "Add your first transaction to get started tracking your finances"}
       </Text>
       {(hasActiveFiltersFromHook || searchQuery) && (
         <TouchableOpacity
@@ -1067,7 +1058,7 @@ const styles = StyleSheet.create({
     fontWeight: "bold",
   },
   modalActions: {
-    flexDirection: "row",justifyContent: "space-between",
+    flexDirection: "row", justifyContent: "space-between",
     marginTop: spacing.lg,
     paddingTop: spacing.md,
     borderTopWidth: 1,
@@ -1096,5 +1087,5 @@ const styles = StyleSheet.create({
     color: colors.background,
   },
 });
- 
- export default TransactionsListScreen;
+
+export default TransactionsListScreen;

@@ -5,7 +5,7 @@ import { colors, typography, spacing } from '../../constants/colors';
 import { formatCurrency } from '../../utils/currency';
 import { Transaction } from '../../types/transaction';
 import { useTypedSelector } from '../../hooks/useTypedSelector';
-import { isGoalContribution, getGoalContributionDisplayName, getGoalContributionIcon, getGoalContributionColor } from '../../utils/goalUtils';
+import { getCategoryColor, isGoalContribution, getCategoryDisplayName } from '../../utils/categoryColors';
 
 // Extend the Transaction interface to include the runningBalance prop
 interface TransactionWithRunningBalance extends Transaction {
@@ -60,18 +60,37 @@ export const TransactionItem: React.FC<TransactionItemProps> = ({
     });
   };
 
-  const getCategoryIcon = (categoryName?: string) => {
-    if (!categoryName) return '💰';
-    
-    // Handle Goal Contribution category with special icon
-    // Use the full isGoalContribution function to check all criteria (tags, description, category)
-    if (isGoalContribution(transaction)) {
-      return getGoalContributionIcon();
+  // Determine the actual category based on tags and category_name
+  const getActualCategory = () => {
+    // Check if this is a goal contribution based on tags
+    if (transaction?.tags && Array.isArray(transaction.tags)) {
+      const hasGoalTag = transaction.tags.some((tag: any) => {
+        if (typeof tag !== 'string') return false;
+        return tag.toLowerCase().includes('goal') ||
+          tag.toLowerCase().includes('contribution');
+      });
+      if (hasGoalTag) {
+        return 'Goal Contribution';
+      }
     }
-    
+
+    // Return the original category or 'Uncategorized'
+    return transaction?.category_name || 'Uncategorized';
+  };
+
+  const getCategoryIcon = (categoryName?: string) => {
+    const actualCategory = getActualCategory();
+
+    // Handle Goal Contribution category with special icon
+    if (isGoalContribution(actualCategory)) {
+      return '🎯';
+    }
+
     // First, try to find the category in the categories store
-    const category = categories.find(cat => cat.name.toLowerCase() === categoryName.toLowerCase());
-    
+    const category = categories.find(cat =>
+      actualCategory && cat.name.toLowerCase() === actualCategory.toLowerCase()
+    );
+
     // If category has an icon property, map it to emoji
     if (category?.icon) {
       const iconMap: { [key: string]: string } = {
@@ -97,12 +116,12 @@ export const TransactionItem: React.FC<TransactionItemProps> = ({
         'tool': '🔧',
         'tag': '🏷️',
       };
-      
+
       return iconMap[category.icon] || '🏷️';
     }
-    
+
     // Fallback to name-based icons for default categories
-    const name = categoryName.toLowerCase();
+    const name = actualCategory ? actualCategory.toLowerCase() : '';
     if (name.includes('food') || name.includes('dining')) return '🍽️';
     if (name.includes('transport') || name.includes('car')) return '🚗';
     if (name.includes('shop') || name.includes('retail')) return '🛍️';
@@ -113,7 +132,7 @@ export const TransactionItem: React.FC<TransactionItemProps> = ({
     if (name.includes('travel') || name.includes('vacation')) return '✈️';
     if (name.includes('salary') || name.includes('income')) return '💼';
     if (name.includes('investment') || name.includes('stock')) return '📈';
-    
+
     return '💰'; // Default fallback
   };
 
@@ -135,7 +154,7 @@ export const TransactionItem: React.FC<TransactionItemProps> = ({
       outputRange: [-20, 0, 0, 1],
       extrapolate: 'clamp',
     });
-    
+
     return (
       <TouchableOpacity style={styles.leftAction} onPress={onEdit}>
         <Animated.Text
@@ -157,7 +176,7 @@ export const TransactionItem: React.FC<TransactionItemProps> = ({
       outputRange: [0, 0, 10, 1],
       extrapolate: 'clamp',
     });
-    
+
     return (
       <TouchableOpacity style={styles.rightAction} onPress={onDelete}>
         <Animated.Text
@@ -182,30 +201,30 @@ export const TransactionItem: React.FC<TransactionItemProps> = ({
     >
       <View style={styles.leftSection}>
         <View style={[
-          styles.iconContainer, 
-          { 
-            backgroundColor: isGoalContribution(transaction) 
-              ? getGoalContributionColor() + '20' 
-              : transaction.type.toLowerCase() === 'income' 
-                ? colors.income + '20' 
-                : colors.expense + '20' 
+          styles.iconContainer,
+          {
+            backgroundColor: isGoalContribution(getActualCategory())
+              ? getCategoryColor('Goal Contribution') + '20'
+              : transaction.type.toLowerCase() === 'income'
+                ? colors.income + '20'
+                : colors.expense + '20'
           }
         ]}>
           <Text style={styles.icon}>
-            {getCategoryIcon(transaction.category_name)}
+            {getCategoryIcon()}
           </Text>
         </View>
         <View style={styles.details}>
           <Text style={styles.description} numberOfLines={1}>
             {getDisplayDescription()}
           </Text>
-                      <View style={styles.metadata}>
-              <Text style={[
-                styles.category,
-                isGoalContribution(transaction) && { color: getGoalContributionColor() }
-              ]}>
-                {getGoalContributionDisplayName(transaction)}
-              </Text>
+          <View style={styles.metadata}>
+            <Text style={[
+              styles.category,
+              isGoalContribution(getActualCategory()) && { color: getCategoryColor('Goal Contribution') }
+            ]}>
+              {getCategoryDisplayName(getActualCategory())}
+            </Text>
             {showAccount && transaction.account_name && (
               <>
                 <Text style={styles.separator}>•</Text>
@@ -227,7 +246,7 @@ export const TransactionItem: React.FC<TransactionItemProps> = ({
           )}
         </View>
       </View>
-      
+
       <View style={styles.rightSection}>
         <Text style={[styles.amount, { color: getAmountColor() }]}>
           {formatAmount(transaction.amount, transaction.type)}

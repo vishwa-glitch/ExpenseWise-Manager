@@ -276,10 +276,7 @@ const BudgetsListScreen: React.FC<BudgetsListScreenProps> = ({ navigation }) => 
 
   return (
     <SafeAreaView style={styles.container}>
-      {/* Header */}
-      <View style={styles.screenHeader}>
-        <Text style={styles.screenTitle}>Budget</Text>
-      </View>
+
       
       <FlatList
         ref={flatListRef}
@@ -331,20 +328,7 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: colors.background,
   },
-  screenHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.lg,
-    paddingTop: spacing.xl,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
-  },
-  screenTitle: {
-    ...typography.h2,
-    color: colors.text,
-  },
+
   listContent: {
     flexGrow: 1,
     paddingHorizontal: spacing.lg,

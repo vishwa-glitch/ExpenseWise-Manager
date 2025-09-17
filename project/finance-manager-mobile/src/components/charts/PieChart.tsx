@@ -4,6 +4,7 @@ import { PieChart as RNPieChart } from 'react-native-chart-kit';
 import { colors, typography, spacing } from '../../constants/colors';
 import { pieChartConfig, chartDimensions } from '../../constants/chartConfig';
 import { formatCurrency } from '../../utils/currency';
+import { getCategoryColor, isGoalContribution, getCategoryDisplayName } from '../../utils/categoryColors';
 import { TimePeriod } from '../common/TimePeriodSelector';
 
 const screenWidth = Dimensions.get('window').width;
@@ -43,9 +44,10 @@ export const PieChart: React.FC<PieChartProps> = ({
   const chartData = data.map((item, index) => ({
     name: item.name,
     population: item.amount,
-    color: item.color || colors.categories[index % colors.categories.length],
+    color: item.color || getCategoryColor(item.name),
     legendFontColor: item.legendFontColor || colors.text,
     legendFontSize: item.legendFontSize || 12,
+    isGoalContribution: isGoalContribution(item.name),
   }));
 
   const formatAmount = (amount: number) => {
@@ -81,7 +83,7 @@ export const PieChart: React.FC<PieChartProps> = ({
   return (
     <View style={styles.container}>
       {title && <Text style={styles.title}>{title}</Text>}
-      
+
       <View style={styles.chartContainer}>
         {isLoading ? (
           renderLoadingSkeleton()
@@ -100,7 +102,7 @@ export const PieChart: React.FC<PieChartProps> = ({
               center={[10, 0]}
               absolute={false}
             />
-            
+
             {(centerText || totalAmount > 0) && (
               <View style={styles.centerTextContainer}>
                 <Text style={styles.centerText}>
@@ -112,9 +114,9 @@ export const PieChart: React.FC<PieChartProps> = ({
                 {timePeriod && (
                   <Text style={styles.centerSubtext}>
                     {timePeriod === 'weekly' ? 'This Week' :
-                     timePeriod === 'monthly' ? 'This Month' :
-                     timePeriod === '6months' ? '6 Months' :
-                     'This Year'}
+                      timePeriod === 'monthly' ? 'This Month' :
+                        timePeriod === '6months' ? '6 Months' :
+                          'This Year'}
                   </Text>
                 )}
               </View>
@@ -138,13 +140,17 @@ export const PieChart: React.FC<PieChartProps> = ({
               <View
                 style={[
                   styles.legendColor,
-                  { backgroundColor: item.color || colors.categories[index % colors.categories.length] },
+                  { backgroundColor: item.color || getCategoryColor(item.name) },
                   highlightedIndex === index && styles.highlightedLegendColor,
+                  isGoalContribution(item.name) && styles.goalContributionColor,
                 ]}
               />
               <View style={styles.legendText}>
-                <Text style={styles.legendName} numberOfLines={1}>
-                  {item.name}
+                <Text style={[
+                  styles.legendName,
+                  isGoalContribution(item.name) && styles.goalContributionText,
+                ]} numberOfLines={1}>
+                  {getCategoryDisplayName(item.name)}
                 </Text>
                 <Text style={styles.legendAmount}>
                   {formatCurrency(item.amount, displayCurrency)}
@@ -268,5 +274,19 @@ const styles = StyleSheet.create({
   legendAmount: {
     ...typography.small,
     color: colors.textSecondary,
+  },
+  goalContributionColor: {
+    shadowColor: '#4CAF50',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.3,
+    shadowRadius: 3,
+    elevation: 3,
+  },
+  goalContributionText: {
+    fontWeight: '700',
+    color: '#4CAF50',
   },
 });

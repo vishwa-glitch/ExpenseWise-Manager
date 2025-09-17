@@ -296,16 +296,17 @@ const TransactionCalendarScreen: React.FC<TransactionCalendarScreenProps> = ({ n
     if (!dayData) return 0;
     
     // Try to get count from transaction_count field first
-    if (typeof dayData.transaction_count === 'number' && dayData.transaction_count > 0) {
+    if (typeof dayData.transaction_count === 'number') {
       return dayData.transaction_count;
     }
     
     // Fallback to counting transactions array
-    if (Array.isArray(dayData.transactions) && dayData.transactions.length > 0) {
+    if (Array.isArray(dayData.transactions)) {
       return dayData.transactions.length;
     }
     
-    // Fallback to estimating from income/expense amounts
+    // If we have income or expense amounts but no transaction count, 
+    // we need to make a reasonable estimate
     let estimatedCount = 0;
     if (dayData.income && dayData.income > 0) {
       estimatedCount++;
@@ -417,7 +418,7 @@ const TransactionCalendarScreen: React.FC<TransactionCalendarScreenProps> = ({ n
 
     if (!isDateRangeActive || !calendarData) {
       console.log('📊 Returning zeros - no date range active or no calendar data');
-      return { totalIncome: 0, totalExpenses: 0, netAmount: 0, transactionCount: 0 };
+      return { totalIncome: 0, totalExpenses: 0, netAmount: 0 };
     }
 
     // Check if we have calendar-formatted data with summary
@@ -428,7 +429,6 @@ const TransactionCalendarScreen: React.FC<TransactionCalendarScreenProps> = ({ n
         totalIncome: summary.total_income || 0,
         totalExpenses: summary.total_expenses || 0,
         netAmount: (summary.total_income || 0) - (summary.total_expenses || 0),
-        transactionCount: summary.transaction_count || 0,
       };
     }
 
@@ -436,7 +436,6 @@ const TransactionCalendarScreen: React.FC<TransactionCalendarScreenProps> = ({ n
     if (Array.isArray(calendarData)) {
       let totalIncome = 0;
       let totalExpenses = 0;
-      let transactionCount = calendarData.length;
 
       calendarData.forEach((transaction: any) => {
         const amount = transaction.amount || 0;
@@ -451,7 +450,6 @@ const TransactionCalendarScreen: React.FC<TransactionCalendarScreenProps> = ({ n
         totalIncome,
         totalExpenses,
         netAmount: totalIncome - totalExpenses,
-        transactionCount,
       };
     }
 
@@ -459,7 +457,6 @@ const TransactionCalendarScreen: React.FC<TransactionCalendarScreenProps> = ({ n
     if (calendarData.transactions && Array.isArray(calendarData.transactions)) {
       let totalIncome = 0;
       let totalExpenses = 0;
-      let transactionCount = calendarData.transactions.length;
 
       calendarData.transactions.forEach((transaction: any) => {
         const amount = transaction.amount || 0;
@@ -474,11 +471,10 @@ const TransactionCalendarScreen: React.FC<TransactionCalendarScreenProps> = ({ n
         totalIncome,
         totalExpenses,
         netAmount: totalIncome - totalExpenses,
-        transactionCount,
       };
     }
 
-    return { totalIncome: 0, totalExpenses: 0, netAmount: 0, transactionCount: 0 };
+    return { totalIncome: 0, totalExpenses: 0, netAmount: 0 };
   };
 
   const getMonthSummary = () => {
@@ -496,30 +492,23 @@ const TransactionCalendarScreen: React.FC<TransactionCalendarScreenProps> = ({ n
 
     if (!calendarData?.calendar_data) {
       console.log('📊 Returning zeros - no calendar_data property');
-      return { totalIncome: 0, totalExpenses: 0, netAmount: 0, transactionCount: 0 };
+      return { totalIncome: 0, totalExpenses: 0, netAmount: 0 };
     }
 
     let totalIncome = 0;
     let totalExpenses = 0;
-    let transactionCount = 0;
 
     Object.values(calendarData.calendar_data).forEach((dayData: any, index: number) => {
       const dayIncome = dayData.income || 0;
       const dayExpenses = dayData.expenses || 0;
-      // Calculate transaction count from transactions array if not provided
-      const dayTransactionCount = dayData.transaction_count || (dayData.transactions ? dayData.transactions.length : 0);
       
       totalIncome += dayIncome;
       totalExpenses += dayExpenses;
-      transactionCount += dayTransactionCount;
       
       if (index < 5) { // Log first 5 days for debugging
         console.log(`📊 Day ${index + 1}:`, {
           income: dayIncome,
           expenses: dayExpenses,
-          transactionCount: dayTransactionCount,
-          transactionsArrayLength: dayData.transactions ? dayData.transactions.length : 0,
-          hasTransactionCount: !!dayData.transaction_count,
           dayData
         });
       }
@@ -528,15 +517,15 @@ const TransactionCalendarScreen: React.FC<TransactionCalendarScreenProps> = ({ n
     console.log('📊 Month summary calculated:', {
       totalIncome,
       totalExpenses,
-      transactionCount,
-      netAmount: totalIncome - totalExpenses
+      netAmount: totalIncome - totalExpenses,
+      totalDaysWithData: Object.keys(calendarData.calendar_data).length,
+      sampleDayData: Object.values(calendarData.calendar_data)[0]
     });
 
     return {
       totalIncome,
       totalExpenses,
       netAmount: totalIncome - totalExpenses,
-      transactionCount,
     };
   };
 
@@ -708,14 +697,6 @@ const TransactionCalendarScreen: React.FC<TransactionCalendarScreenProps> = ({ n
               {summary.netAmount >= 0 ? '+' : ''}{formatAmount(summary.netAmount)}
             </Text>
           </View>
-          
-          <View style={styles.summaryCard}>
-            <Text style={styles.summaryIcon}>🔢</Text>
-            <Text style={styles.summaryLabel}>Transactions</Text>
-            <Text style={styles.summaryValue}>
-              {summary.transactionCount}
-            </Text>
-          </View>
         </View>
 
         <TouchableOpacity
@@ -792,12 +773,6 @@ const TransactionCalendarScreen: React.FC<TransactionCalendarScreenProps> = ({ n
             adjustsFontSizeToFit
           >
             {summary.netAmount >= 0 ? '+' : ''}{formatAmount(summary.netAmount)}
-          </Text>
-        </View>
-        <View style={styles.summaryItem}>
-          <Text style={styles.summaryLabel}>Transactions</Text>
-          <Text style={styles.summaryAmount} numberOfLines={1} adjustsFontSizeToFit>
-            {summary.transactionCount}
           </Text>
         </View>
       </View>

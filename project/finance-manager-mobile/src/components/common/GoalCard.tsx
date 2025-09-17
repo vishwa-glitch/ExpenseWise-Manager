@@ -49,10 +49,10 @@ export const GoalCard: React.FC<GoalCardProps> = ({ goal, onPress, onContribute,
   };
 
   const formatDate = (dateString?: string) => {
-    if (!dateString) return '';
+    if (!dateString) return null;
     try {
       const date = new Date(dateString);
-      if (isNaN(date.getTime())) return '';
+      if (isNaN(date.getTime())) return null;
       return date.toLocaleDateString('en-IN', {
         day: '2-digit',
         month: 'short',
@@ -60,7 +60,7 @@ export const GoalCard: React.FC<GoalCardProps> = ({ goal, onPress, onContribute,
       });
     } catch (error) {
       console.warn('Error formatting date:', error);
-      return '';
+      return null;
     }
   };
 
@@ -114,7 +114,7 @@ export const GoalCard: React.FC<GoalCardProps> = ({ goal, onPress, onContribute,
   };
 
   const getPriorityDisplay = () => {
-    if (!goal.priority || typeof goal.priority !== 'string') return '';
+    if (!goal.priority || typeof goal.priority !== 'string') return null;
     try {
       return goal.priority.charAt(0).toUpperCase() + goal.priority.slice(1);
     } catch (error) {
@@ -167,19 +167,19 @@ export const GoalCard: React.FC<GoalCardProps> = ({ goal, onPress, onContribute,
           </View>
         </View>
         <View style={styles.headerRight}>
-          {goal.priority && (
+          {goal.priority && getPriorityDisplay() && (
             <View style={[styles.priorityBadge, { backgroundColor: getPriorityColor() }]}>
               <Text style={styles.priorityText}>{getPriorityDisplay()}</Text>
             </View>
           )}
-                      <View style={[styles.statusBadge, { backgroundColor: getTransparentColor(getStatusColor(), 0.2) }]}>
-              <Text style={[styles.statusText, { color: getStatusColor() }]}>
-                {(() => {
-                  const status = goal.status || 'active';
-                  return typeof status === 'string' ? status.charAt(0).toUpperCase() + status.slice(1) : status;
-                })()}
-              </Text>
-            </View>
+          <View style={[styles.statusBadge, { backgroundColor: getTransparentColor(getStatusColor(), 0.2) }]}>
+            <Text style={[styles.statusText, { color: getStatusColor() }]}>
+              {(() => {
+                const status = goal.status || 'active';
+                return typeof status === 'string' ? status.charAt(0).toUpperCase() + status.slice(1) : status;
+              })()}
+            </Text>
+          </View>
         </View>
       </View>
 
@@ -232,7 +232,7 @@ export const GoalCard: React.FC<GoalCardProps> = ({ goal, onPress, onContribute,
       {!compact && (
         <View style={styles.footer}>
           <View style={styles.footerLeft}>
-            {goal.target_date && (
+            {goal.target_date && formatDate(goal.target_date) && (
               <Text style={styles.targetDate}>
                 🗓️ {formatDate(goal.target_date)}
               </Text>

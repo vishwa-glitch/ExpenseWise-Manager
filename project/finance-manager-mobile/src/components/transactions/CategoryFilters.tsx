@@ -7,6 +7,7 @@ import {
   StyleSheet,
 } from 'react-native';
 import { colors, typography, spacing } from '../../constants/colors';
+import { getCategoryColor, isGoalContribution, getCategoryDisplayName } from '../../utils/categoryColors';
 
 interface CategoryFilterData {
   id: string;
@@ -34,6 +35,8 @@ const CategoryFilters: React.FC<CategoryFiltersProps> = ({
 
   const renderCategoryChip = (category: CategoryFilterData) => {
     const isSelected = selectedCategories.includes(category.id);
+    const isGoalCategory = isGoalContribution(category.name);
+    const categoryColor = getCategoryColor(category.name);
     const transactionCountText = showTransactionCount && category.transactionCount !== undefined 
       ? ` with ${category.transactionCount} transactions` 
       : '';
@@ -43,7 +46,9 @@ const CategoryFilters: React.FC<CategoryFiltersProps> = ({
         key={category.id}
         style={[
           styles.categoryChip,
-          isSelected && styles.categoryChipSelected
+          isSelected && styles.categoryChipSelected,
+          isGoalCategory && styles.goalCategoryChip,
+          isSelected && isGoalCategory && styles.goalCategoryChipSelected,
         ]}
         onPress={() => onCategoryToggle(category.id)}
         activeOpacity={0.7}
@@ -61,9 +66,11 @@ const CategoryFilters: React.FC<CategoryFiltersProps> = ({
         <View style={styles.categoryTextContainer}>
           <Text style={[
             styles.categoryName,
-            isSelected && styles.categoryNameSelected
+            isSelected && styles.categoryNameSelected,
+            isGoalCategory && styles.goalCategoryName,
+            isSelected && isGoalCategory && styles.goalCategoryNameSelected,
           ]}>
-            {category.name}
+            {getCategoryDisplayName(category.name)}
           </Text>
           {showTransactionCount && category.transactionCount !== undefined && (
             <Text style={[
@@ -230,6 +237,22 @@ const styles = StyleSheet.create({
     fontSize: 9,
     color: colors.primary,
     fontWeight: 'bold',
+  },
+  goalCategoryChip: {
+    borderColor: '#4CAF50',
+    backgroundColor: '#4CAF50' + '10',
+  },
+  goalCategoryChipSelected: {
+    backgroundColor: '#4CAF50' + '30',
+    borderColor: '#4CAF50',
+  },
+  goalCategoryName: {
+    color: '#4CAF50',
+    fontWeight: '600',
+  },
+  goalCategoryNameSelected: {
+    color: '#4CAF50',
+    fontWeight: '700',
   },
 });
 

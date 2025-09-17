@@ -14,7 +14,7 @@ import { ChartLoadingSkeleton } from '../common/LoadingSkeleton';
 import { colors, typography, spacing } from '../../constants/colors';
 import { fetchCategoryBreakdown } from '../../store/slices/analyticsSlice';
 import { formatCurrency } from '../../utils/currency';
-import { getGoalContributionColor } from '../../utils/goalUtils';
+import { getCategoryColor, isGoalContribution, getCategoryDisplayName } from '../../utils/categoryColors';
 
 interface CategoryBreakdownSectionProps {
   dashboardInsights: any;
@@ -86,10 +86,9 @@ export const CategoryBreakdownSection: React.FC<CategoryBreakdownSectionProps> =
             let categoryColor = category?.color || colors.categories[index % colors.categories.length];
             
             // Handle Goal Contribution category with special color
-            if (categoryName.toLowerCase() === 'goal contribution' || 
-                categoryName.toLowerCase().includes('goal contribution')) {
+            if (isGoalContribution(categoryName)) {
               categoryName = 'Goal Contribution';
-              categoryColor = getGoalContributionColor();
+              categoryColor = getCategoryColor('Goal Contribution');
             }
             // Handle Uncategorized category with gray color
             else if (categoryName.toLowerCase().includes('uncategorized') || 
@@ -97,7 +96,11 @@ export const CategoryBreakdownSection: React.FC<CategoryBreakdownSectionProps> =
                      categoryName === 'null' ||
                      categoryName === '') {
               categoryName = 'Uncategorized';
-              categoryColor = '#9E9E9E'; // Gray color for uncategorized
+              categoryColor = getCategoryColor('Uncategorized');
+            }
+            else {
+              // Use the category color utility for all other categories
+              categoryColor = category?.color || getCategoryColor(categoryName);
             }
             
             return {
@@ -106,6 +109,7 @@ export const CategoryBreakdownSection: React.FC<CategoryBreakdownSectionProps> =
               color: categoryColor,
               legendFontColor: colors.text,
               legendFontSize: 12,
+              isGoalContribution: isGoalContribution(categoryName),
             };
           });
         }
@@ -227,7 +231,12 @@ export const CategoryBreakdownSection: React.FC<CategoryBreakdownSectionProps> =
                     { backgroundColor: category.color }
                   ]} 
                 />
-                <Text style={styles.categoryName}>{category.name}</Text>
+                <Text style={[
+                  styles.categoryName,
+                  isGoalContribution(category.name) && styles.goalContributionName,
+                ]}>
+                  {getCategoryDisplayName(category.name)}
+                </Text>
               </View>
               <View style={styles.categoryRight}>
                 <Text style={styles.categoryAmount}>
@@ -396,5 +405,9 @@ const styles = StyleSheet.create({
     ...typography.small,
     color: colors.textSecondary,
     fontWeight: '500',
+  },
+  goalContributionName: {
+    color: '#4CAF50',
+    fontWeight: '600',
   },
 });

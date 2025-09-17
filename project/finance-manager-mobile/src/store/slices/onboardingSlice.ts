@@ -163,6 +163,15 @@ const onboardingSlice = createSlice({
       state.isOverlayVisible = false;
       state.currentStep = state.totalSteps - 1;
     },
+    // Action to force hide overlay and reset state
+    forceCompleteOnboarding: (state) => {
+      state.isOnboardingComplete = true;
+      state.isOverlayVisible = false;
+      state.currentStep = 0;
+      state.hasCreatedAccount = false;
+      state.hasCreatedTransaction = false;
+      state.hasCreatedBudget = false;
+    },
     resetOnboarding: (state) => {
       state.isOnboardingComplete = false;
       state.currentStep = 0;
@@ -199,6 +208,8 @@ const onboardingSlice = createSlice({
       .addCase(completeOnboarding.fulfilled, (state) => {
         state.isOnboardingComplete = true;
         state.isOverlayVisible = false;
+        // Reset current step to prevent any lingering state issues
+        state.currentStep = 0;
       })
       // Mark account created
       .addCase(markAccountCreated.fulfilled, (state) => {
@@ -233,6 +244,7 @@ export const {
   showOverlay,
   hideOverlay,
   clearError,
+  forceCompleteOnboarding,
 } = onboardingSlice.actions;
 
 export default onboardingSlice.reducer;

@@ -1,7 +1,9 @@
+import React from 'react';
 import { useTypedSelector } from './useTypedSelector';
 import { useAppDispatch } from './useAppDispatch';
 import { nextStep, completeOnboarding } from '../store/slices/onboardingSlice';
 import { useNavigation } from '@react-navigation/native';
+import { resetMainNavigationState } from '../utils/navigationUtils';
 
 export interface OnboardingStep {
   id: string;
@@ -108,7 +110,7 @@ export const useOnboardingOverlay = () => {
       }, 300);
     } else {
       dispatch(completeOnboarding());
-      // Navigate back to dashboard when completing onboarding
+      // Simply navigate to dashboard without aggressive navigation reset
       setTimeout(() => {
         (navigation as any).navigate('Home', { screen: 'Dashboard' });
       }, 300);
@@ -118,27 +120,59 @@ export const useOnboardingOverlay = () => {
   const handleSkip = () => {
     // Skip the entire onboarding flow
     dispatch(completeOnboarding());
-    // Optionally ensure user lands on a sensible screen
+    // Navigate to dashboard and reset More tab navigation
     (navigation as any).navigate('Home', { screen: 'Dashboard' });
+    
+    // Reset More tab navigation state after a short delay
+    setTimeout(() => {
+      try {
+        (navigation as any).navigate('Home', {
+          screen: 'More',
+          params: { screen: 'MoreMain' },
+          initial: false,
+        });
+        // Navigate back to dashboard
+        setTimeout(() => {
+          (navigation as any).navigate('Home', { screen: 'Dashboard' });
+        }, 100);
+      } catch (error) {
+        console.warn('⚠️ Could not reset More tab navigation:', error);
+      }
+    }, 500);
   };
 
   const handleComplete = () => {
     dispatch(completeOnboarding());
-    // Navigate back to dashboard when completing onboarding
+    // Navigate to dashboard and reset More tab navigation to prevent stuck state
     setTimeout(() => {
+      // First navigate to dashboard
       (navigation as any).navigate('Home', { screen: 'Dashboard' });
+      
+      // Then reset More tab navigation state to ensure it shows MoreMain
+      setTimeout(() => {
+        try {
+          (navigation as any).navigate('Home', {
+            screen: 'More',
+            params: { screen: 'MoreMain' },
+            initial: false,
+          });
+          // Navigate back to dashboard after resetting More tab
+          setTimeout(() => {
+            (navigation as any).navigate('Home', { screen: 'Dashboard' });
+          }, 100);
+        } catch (error) {
+          console.warn('⚠️ Could not reset More tab navigation:', error);
+        }
+      }, 200);
     }, 300);
   };
 
-  // Debug logging
-  console.log('🎯 useOnboardingOverlay state:', {
-    isOverlayVisible,
-    isOnboardingComplete,
-    currentStep,
-    totalSteps,
-    isVisible: isOverlayVisible && !isOnboardingComplete,
-    currentStepId: onboardingSteps[currentStep]?.id,
-  });
+  // Reduced debug logging to prevent performance issues
+  if (!isOnboardingComplete && isOverlayVisible) {
+    console.log('🎯 Onboarding active - step:', currentStep + 1, 'of', totalSteps);
+  }
+
+  // Remove the problematic useEffect that was causing continuous re-rendering
 
   return {
     isVisible: isOverlayVisible && !isOnboardingComplete,

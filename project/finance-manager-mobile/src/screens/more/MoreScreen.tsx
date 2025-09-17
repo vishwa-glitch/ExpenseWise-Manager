@@ -153,7 +153,7 @@ const MoreScreen: React.FC<MoreScreenProps> = ({ navigation }) => {
             <TouchableOpacity
               style={styles.quickActionButton}
               onPress={() =>
-                navigation.navigate('Budget', {
+                navigation.navigate('GoalsBudget', {
                   screen: 'CreateBudget',
                 })
               }
