@@ -292,8 +292,6 @@ const GoalsListScreen: React.FC<GoalsListScreenProps> = ({ navigation }) => {
           </View>
         </View>
       </View>
-      
-
     </View>
   );
 
