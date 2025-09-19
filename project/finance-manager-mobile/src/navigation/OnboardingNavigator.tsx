@@ -22,11 +22,6 @@ const OnboardingNavigator: React.FC = () => {
     }
   };
 
-  const handleSkip = async () => {
-    console.log('🔄 User skipped onboarding');
-    await dispatch(completeOnboarding());
-  };
-
   const handleGetStarted = async () => {
     console.log('✅ User completed onboarding');
     await dispatch(completeOnboarding());
@@ -38,7 +33,6 @@ const OnboardingNavigator: React.FC = () => {
         return (
           <OnboardingScreen1
             onNext={handleNext}
-            onSkip={handleSkip}
           />
         );
       case 1:
@@ -46,7 +40,6 @@ const OnboardingNavigator: React.FC = () => {
           <OnboardingScreen2
             onNext={handleNext}
             onBack={handleBack}
-            onSkip={handleSkip}
           />
         );
       case 2:
@@ -54,14 +47,12 @@ const OnboardingNavigator: React.FC = () => {
           <OnboardingScreen3
             onGetStarted={handleGetStarted}
             onBack={handleBack}
-            onSkip={handleSkip}
           />
         );
       default:
         return (
           <OnboardingScreen1
             onNext={handleNext}
-            onSkip={handleSkip}
           />
         );
     }

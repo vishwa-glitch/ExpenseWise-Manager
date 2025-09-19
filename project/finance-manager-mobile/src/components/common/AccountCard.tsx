@@ -21,15 +21,17 @@ export const AccountCard: React.FC<AccountCardProps> = ({ account, onPress }) =>
   const getAccountTypeIcon = (type: string) => {
     switch (type.toLowerCase()) {
       case 'checking':
-        return '';
+        return '🏦';
       case 'savings':
-        return '';
+        return '💰';
       case 'credit':
-        return '';
+        return '💳';
       case 'investment':
-        return '';
+        return '📈';
+      case 'cash':
+        return '💵';
       default:
-        return '';
+        return '💼';
     }
   };
 

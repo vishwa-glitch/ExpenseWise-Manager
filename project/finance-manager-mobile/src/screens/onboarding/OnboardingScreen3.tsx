@@ -13,50 +13,44 @@ const { width, height } = Dimensions.get('window');
 
 interface OnboardingScreen3Props {
   onGetStarted: () => void;
-  onSkip: () => void;
   onBack: () => void;
 }
 
-const OnboardingScreen3: React.FC<OnboardingScreen3Props> = ({ onGetStarted, onSkip, onBack }) => {
+const OnboardingScreen3: React.FC<OnboardingScreen3Props> = ({ onGetStarted, onBack }) => {
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.content}>
-        {/* Skip button */}
-        <TouchableOpacity style={styles.skipButton} onPress={onSkip}>
-          <Text style={styles.skipText}>Skip</Text>
-        </TouchableOpacity>
-
-        {/* Main content */}
-        <View style={styles.mainContent}>
-          {/* Placeholder for illustration - you'll add this later */}
+        {/* Large illustration area */}
+        <View style={styles.illustrationContainer}>
           <View style={styles.illustrationPlaceholder}>
             <Text style={styles.placeholderText}>📈</Text>
           </View>
-
-          <Text style={styles.headline}>Your Data, Your Way.</Text>
-          <Text style={styles.subline}>
-            Export reports in Excel, PDF, or CSV and stay in total control.
-          </Text>
         </View>
 
-        {/* Bottom section */}
+        {/* Bottom section with text and navigation */}
         <View style={styles.bottomSection}>
-          {/* Progress indicators */}
-          <View style={styles.progressContainer}>
-            <View style={styles.progressDot} />
-            <View style={styles.progressDot} />
-            <View style={[styles.progressDot, styles.activeDot]} />
+          {/* Text content */}
+          <View style={styles.textContainer}>
+            <Text style={styles.headline}>
+              Your <Text style={styles.highlightText}>Data</Text>,{' \n'}
+              Your <Text style={styles.highlightText}>Way</Text>
+            </Text>
+            <Text style={styles.subline}>
+              Export reports in <Text style={styles.highlightText}>Excel</Text>, <Text style={styles.highlightText}>PDF</Text>, or <Text style={styles.highlightText}>CSV</Text> and stay in total control.
+            </Text>
           </View>
 
-          {/* Navigation buttons */}
-          <View style={styles.buttonContainer}>
-            <TouchableOpacity style={styles.backButton} onPress={onBack}>
-              <Text style={styles.arrow}>←</Text>
-              <Text style={styles.backButtonText}>Back</Text>
-            </TouchableOpacity>
+          {/* Navigation section */}
+          <View style={styles.navigationContainer}>
+            {/* Progress indicators */}
+            <View style={styles.progressContainer}>
+              <View style={styles.progressDot} />
+              <View style={styles.progressDot} />
+              <View style={[styles.progressDot, styles.activeDot]} />
+            </View>
 
-            <TouchableOpacity style={styles.getStartedButton} onPress={onGetStarted}>
-              <Text style={styles.getStartedButtonText}>Continue to App</Text>
+            {/* Arrow button */}
+            <TouchableOpacity style={styles.arrowButton} onPress={onGetStarted}>
               <Text style={styles.arrow}>→</Text>
             </TouchableOpacity>
           </View>
@@ -73,106 +67,89 @@ const styles = StyleSheet.create({
   },
   content: {
     flex: 1,
-    paddingHorizontal: spacing.lg,
   },
-  skipButton: {
-    alignSelf: 'flex-end',
-    paddingTop: spacing.md,
-    paddingHorizontal: spacing.sm,
-    paddingVertical: spacing.sm,
-  },
-  skipText: {
-    ...typography.body,
-    color: colors.textSecondary,
-  },
-  mainContent: {
+  illustrationContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    paddingHorizontal: spacing.md,
+    paddingTop: spacing.xxl,
   },
   illustrationPlaceholder: {
-    width: width * 0.6,
-    height: height * 0.3,
+    width: width * 0.7,
+    height: height * 0.4,
     backgroundColor: colors.surface,
     borderRadius: 20,
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: spacing.xl,
   },
   placeholderText: {
-    fontSize: 80,
+    fontSize: 100,
+  },
+  bottomSection: {
+    paddingHorizontal: spacing.lg,
+    paddingBottom: spacing.xxl,
+  },
+  textContainer: {
+    marginBottom: spacing.xl,
   },
   headline: {
     ...typography.h1,
+    fontSize: 32,
     color: colors.text,
-    textAlign: 'center',
+    textAlign: 'left',
+    lineHeight: 40,
+    fontWeight: '300',
     marginBottom: spacing.md,
+  },
+  highlightText: {
+    color: colors.primary,
+    fontWeight: '600',
   },
   subline: {
     ...typography.body,
     color: colors.textSecondary,
-    textAlign: 'center',
+    textAlign: 'left',
     lineHeight: 24,
-    paddingHorizontal: spacing.md,
+    fontSize: 16,
   },
-  bottomSection: {
-    paddingBottom: spacing.xl,
+  navigationContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
     alignItems: 'center',
   },
   progressContainer: {
     flexDirection: 'row',
-    marginBottom: spacing.xl,
   },
   progressDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
+    width: 12,
+    height: 12,
+    borderRadius: 6,
     backgroundColor: colors.border,
-    marginHorizontal: 4,
+    marginRight: spacing.sm,
   },
   activeDot: {
     backgroundColor: colors.primary,
   },
-  buttonContainer: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    width: '100%',
-    paddingHorizontal: spacing.md,
-  },
-  backButton: {
-    backgroundColor: colors.surface,
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: spacing.xl,
-    paddingVertical: spacing.md,
-    borderRadius: 25,
-    minWidth: 120,
+  arrowButton: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: colors.white,
     justifyContent: 'center',
-  },
-  backButtonText: {
-    ...typography.button,
-    color: colors.text,
-    marginLeft: spacing.sm,
-  },
-  getStartedButton: {
-    backgroundColor: colors.primary,
-    flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: spacing.xl,
-    paddingVertical: spacing.md,
-    borderRadius: 25,
-    minWidth: 120,
-    justifyContent: 'center',
-  },
-  getStartedButtonText: {
-    ...typography.button,
-    color: colors.white,
-    marginRight: spacing.sm,
+    shadowColor: colors.shadow,
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 4,
   },
   arrow: {
-    ...typography.button,
-    color: colors.white,
+    fontSize: 24,
+    color: colors.primary,
+    fontWeight: 'bold',
   },
 });
 

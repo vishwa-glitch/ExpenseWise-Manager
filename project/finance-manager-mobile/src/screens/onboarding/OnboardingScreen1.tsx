@@ -13,7 +13,6 @@ const { width, height } = Dimensions.get('window');
 
 interface OnboardingScreen1Props {
   onNext: () => void;
-  onSkip: () => void;
 }
 
 const OnboardingScreen1: React.FC<OnboardingScreen1Props> = ({ onNext }) => {
@@ -33,8 +32,11 @@ const OnboardingScreen1: React.FC<OnboardingScreen1Props> = ({ onNext }) => {
           <View style={styles.textContainer}>
             <Text style={styles.headline}>
               Welcome to{'\n'}
-              your world of{'\n'}
+              your <Text style={styles.highlightText}>world</Text> of{'\n'}
               <Text style={styles.highlightText}>financial growth</Text>
+            </Text>
+            <Text style={styles.subline}>
+              Take control of your finances with smart tracking and insightful analytics.
             </Text>
           </View>
 
@@ -101,6 +103,13 @@ const styles = StyleSheet.create({
   highlightText: {
     color: colors.primary,
     fontWeight: '600',
+  },
+  subline: {
+    ...typography.body,
+    color: colors.textSecondary,
+    textAlign: 'left',
+    lineHeight: 24,
+    fontSize: 16,
   },
   navigationContainer: {
     flexDirection: 'row',
