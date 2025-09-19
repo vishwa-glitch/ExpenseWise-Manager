@@ -159,24 +159,24 @@ export const GoalCard: React.FC<GoalCardProps> = ({ goal, onPress, onContribute,
             <Text style={styles.title} numberOfLines={1}>
               {goal.title || 'Untitled Goal'}
             </Text>
-            {!compact && goal.category && (
+            {!compact && goal.category ? (
               <Text style={styles.category}>
-                {typeof goal.category === 'string' ? goal.category.charAt(0).toUpperCase() + goal.category.slice(1) : goal.category}
+                {typeof goal.category === 'string' ? goal.category.charAt(0).toUpperCase() + goal.category.slice(1) : String(goal.category || '')}
               </Text>
-            )}
+            ) : null}
           </View>
         </View>
         <View style={styles.headerRight}>
-          {goal.priority && getPriorityDisplay() && (
+          {goal.priority && getPriorityDisplay() ? (
             <View style={[styles.priorityBadge, { backgroundColor: getPriorityColor() }]}>
-              <Text style={styles.priorityText}>{getPriorityDisplay()}</Text>
+              <Text style={styles.priorityText}>{String(getPriorityDisplay() || '')}</Text>
             </View>
-          )}
+          ) : null}
           <View style={[styles.statusBadge, { backgroundColor: getTransparentColor(getStatusColor(), 0.2) }]}>
             <Text style={[styles.statusText, { color: getStatusColor() }]}>
               {(() => {
                 const status = goal.status || 'active';
-                return typeof status === 'string' ? status.charAt(0).toUpperCase() + status.slice(1) : status;
+                return typeof status === 'string' ? status.charAt(0).toUpperCase() + status.slice(1) : String(status);
               })()}
             </Text>
           </View>
@@ -232,20 +232,20 @@ export const GoalCard: React.FC<GoalCardProps> = ({ goal, onPress, onContribute,
       {!compact && (
         <View style={styles.footer}>
           <View style={styles.footerLeft}>
-            {goal.target_date && formatDate(goal.target_date) && (
+            {goal.target_date && formatDate(goal.target_date) ? (
               <Text style={styles.targetDate}>
                 🗓️ {formatDate(goal.target_date)}
               </Text>
-            )}
-            {goal.days_remaining !== undefined && typeof goal.days_remaining === 'number' && goal.days_remaining > 0 && (
+            ) : null}
+            {goal.days_remaining !== undefined && typeof goal.days_remaining === 'number' && goal.days_remaining > 0 ? (
               <Text style={[styles.daysRemaining, { color: getDaysRemainingColor() }]}>
                 ⏰ {goal.days_remaining} days left
               </Text>
-            )}
+            ) : null}
           </View>
           
           {/* Quick Contribute Button */}
-          {onContribute && (goal.status || 'active') === 'active' && (
+          {onContribute && (goal.status || 'active') === 'active' ? (
             <TouchableOpacity
               style={styles.contributeButton}
               onPress={onContribute}
@@ -253,18 +253,18 @@ export const GoalCard: React.FC<GoalCardProps> = ({ goal, onPress, onContribute,
             >
               <Text style={styles.contributeButtonText}>💰 Add Contribution</Text>
             </TouchableOpacity>
-          )}
+          ) : null}
         </View>
       )}
 
-      {!compact && goal.monthly_savings_needed && typeof goal.monthly_savings_needed === 'number' && goal.monthly_savings_needed > 0 && (
+      {!compact && goal.monthly_savings_needed && typeof goal.monthly_savings_needed === 'number' && goal.monthly_savings_needed > 0 ? (
         <View style={styles.savingsNeeded}>
           <Text style={styles.savingsIcon}>💡</Text>
           <Text style={styles.savingsText}>
             Save {formatAmount(goal.monthly_savings_needed || 0)}/month to reach your goal on time
           </Text>
         </View>
-      )}
+      ) : null}
     </TouchableOpacity>
   );
 };

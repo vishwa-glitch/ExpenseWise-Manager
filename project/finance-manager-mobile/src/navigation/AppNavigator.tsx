@@ -15,6 +15,7 @@ import { LoadingSpinner } from '../components/common/LoadingSpinner';
 // Import navigators
 import AuthNavigator from './AuthNavigator';
 import MainNavigator from './MainNavigator';
+import OnboardingNavigator from './OnboardingNavigator';
 import CurrencySelectionScreen from '../screens/auth/CurrencySelectionScreen';
 
 const Stack = createStackNavigator();
@@ -81,6 +82,14 @@ const AppNavigator: React.FC = () => {
     loadUserData();
   }, [dispatch, isAuthenticated, isLoading, needsCurrencySelection]);
 
+  // Effect to check onboarding status when currency selection is completed
+  useEffect(() => {
+    if (isAuthenticated && !needsCurrencySelection && !isLoading) {
+      // Re-check onboarding status after currency selection is completed
+      dispatch(checkOnboardingStatus());
+    }
+  }, [dispatch, isAuthenticated, needsCurrencySelection, isLoading]);
+
   // Debug logging for navigation state
   useEffect(() => {
     console.log('🧭 Navigation state changed:', {
@@ -106,14 +115,16 @@ const AppNavigator: React.FC = () => {
     <>
       <NavigationContainer>
         <Stack.Navigator screenOptions={{ headerShown: false }}>
-          {!isAuthenticated ? (
+          {!isOnboardingComplete ? (
+            <Stack.Screen name="Onboarding" component={OnboardingNavigator} />
+          ) : !isAuthenticated ? (
             <Stack.Screen name="Auth" component={AuthNavigator} />
           ) : needsCurrencySelection ? (
             <Stack.Screen 
               name="CurrencySelection" 
               component={CurrencySelectionScreen}
             />
-                          ) : (
+          ) : (
             <Stack.Screen name="Main" component={MainNavigator} />
           )}
         </Stack.Navigator>

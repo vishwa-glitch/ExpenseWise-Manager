@@ -14,9 +14,9 @@ interface OnboardingState {
 }
 
 const initialState: OnboardingState = {
-  isOnboardingComplete: true, // Set to true to disable onboarding by default
+  isOnboardingComplete: false, // Set to false to show onboarding for new users
   currentStep: 0,
-  totalSteps: 7, // Welcome, Accounts, Transactions, Calendar, Budgets, Categories, Complete (Goals step removed)
+  totalSteps: 3, // Three introductory screens
   isOverlayVisible: false, // Start with overlay hidden to prevent automatic navigation
   hasCreatedAccount: false,
   hasCreatedTransaction: false,
@@ -35,8 +35,9 @@ export const checkOnboardingStatus = createAsyncThunk(
       const hasCreatedTransaction = await SecureStore.getItemAsync('onboarding_transaction_created');
       const hasCreatedBudget = await SecureStore.getItemAsync('onboarding_budget_created');
       
-      // If onboarding_complete is not set, assume it's complete (for existing users)
-      const isComplete = onboardingComplete === 'true' || onboardingComplete === null;
+      // Simple check: if onboarding_complete is explicitly set to 'true', then it's complete
+      // Otherwise, show onboarding screens (for all users who haven't seen them)
+      const isComplete = onboardingComplete === 'true';
       
       return {
         isOnboardingComplete: isComplete,
@@ -46,9 +47,9 @@ export const checkOnboardingStatus = createAsyncThunk(
       };
     } catch (error) {
       console.error('Error checking onboarding status:', error);
-      // Default to completed for existing users
+      // Default to incomplete - show onboarding for all users who haven't completed it
       return {
-        isOnboardingComplete: true,
+        isOnboardingComplete: false,
         hasCreatedAccount: false,
         hasCreatedTransaction: false,
         hasCreatedBudget: false,
