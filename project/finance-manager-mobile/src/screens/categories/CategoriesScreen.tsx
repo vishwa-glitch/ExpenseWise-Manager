@@ -391,18 +391,16 @@ const CategoriesScreen: React.FC<CategoriesScreenProps> = ({ navigation }) => {
          showsVerticalScrollIndicator={false}
        />
 
-       {/* Onboarding Overlay - show for step 5 (categories) */}
-       {onboardingOverlay.isVisible && onboardingOverlay.currentStep === 5 && (
-         <OnboardingOverlay
-           isVisible={onboardingOverlay.isVisible}
-           currentStep={onboardingOverlay.currentStep}
-           totalSteps={onboardingOverlay.totalSteps}
-           steps={onboardingOverlay.steps}
-           onNext={onboardingOverlay.handleNext}
-           onSkip={onboardingOverlay.handleSkip}
-           onComplete={onboardingOverlay.handleComplete}
-         />
-       )}
+       {/* Onboarding Overlay */}
+       <OnboardingOverlay
+         isVisible={onboardingOverlay.isVisible}
+         currentStep={onboardingOverlay.currentStep}
+         totalSteps={onboardingOverlay.totalSteps}
+         steps={onboardingOverlay.steps}
+         onNext={onboardingOverlay.handleNext}
+         onSkip={onboardingOverlay.handleSkip}
+         onComplete={onboardingOverlay.handleComplete}
+       />
      </SafeAreaView>
    );
 };

@@ -16,7 +16,7 @@ interface OnboardingState {
 const initialState: OnboardingState = {
   isOnboardingComplete: false, // Set to false to show onboarding for new users
   currentStep: 0,
-  totalSteps: 3, // Three introductory screens
+  totalSteps: 8, // Eight guided onboarding steps through main app features
   isOverlayVisible: false, // Start with overlay hidden to prevent automatic navigation
   hasCreatedAccount: false,
   hasCreatedTransaction: false,
@@ -176,6 +176,7 @@ const onboardingSlice = createSlice({
     resetOnboarding: (state) => {
       state.isOnboardingComplete = false;
       state.currentStep = 0;
+      state.totalSteps = 8; // Ensure totalSteps is updated to 8
       state.isOverlayVisible = true;
       state.hasCreatedAccount = false;
       state.hasCreatedTransaction = false;
@@ -228,6 +229,7 @@ const onboardingSlice = createSlice({
       .addCase(resetOnboardingAsync.fulfilled, (state) => {
         state.isOnboardingComplete = false;
         state.currentStep = 0;
+        state.totalSteps = 8; // Ensure totalSteps is updated to 8
         state.isOverlayVisible = true;
         state.hasCreatedAccount = false;
         state.hasCreatedTransaction = false;

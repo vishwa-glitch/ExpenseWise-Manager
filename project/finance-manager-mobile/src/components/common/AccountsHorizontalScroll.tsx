@@ -30,13 +30,17 @@ export const AccountsHorizontalScroll: React.FC<AccountsHorizontalScrollProps> =
   const getAccountTypeIcon = (type: string) => {
     switch (type.toLowerCase()) {
       case 'checking':
-        return '';
+        return '🏦';
       case 'savings':
-        return '';
+        return '💰';
       case 'credit':
         return '💳';
       case 'investment':
         return '📈';
+      case 'cash':
+        return '💵';
+      case 'other':
+        return '💼';
       default:
         return '💼';
     }

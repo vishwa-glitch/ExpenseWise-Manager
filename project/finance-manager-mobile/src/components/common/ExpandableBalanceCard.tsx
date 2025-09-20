@@ -61,6 +61,10 @@ export const ExpandableBalanceCard: React.FC<ExpandableBalanceCardProps> = ({
         return '💳';
       case 'investment':
         return '📈';
+      case 'cash':
+        return '💵';
+      case 'other':
+        return '💼';
       default:
         return '💼';
     }

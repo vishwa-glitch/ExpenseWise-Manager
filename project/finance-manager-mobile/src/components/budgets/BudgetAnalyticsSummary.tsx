@@ -11,6 +11,11 @@ import { colors, typography, spacing } from '../../constants/colors';
 import { BudgetAnalyticsResponse } from '../../types/api';
 import { PieChart } from '../charts/PieChart';
 import { useTypedSelector } from '../../hooks/useTypedSelector';
+import { 
+  getStatusDisplay, 
+  getOverallStatusMessage,
+  formatUtilizationRate 
+} from '../../utils/budgetStatus';
 
 interface BudgetAnalyticsSummaryProps {
   analytics: BudgetAnalyticsResponse;
@@ -21,27 +26,38 @@ const BudgetAnalyticsSummary: React.FC<BudgetAnalyticsSummaryProps> = ({
   analytics,
   onPress,
 }) => {
-  const { summary, efficiency_metrics, category_performance } = analytics;
+  const { summary, budget_health, category_performance } = analytics;
   const { displayCurrency } = useTypedSelector((state) => state.user);
 
-  const getEfficiencyColor = (efficiency: number) => {
-    if (efficiency >= 80) return colors.success;
-    if (efficiency >= 60) return colors.warning;
-    return colors.error;
+  const getOverallStatusColor = (status: string) => {
+    switch (status) {
+      case 'on_track': return colors.success;
+      case 'monitor_closely': return colors.warning;
+      case 'review_required': return colors.error;
+      default: return colors.success;
+    }
   };
 
-  const getEfficiencyIcon = (efficiency: number) => {
-    if (efficiency >= 80) return 'trending-up';
-    if (efficiency >= 60) return 'trending-up-outline';
-    return 'trending-down';
+  const getOverallStatusIcon = (status: string) => {
+    switch (status) {
+      case 'on_track': return 'checkmark-circle';
+      case 'monitor_closely': return 'warning';
+      case 'review_required': return 'alert-circle';
+      default: return 'checkmark-circle';
+    }
   };
 
-  const getDisplayEfficiency = () => {
-    // Backend now provides the correct efficiency calculation
-    return efficiency_metrics.overall_efficiency;
-  };
-
-  const formatCurrency = (amount: number) => {
+  const formatCurrency = (amount: number | null | undefined) => {
+    // Handle null, undefined, or NaN values
+    if (amount === null || amount === undefined || isNaN(amount)) {
+      return new Intl.NumberFormat('en-US', {
+        style: 'currency',
+        currency: displayCurrency || 'USD',
+        minimumFractionDigits: 0,
+        maximumFractionDigits: 0,
+      }).format(0);
+    }
+    
     return new Intl.NumberFormat('en-US', {
       style: 'currency',
       currency: displayCurrency || 'USD',
@@ -57,13 +73,20 @@ const BudgetAnalyticsSummary: React.FC<BudgetAnalyticsSummaryProps> = ({
   const Container = onPress ? TouchableOpacity : View;
 
   // Prepare data for category spending pie chart
-  const pieChartData = category_performance
-    .filter(category => category.total_spent_amount > 0)
-    .map(category => ({
-      name: category.category_name,
-      amount: category.total_spent_amount,
-      color: category.category_color,
-    }));
+  const pieChartData = category_performance && Array.isArray(category_performance)
+    ? category_performance
+        .filter(category => 
+          category && 
+          typeof category.total_spent_amount === 'number' && 
+          !isNaN(category.total_spent_amount) && 
+          category.total_spent_amount > 0
+        )
+        .map(category => ({
+          name: category.category_name || 'Unknown Category',
+          amount: category.total_spent_amount,
+          color: category.category_color || '#cccccc',
+        }))
+    : [];
 
   return (
     <Container style={styles.container} onPress={onPress} activeOpacity={0.8}>
@@ -108,21 +131,21 @@ const BudgetAnalyticsSummary: React.FC<BudgetAnalyticsSummaryProps> = ({
           </Text>
         </View>
 
-        {/* Efficiency */}
+        {/* Budget Health */}
         <View style={styles.metricCard}>
           <View style={styles.efficiencyHeader}>
-            <Text style={styles.metricLabel}>Efficiency</Text>
+            <Text style={styles.metricLabel}>Budget Health</Text>
             <Ionicons 
-              name={getEfficiencyIcon(getDisplayEfficiency())} 
+              name={getOverallStatusIcon(budget_health.overall_status)} 
               size={16} 
-              color={getEfficiencyColor(getDisplayEfficiency())} 
+              color={getOverallStatusColor(budget_health.overall_status)} 
             />
           </View>
-          <Text style={[styles.metricValue, { color: getEfficiencyColor(getDisplayEfficiency()) }]}>
-            {formatPercentage(getDisplayEfficiency())}
+          <Text style={[styles.metricValue, { color: getOverallStatusColor(budget_health.overall_status) }]}>
+            {formatUtilizationRate(budget_health.utilization_rate)}
           </Text>
           <Text style={styles.metricSubtext}>
-            {efficiency_metrics.budgets_on_track} on track
+            {getOverallStatusMessage(budget_health.overall_status)}
           </Text>
         </View>
       </View>
@@ -132,19 +155,19 @@ const BudgetAnalyticsSummary: React.FC<BudgetAnalyticsSummaryProps> = ({
         <View style={styles.statusItem}>
           <View style={[styles.statusDot, { backgroundColor: colors.success }]} />
           <Text style={styles.statusText}>
-            {efficiency_metrics.budgets_on_track} On Track
+            {budget_health.budgets_under_budget + budget_health.budgets_on_track} On Track
           </Text>
         </View>
         <View style={styles.statusItem}>
           <View style={[styles.statusDot, { backgroundColor: colors.warning }]} />
           <Text style={styles.statusText}>
-            {efficiency_metrics.budgets_at_risk} At Risk
+            {budget_health.budgets_approaching_limit} Watch Spending
           </Text>
         </View>
         <View style={styles.statusItem}>
           <View style={[styles.statusDot, { backgroundColor: colors.error }]} />
           <Text style={styles.statusText}>
-            {efficiency_metrics.budgets_over_limit} Over Limit
+            {budget_health.budgets_over_budget} Over Budget
           </Text>
         </View>
       </View>

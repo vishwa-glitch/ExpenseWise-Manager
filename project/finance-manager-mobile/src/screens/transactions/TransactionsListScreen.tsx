@@ -458,8 +458,6 @@ const TransactionsListScreen: React.FC<TransactionsListScreenProps> = ({
         transaction={item}
         onPress={() => handleTransactionPress(item)}
         onLongPress={() => handleDeleteTransaction(item.id)}
-        onEdit={() => handleEditTransaction(item)}
-        onDelete={() => handleDeleteTransaction(item.id)}
         showAccount={!accountId}
         runningBalance={item.runningBalance}
       />

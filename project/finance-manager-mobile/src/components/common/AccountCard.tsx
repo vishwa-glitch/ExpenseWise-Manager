@@ -30,6 +30,8 @@ export const AccountCard: React.FC<AccountCardProps> = ({ account, onPress }) =>
         return '📈';
       case 'cash':
         return '💵';
+      case 'other':
+        return '💼';
       default:
         return '💼';
     }

@@ -261,6 +261,15 @@ export const createTransaction = createAsyncThunk(
   "transactions/createTransaction",
   async (transactionData: any) => {
     const response = await apiService.createTransaction(transactionData);
+    
+    // Trigger budget monitoring check after transaction creation
+    try {
+      const { checkBudgetsAfterTransaction } = await import('../../utils/budgetMonitoringUtils');
+      await checkBudgetsAfterTransaction(transactionData);
+    } catch (error) {
+      console.error('❌ Error triggering budget check after transaction:', error);
+    }
+    
     return response;
   }
 );
@@ -269,6 +278,15 @@ export const updateTransaction = createAsyncThunk(
   "transactions/updateTransaction",
   async ({ id, data }: { id: string; data: any }) => {
     const response = await apiService.updateTransaction(id, data);
+    
+    // Trigger budget monitoring check after transaction update
+    try {
+      const { checkBudgetsAfterTransaction } = await import('../../utils/budgetMonitoringUtils');
+      await checkBudgetsAfterTransaction(data);
+    } catch (error) {
+      console.error('❌ Error triggering budget check after transaction update:', error);
+    }
+    
     return response;
   }
 );

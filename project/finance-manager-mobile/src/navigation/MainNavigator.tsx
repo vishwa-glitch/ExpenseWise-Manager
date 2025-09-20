@@ -43,20 +43,20 @@ const HamburgerIcon: React.FC<{ focused: boolean }> = ({ focused }) => (
       height: 2,
       backgroundColor: focused ? colors.primary : colors.textSecondary,
       marginBottom: 3,
-      opacity: focused ? 1 : 0.3,
+      opacity: focused ? 1 : 0.6,
     }} />
     <View style={{
       width: 20,
       height: 2,
       backgroundColor: focused ? colors.primary : colors.textSecondary,
       marginBottom: 3,
-      opacity: focused ? 1 : 0.3,
+      opacity: focused ? 1 : 0.6,
     }} />
     <View style={{
       width: 20,
       height: 2,
       backgroundColor: focused ? colors.primary : colors.textSecondary,
-      opacity: focused ? 1 : 0.3,
+      opacity: focused ? 1 : 0.6,
     }} />
   </View>
 );
@@ -111,7 +111,7 @@ const TabNavigator: React.FC = () => {
           tabBarLabel: 'Dashboard',
           title: 'Dashboard',
           tabBarIcon: ({ focused }) => (
-            <Text style={{ fontSize: 24, opacity: focused ? 1 : 0.3 }}>🏡</Text>
+            <Text style={{ fontSize: 24, opacity: focused ? 1 : 0.6 }}>🏡</Text>
           )
         }}
       />
@@ -122,7 +122,7 @@ const TabNavigator: React.FC = () => {
           tabBarLabel: 'Transactions',
           title: 'Transactions',
           tabBarIcon: ({ focused }) => (
-            <Text style={{ fontSize: 24, opacity: focused ? 1 : 0.3 }}>📄</Text>
+            <Text style={{ fontSize: 24, opacity: focused ? 1 : 0.6 }}>📄</Text>
           )
         }}
       />
@@ -133,7 +133,7 @@ const TabNavigator: React.FC = () => {
           tabBarLabel: 'Goals & Budget',
           title: 'Goals & Budget',
           tabBarIcon: ({ focused }) => (
-            <Text style={{ fontSize: 24, opacity: focused ? 1 : 0.3 }}>🎯</Text>
+            <Text style={{ fontSize: 24, opacity: focused ? 1 : 0.6 }}>🎯</Text>
           )
         }}
       />

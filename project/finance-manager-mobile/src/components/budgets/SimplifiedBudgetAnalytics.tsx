@@ -8,6 +8,10 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { colors, typography, spacing } from '../../constants/colors';
 import { useTypedSelector } from '../../hooks/useTypedSelector';
+import { 
+  getOverallStatusMessage,
+  formatUtilizationRate 
+} from '../../utils/budgetStatus';
 
 interface SimplifiedBudgetAnalyticsProps {
   analytics: any;
@@ -18,10 +22,38 @@ const SimplifiedBudgetAnalytics: React.FC<SimplifiedBudgetAnalyticsProps> = ({
   analytics,
   onBudgetPress,
 }) => {
-  const { summary, efficiency_metrics, category_performance } = analytics;
+  // Add null checks for analytics data
+  if (!analytics) {
+    return (
+      <View style={styles.container}>
+        <Text style={styles.errorText}>No budget data available</Text>
+      </View>
+    );
+  }
+
+  const { summary, budget_health, category_performance } = analytics;
   const { displayCurrency } = useTypedSelector((state) => state.user);
 
-  const formatCurrency = (amount: number) => {
+  // Add null checks for required data
+  if (!summary || !budget_health) {
+    return (
+      <View style={styles.container}>
+        <Text style={styles.errorText}>Budget data is incomplete</Text>
+      </View>
+    );
+  }
+
+  const formatCurrency = (amount: number | null | undefined) => {
+    // Handle null, undefined, or NaN values
+    if (amount === null || amount === undefined || isNaN(amount)) {
+      return new Intl.NumberFormat('en-US', {
+        style: 'currency',
+        currency: displayCurrency || 'USD',
+        minimumFractionDigits: 0,
+        maximumFractionDigits: 0,
+      }).format(0);
+    }
+    
     return new Intl.NumberFormat('en-US', {
       style: 'currency',
       currency: displayCurrency || 'USD',
@@ -35,29 +67,38 @@ const SimplifiedBudgetAnalytics: React.FC<SimplifiedBudgetAnalyticsProps> = ({
   };
 
   const getOverallStatus = () => {
-    const efficiency = getDisplayEfficiency();
+    const status = budget_health.overall_status;
     
-    // Higher efficiency means better budget management
-    if (efficiency >= 95) return { status: 'Perfect', color: colors.success, icon: 'checkmark-circle' };
-    if (efficiency >= 80) return { status: 'Great', color: colors.success, icon: 'checkmark-circle' };
-    if (efficiency >= 60) return { status: 'Good', color: colors.warning, icon: 'warning' };
-    return { status: 'Needs Attention', color: colors.error, icon: 'alert-circle' };
-  };
-
-  const getDisplayEfficiency = () => {
-    // Backend now provides the correct efficiency calculation
-    return efficiency_metrics.overall_efficiency;
+    switch (status) {
+      case 'on_track': 
+        return { status: 'On Track', color: colors.success, icon: 'checkmark-circle' };
+      case 'monitor_closely': 
+        return { status: 'Monitor Closely', color: colors.warning, icon: 'warning' };
+      case 'review_required': 
+        return { status: 'Review Required', color: colors.error, icon: 'alert-circle' };
+      default: 
+        return { status: 'On Track', color: colors.success, icon: 'checkmark-circle' };
+    }
   };
 
   const getTopCategories = () => {
+    if (!category_performance || !Array.isArray(category_performance)) {
+      return [];
+    }
+    
     return category_performance
-      .sort((a: any, b: any) => b.total_spent_amount - a.total_spent_amount)
+      .filter((category: any) => category && typeof category.total_spent_amount === 'number' && !isNaN(category.total_spent_amount))
+      .sort((a: any, b: any) => (b.total_spent_amount || 0) - (a.total_spent_amount || 0))
       .slice(0, 3);
   };
 
   const getOverBudgetCategories = () => {
+    if (!category_performance || !Array.isArray(category_performance)) {
+      return [];
+    }
+    
     return category_performance
-      .filter((cat: any) => cat.status === 'over_budget')
+      .filter((cat: any) => cat && cat.status === 'over_budget')
       .slice(0, 2);
   };
 
@@ -77,7 +118,7 @@ const SimplifiedBudgetAnalytics: React.FC<SimplifiedBudgetAnalyticsProps> = ({
           {overallStatus.status}
         </Text>
         <Text style={styles.statusSubtext}>
-          {formatPercentage(getDisplayEfficiency())} efficiency
+          {formatUtilizationRate(budget_health.utilization_rate)} budget used
         </Text>
       </View>
 
@@ -156,13 +197,13 @@ const SimplifiedBudgetAnalytics: React.FC<SimplifiedBudgetAnalyticsProps> = ({
         <View style={styles.summaryItem}>
           <Text style={styles.summaryLabel}>Budgets on Track</Text>
           <Text style={[styles.summaryValue, { color: colors.success }]}>
-            {efficiency_metrics.budgets_on_track}
+            {budget_health.budgets_under_budget + budget_health.budgets_on_track}
           </Text>
         </View>
         <View style={styles.summaryItem}>
           <Text style={styles.summaryLabel}>Need Attention</Text>
           <Text style={[styles.summaryValue, { color: colors.warning }]}>
-            {efficiency_metrics.budgets_at_risk + efficiency_metrics.budgets_over_limit}
+            {budget_health.budgets_approaching_limit + budget_health.budgets_over_budget}
           </Text>
         </View>
       </View>
@@ -319,7 +360,14 @@ const styles = StyleSheet.create({
   },
   summaryValue: {
     ...typography.h3,
-    fontWeight: 'bold',
+    color: colors.text,
+    fontWeight: '700',
+  },
+  errorText: {
+    ...typography.body,
+    color: colors.textSecondary,
+    textAlign: 'center',
+    padding: spacing.lg,
   },
 });
 

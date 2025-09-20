@@ -46,7 +46,6 @@ export const SmartAlertCard: React.FC<Partial<SmartAlertCardProps>> = ({
   if (error) {
     return (
       <View style={[styles.card, styles.errorContainer]}>
-        <Text style={styles.errorIcon}>⚠️</Text>
         <Text style={styles.errorText}>Could not load budget alert.</Text>
       </View>
     );
@@ -62,7 +61,6 @@ export const SmartAlertCard: React.FC<Partial<SmartAlertCardProps>> = ({
       accessibilityHint={`You have used ${percentageUsed}% of your budget.`}
     >
       <View style={styles.topRow}>
-        <Text style={styles.icon}>⚠️</Text>
         <Text style={styles.title}>{title}</Text>
       </View>
 
@@ -116,10 +114,6 @@ const styles = StyleSheet.create({
     backgroundColor: `${colors.error}20`,
     borderColor: colors.error,
   },
-  errorIcon: {
-    fontSize: 23,
-    marginBottom: spacing.xs,
-  },
   errorText: {
     ...typography.body,
     color: colors.text,
@@ -127,13 +121,7 @@ const styles = StyleSheet.create({
     fontSize: 14,
   },
   topRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
     marginBottom: spacing.sm,
-  },
-  icon: {
-    fontSize: 18,
-    marginRight: spacing.sm,
   },
   title: {
     ...typography.caption,

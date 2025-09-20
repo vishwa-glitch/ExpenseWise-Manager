@@ -1,6 +1,5 @@
 import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Animated } from 'react-native';
-import { Swipeable } from 'react-native-gesture-handler';
+import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { colors, typography, spacing } from '../../constants/colors';
 import { formatCurrency } from '../../utils/currency';
 import { Transaction } from '../../types/transaction';
@@ -148,50 +147,6 @@ export const TransactionItem: React.FC<TransactionItemProps> = ({
     return transaction.category_name || 'Uncategorized';
   };
 
-  const renderLeftActions = (progress: Animated.AnimatedInterpolation<number>, dragX: Animated.AnimatedInterpolation<number>) => {
-    const trans = dragX.interpolate({
-      inputRange: [0, 50, 100, 101],
-      outputRange: [-20, 0, 0, 1],
-      extrapolate: 'clamp',
-    });
-
-    return (
-      <TouchableOpacity style={styles.leftAction} onPress={onEdit}>
-        <Animated.Text
-          style={[
-            styles.actionText,
-            {
-              transform: [{ translateX: trans }],
-            },
-          ]}>
-          Edit
-        </Animated.Text>
-      </TouchableOpacity>
-    );
-  };
-
-  const renderRightActions = (progress: Animated.AnimatedInterpolation<number>, dragX: Animated.AnimatedInterpolation<number>) => {
-    const trans = dragX.interpolate({
-      inputRange: [-100, -50, 0, 1],
-      outputRange: [0, 0, 10, 1],
-      extrapolate: 'clamp',
-    });
-
-    return (
-      <TouchableOpacity style={styles.rightAction} onPress={onDelete}>
-        <Animated.Text
-          style={[
-            styles.actionText,
-            {
-              transform: [{ translateX: trans }],
-            },
-          ]}>
-          Delete
-        </Animated.Text>
-      </TouchableOpacity>
-    );
-  };
-
   const transactionContent = (
     <TouchableOpacity
       style={styles.container}
@@ -266,23 +221,7 @@ export const TransactionItem: React.FC<TransactionItemProps> = ({
     </TouchableOpacity>
   );
 
-  if (onEdit || onDelete) {
-    return (
-      <Swipeable
-        renderLeftActions={onEdit ? renderLeftActions : undefined}
-        renderRightActions={onDelete ? renderRightActions : undefined}
-        friction={2}
-        leftThreshold={30}
-        rightThreshold={40}
-      >
-        {transactionContent}
-      </Swipeable>
-    );
-  }
-
-  return (
-    transactionContent
-  );
+  return transactionContent;
 };
 
 const styles = StyleSheet.create({
@@ -394,25 +333,5 @@ const styles = StyleSheet.create({
     ...typography.small,
     color: colors.textSecondary,
     fontSize: 10,
-  },
-  leftAction: {
-    flex: 1,
-    backgroundColor: colors.primary,
-    justifyContent: 'center',
-    borderTopLeftRadius: 12,
-    borderBottomLeftRadius: 12,
-  },
-  rightAction: {
-    flex: 1,
-    backgroundColor: colors.error,
-    justifyContent: 'center',
-    alignItems: 'flex-end',
-    borderTopRightRadius: 12,
-    borderBottomRightRadius: 12,
-  },
-  actionText: {
-    color: colors.background,
-    fontWeight: '600',
-    padding: 20,
   },
 });

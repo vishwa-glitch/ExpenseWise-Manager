@@ -62,6 +62,13 @@ export const useOnboardingOverlay = () => {
       targetElement: 'addCategoryButton',
     },
     {
+      id: 'goals',
+      title: 'Set Financial Goals',
+      description: 'Create savings goals to track your progress towards financial milestones.',
+      position: 'top-right',
+      targetElement: 'addGoalButton',
+    },
+    {
       id: 'complete',
       title: 'All Set!',
       description: 'Now, let\'s get your finances in shape 💪💰',
@@ -97,11 +104,27 @@ export const useOnboardingOverlay = () => {
             });
             break;
           case 'budgets':
-            // Navigate to Budget tab
-            (navigation as any).navigate('Home', { screen: 'Budget' });
+            // Navigate to GoalsBudget tab with budget selected
+            (navigation as any).navigate('Home', { 
+              screen: 'GoalsBudget', 
+              params: { 
+                screen: 'GoalsBudgetMain',
+                params: { initialTab: 'budget' }
+              }
+            });
             break;
           case 'categories':
             (navigation as any).navigate('Home', { screen: 'More', params: { screen: 'Categories' } });
+            break;
+          case 'goals':
+            // Navigate to GoalsBudget tab with goals selected
+            (navigation as any).navigate('Home', { 
+              screen: 'GoalsBudget', 
+              params: { 
+                screen: 'GoalsBudgetMain',
+                params: { initialTab: 'goals' }
+              }
+            });
             break;
           case 'complete':
             (navigation as any).navigate('Home', { screen: 'Dashboard' });

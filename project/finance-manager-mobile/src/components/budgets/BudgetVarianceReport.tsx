@@ -11,6 +11,10 @@ import { colors, typography, spacing } from '../../constants/colors';
 import { BudgetVarianceReportResponse } from '../../types/api';
 import { PieChart } from '../charts/PieChart';
 import { useTypedSelector } from '../../hooks/useTypedSelector';
+import { 
+  getStatusDisplay,
+  formatUtilizationRate 
+} from '../../utils/budgetStatus';
 
 interface BudgetVarianceReportProps {
   varianceReport: BudgetVarianceReportResponse;
@@ -101,7 +105,7 @@ const BudgetVarianceReport: React.FC<BudgetVarianceReportProps> = ({
             {formatCurrency(summary.total_variance)}
           </Text>
           <Text style={styles.summarySubtext}>
-            {formatPercentage(summary.overall_efficiency)} efficiency
+            {formatUtilizationRate(summary.overall_utilization_rate)} budget used
           </Text>
         </View>
 
@@ -126,15 +130,15 @@ const BudgetVarianceReport: React.FC<BudgetVarianceReportProps> = ({
         </View>
 
         <View style={styles.summaryCard}>
-          <Text style={styles.summaryLabel}>Efficiency</Text>
+          <Text style={styles.summaryLabel}>Utilization</Text>
           <Text style={[
             styles.summaryValue,
-            { color: summary.overall_efficiency >= 80 ? colors.success : colors.warning }
+            { color: summary.overall_utilization_rate <= 100 ? colors.success : colors.warning }
           ]}>
-            {formatPercentage(summary.overall_efficiency)}
+            {formatUtilizationRate(summary.overall_utilization_rate)}
           </Text>
           <Text style={styles.summarySubtext}>
-            Overall performance
+            Budget utilization
           </Text>
         </View>
       </View>
@@ -295,12 +299,31 @@ const BudgetVarianceReport: React.FC<BudgetVarianceReportProps> = ({
                   </Text>
                 </View>
                 <View style={styles.metricRow}>
-                  <Text style={styles.metricLabel}>Efficiency:</Text>
+                  <Text style={styles.metricLabel}>Utilization:</Text>
                   <Text style={[
                     styles.metricValue,
-                    { color: analysis.efficiency_percentage >= 80 ? colors.success : colors.warning }
+                    { color: analysis.utilization_rate <= 100 ? colors.success : colors.warning }
                   ]}>
-                    {formatPercentage(analysis.efficiency_percentage)}
+                    {formatUtilizationRate(analysis.utilization_rate)}
+                  </Text>
+                </View>
+                <View style={styles.metricRow}>
+                  <Text style={styles.metricLabel}>Status:</Text>
+                  <Text style={[
+                    styles.metricValue,
+                    { color: getStatusDisplay(analysis.status, {
+                      green: colors.success,
+                      blue: colors.info || colors.primary,
+                      orange: colors.warning,
+                      red: colors.error
+                    }).color }
+                  ]}>
+                    {getStatusDisplay(analysis.status, {
+                      green: colors.success,
+                      blue: colors.info || colors.primary,
+                      orange: colors.warning,
+                      red: colors.error
+                    }).text}
                   </Text>
                 </View>
               </View>

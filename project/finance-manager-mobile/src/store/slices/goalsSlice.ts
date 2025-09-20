@@ -50,6 +50,17 @@ export const createGoal = createAsyncThunk(
   'goals/createGoal',
   async (goalData: any) => {
     const response = await apiService.createGoal(goalData);
+    // Trigger goal monitoring check after goal creation
+    try {
+      const { goalMonitoringService } = await import('../../services/goalMonitoringService');
+      await goalMonitoringService.checkAfterGoalActivity('goal_created', {
+        goalId: response.goal?.id,
+        goalTitle: response.goal?.title,
+        goalData: response.goal,
+      });
+    } catch (error) {
+      console.error('❌ Error triggering goal monitoring after goal creation:', error);
+    }
     return response;
   }
 );
@@ -112,6 +123,19 @@ export const contributeToGoal = createAsyncThunk(
       throw new Error('Account ID is required for goal contribution');
     }
     const response = await apiService.contributeToGoal(id, amount, accountId, description);
+    
+    // Trigger goal monitoring check after contribution
+    try {
+      const { goalMonitoringService } = await import('../../services/goalMonitoringService');
+      await goalMonitoringService.checkAfterGoalActivity('contribution_made', {
+        goalId: id,
+        amount,
+        description,
+      });
+    } catch (error) {
+      console.error('❌ Error triggering goal monitoring after contribution:', error);
+    }
+    
     return response;
   }
 );

@@ -6,7 +6,6 @@ import { useTypedSelector } from '../hooks/useTypedSelector';
 import { useAppDispatch } from '../hooks/useAppDispatch';
 import { checkAuthStatus, completeCurrencySelection } from '../store/slices/authSlice';
 import { fetchUserProfile, loadUserCurrency, setDisplayCurrency } from '../store/slices/userSlice';
-import { checkOnboardingStatus } from '../store/slices/onboardingSlice';
 import { apiService } from '../services/api';
 import { initializeBudgetRenewal } from '../services/budgetRenewalService';
 import { LoadingSpinner } from '../components/common/LoadingSpinner';
@@ -23,14 +22,12 @@ const Stack = createStackNavigator();
 const AppNavigator: React.FC = () => {
   const dispatch = useAppDispatch();
   const { isAuthenticated, isLoading, needsCurrencySelection } = useTypedSelector((state) => state.auth);
-  const { isOnboardingComplete, isLoading: isOnboardingLoading } = useTypedSelector((state) => state.onboarding);
 
   useEffect(() => {
     const initializeApp = async () => {
       console.log('🚀 Initializing app...');
       try {
         await dispatch(checkAuthStatus());
-        await dispatch(checkOnboardingStatus());
       } catch (error) {
         console.error('❌ Error during app initialization:', error);
       }
@@ -82,43 +79,32 @@ const AppNavigator: React.FC = () => {
     loadUserData();
   }, [dispatch, isAuthenticated, isLoading, needsCurrencySelection]);
 
-  // Effect to check onboarding status when currency selection is completed
-  useEffect(() => {
-    if (isAuthenticated && !needsCurrencySelection && !isLoading) {
-      // Re-check onboarding status after currency selection is completed
-      dispatch(checkOnboardingStatus());
-    }
-  }, [dispatch, isAuthenticated, needsCurrencySelection, isLoading]);
 
   // Debug logging for navigation state
   useEffect(() => {
     console.log('🧭 Navigation state changed:', {
       isAuthenticated,
       needsCurrencySelection,
-      isLoading,
-      isOnboardingComplete
+      isLoading
     });
-  }, [isAuthenticated, needsCurrencySelection, isLoading, isOnboardingComplete]);
+  }, [isAuthenticated, needsCurrencySelection, isLoading]);
 
-  if (isLoading || isOnboardingLoading) {
+  if (isLoading) {
     return <LoadingSpinner />;
   }
 
   console.log('🧭 Rendering AppNavigator with state:', {
     isAuthenticated,
     needsCurrencySelection,
-    isLoading,
-    isOnboardingComplete
+    isLoading
   });
 
   return (
     <>
       <NavigationContainer>
         <Stack.Navigator screenOptions={{ headerShown: false }}>
-          {!isOnboardingComplete ? (
+          {!isAuthenticated ? (
             <Stack.Screen name="Onboarding" component={OnboardingNavigator} />
-          ) : !isAuthenticated ? (
-            <Stack.Screen name="Auth" component={AuthNavigator} />
           ) : needsCurrencySelection ? (
             <Stack.Screen 
               name="CurrencySelection" 

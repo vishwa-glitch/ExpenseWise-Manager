@@ -265,9 +265,11 @@ const GoalDetailScreen: React.FC<GoalDetailScreenProps> = ({ navigation, route }
               {getCategoryIcon(selectedGoal.category)}
             </Text>
             <View style={styles.goalDetails}>
-              <Text style={styles.goalTitle}>{selectedGoal.title}</Text>
+              <Text style={styles.goalTitle}>{selectedGoal.title || 'Untitled Goal'}</Text>
               <Text style={styles.goalCategory}>
-                {selectedGoal.category?.charAt(0).toUpperCase() + selectedGoal.category?.slice(1) || 'Other'}
+                {selectedGoal.category && typeof selectedGoal.category === 'string' 
+                  ? selectedGoal.category.charAt(0).toUpperCase() + selectedGoal.category.slice(1) 
+                  : 'Other'}
               </Text>
             </View>
           </View>
@@ -323,9 +325,9 @@ const GoalDetailScreen: React.FC<GoalDetailScreenProps> = ({ navigation, route }
               <Text style={styles.detailLabel}>Days Remaining:</Text>
               <Text style={[
                 styles.detailValue,
-                { color: selectedGoal.days_remaining < 30 ? colors.warning : colors.text }
+                { color: (selectedGoal.days_remaining || 0) < 30 ? colors.warning : colors.text }
               ]}>
-                {selectedGoal.days_remaining > 0 ? `${selectedGoal.days_remaining} days` : 'Overdue'}
+                {(selectedGoal.days_remaining || 0) > 0 ? `${selectedGoal.days_remaining || 0} days` : 'Overdue'}
               </Text>
             </View>
           )}
@@ -348,11 +350,13 @@ const GoalDetailScreen: React.FC<GoalDetailScreenProps> = ({ navigation, route }
                        selectedGoal.status === 'active' ? colors.primary : colors.textSecondary 
               }
             ]}>
-              {selectedGoal.status?.charAt(0).toUpperCase() + selectedGoal.status?.slice(1)}
+              {selectedGoal.status && typeof selectedGoal.status === 'string' 
+                ? selectedGoal.status.charAt(0).toUpperCase() + selectedGoal.status.slice(1)
+                : 'Active'}
             </Text>
           </View>
 
-          {selectedGoal.description && (
+          {selectedGoal.description && typeof selectedGoal.description === 'string' && (
             <View style={styles.descriptionContainer}>
               <Text style={styles.detailLabel}>Description:</Text>
               <Text style={styles.description}>{selectedGoal.description}</Text>

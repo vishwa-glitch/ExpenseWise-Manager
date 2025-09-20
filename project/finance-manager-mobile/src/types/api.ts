@@ -115,17 +115,20 @@ export interface BudgetAnalyticsResponse {
     avg_alert_threshold: number;
   };
   category_performance: Array<{
-    id: string;
-    budget_amount: number;
+    category_id: string;
     category_name: string;
     category_color: string;
-    spent_amount: number;
-    remaining_amount: number;
+    budget_count: number;
+    total_budget_amount: number;
+    total_spent_amount: number;
+    total_remaining_amount: number;
     percentage_used: number;
     variance: number;
     variance_percentage: number;
     status: 'under_budget' | 'on_track' | 'approaching_limit' | 'over_budget';
-    alert_threshold: number;
+    avg_alert_threshold: number;
+    earliest_start: string;
+    latest_end: string;
   }>;
   monthly_trends: Array<{
     month: string;
@@ -136,12 +139,16 @@ export interface BudgetAnalyticsResponse {
     percentage_used: number;
     avg_alert_threshold: number;
   }>;
-  efficiency_metrics: {
-    overall_efficiency: number;
+  budget_health: {
+    utilization_rate: number;
+    budgets_under_budget: number;
     budgets_on_track: number;
-    budgets_at_risk: number;
-    budgets_over_limit: number;
-    avg_variance_percentage: number;
+    budgets_approaching_limit: number;
+    budgets_over_budget: number;
+    avg_days_remaining: number;
+    daily_spending_rate: number;
+    daily_budget_allowance: number;
+    overall_status: 'on_track' | 'monitor_closely' | 'review_required';
   };
   period: string;
   analysis_date: string;
@@ -158,7 +165,7 @@ export interface BudgetVarianceReportResponse {
     total_budget_amount: number;
     total_actual_spent: number;
     total_variance: number;
-    overall_efficiency: number;
+    overall_utilization_rate: number;
     variance_distribution: {
       under_budget: number;
       on_budget: number;
@@ -180,7 +187,8 @@ export interface BudgetVarianceReportResponse {
     actual_spent: number;
     variance: number;
     variance_percentage: number;
-    efficiency_percentage: number;
+    utilization_rate: number;
+    status: 'under_budget' | 'on_track' | 'approaching_limit' | 'over_budget';
     variance_severity: 'high' | 'medium' | 'low' | 'none';
     alert_threshold: number;
     is_active: boolean;
@@ -212,7 +220,7 @@ export interface BudgetVarianceReportResponse {
     total_budget_amount: number;
     total_actual_spent: number;
     total_variance: number;
-    avg_efficiency: number;
+    avg_utilization_rate: number;
   }>;
   report_generated: string;
 }

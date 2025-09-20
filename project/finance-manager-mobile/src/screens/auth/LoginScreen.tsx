@@ -129,7 +129,6 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ navigation, route }) => {
           >
             <View style={styles.content}>
               <View style={styles.header}>
-                <Image source={require('../../../assets/logo.png')} style={styles.logo} />
                 <Text style={styles.title}>Expense Manager</Text>
                 <Text style={styles.subtitle}>Welcome back! Sign in to continue</Text>
               </View>
@@ -195,23 +194,16 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     flexGrow: 1,
+    justifyContent: 'center',
     paddingBottom: spacing.xl * 2,
   },
   content: {
-    flex: 1,
     padding: spacing.lg,
-    minHeight: '100%',
+    justifyContent: 'center',
   },
   header: {
     alignItems: 'center',
-    marginTop: spacing.md,
-    marginBottom: spacing.lg,
-  },
-  logo: {
-    width: 80,
-    height: 80,
-    marginBottom: spacing.md,
-    resizeMode: 'contain',
+    marginBottom: spacing.xl,
   },
   title: {
     ...typography.h1,
@@ -225,8 +217,7 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   form: {
-    flex: 1,
-    marginBottom: spacing.lg,
+    marginBottom: spacing.xl,
   },
   inputIcon: {
     fontSize: 18,

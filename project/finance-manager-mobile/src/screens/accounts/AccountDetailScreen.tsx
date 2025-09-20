@@ -192,6 +192,10 @@ const AccountDetailScreen: React.FC<AccountDetailScreenProps> = ({ navigation, r
         return '💳';
       case 'investment':
         return '📈';
+      case 'cash':
+        return '💵';
+      case 'other':
+        return '💼';
       default:
         return '💼';
     }

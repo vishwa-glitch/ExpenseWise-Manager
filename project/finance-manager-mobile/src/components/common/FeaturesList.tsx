@@ -9,26 +9,20 @@ import { colors, typography, spacing } from '../../constants/colors';
 const FeaturesList: React.FC = () => {
   const features = [
     { text: 'Unlimited Accounts', icon: '🏦' },
-    { text: 'Advanced Analytics & Insights', icon: '📊' },
     { text: 'Unlimited Financial Goals', icon: '🎯' },
-    { text: 'Priority Customer Support', icon: '🎧' },
     { text: 'Excel & PDF Export', icon: '📄' },
-    { text: 'Account Sharing', icon: '🤝' },
-    { text: 'Custom Alerts & Notifications', icon: '🔔' },
-    { text: 'Predictive Financial Insights', icon: '🔮' },
-    { text: 'Unlimited Data Uploads', icon: '📤' },
-    { text: 'Smart Transaction Categorization', icon: '🏷️' },
     { text: 'Budget Tracking & Management', icon: '💰' },
-    { text: 'Bill Reminders & Due Dates', icon: '📅' },
     { text: 'Multi-Currency Support', icon: '💱' },
-    { text: 'Secure Data Encryption', icon: '🔒' },
     { text: 'Real-time Sync Across Devices', icon: '☁️' },
+    { text: 'Advanced Analytics & Insights', icon: '📊' },
+    { text: 'Secure Data Encryption', icon: '🔒' },
+    { text: 'More features coming soon...', icon: '🚀', isComingSoon: true },
   ];
 
-  const renderFeature = (feature: { text: string; icon: string }, index: number) => (
-    <View key={index} style={styles.featureRow}>
+  const renderFeature = (feature: { text: string; icon: string; isComingSoon?: boolean }, index: number) => (
+    <View key={index} style={[styles.featureRow, feature.isComingSoon && styles.comingSoonRow]}>
       <Text style={styles.featureIcon}>{feature.icon}</Text>
-      <Text style={styles.featureText}>{feature.text}</Text>
+      <Text style={[styles.featureText, feature.isComingSoon && styles.comingSoonText]}>{feature.text}</Text>
     </View>
   );
 
@@ -87,6 +81,13 @@ const styles = StyleSheet.create({
     fontSize: 14,
     flex: 1,
     lineHeight: 20,
+  },
+  comingSoonRow: {
+    opacity: 0.7,
+  },
+  comingSoonText: {
+    fontStyle: 'italic',
+    color: colors.textSecondary,
   },
 });
 

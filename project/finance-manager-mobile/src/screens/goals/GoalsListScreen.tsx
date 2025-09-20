@@ -391,7 +391,15 @@ const GoalsListScreen: React.FC<GoalsListScreenProps> = ({ navigation }) => {
 
       {renderContributeModal()}
 
-      {/* Onboarding Overlay - Goals step removed from onboarding flow */}
+      <OnboardingOverlay
+        isVisible={onboardingOverlay.isVisible}
+        currentStep={onboardingOverlay.currentStep}
+        totalSteps={onboardingOverlay.totalSteps}
+        steps={onboardingOverlay.steps}
+        onNext={onboardingOverlay.handleNext}
+        onSkip={onboardingOverlay.handleSkip}
+        onComplete={onboardingOverlay.handleComplete}
+      />
     </SafeAreaView>
   );
 };

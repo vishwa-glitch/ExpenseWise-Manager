@@ -2,6 +2,7 @@ import { createSlice, createAsyncThunk, PayloadAction } from '@reduxjs/toolkit';
 import { apiService } from '../../services/api';
 import * as SecureStore from 'expo-secure-store';
 import { resetOnboarding, completeOnboarding } from './onboardingSlice';
+import { notificationService } from '../../services/notificationService';
 
 interface AuthState {
   isAuthenticated: boolean;
@@ -214,6 +215,11 @@ const authSlice = createSlice({
         state.authMode = 'online'; // Login is always online
         state.needsCurrencySelection = false; // Existing users don't need currency selection
         
+        // Initialize notifications after successful login
+        notificationService.initializeAfterLogin().catch(error => {
+          console.error('❌ Failed to initialize notifications after login:', error);
+        });
+        
         // Handle any pending currency changes
         apiService.handlePendingCurrencyChange().catch(error => {
           console.error('❌ Failed to handle pending currency change:', error);
@@ -281,6 +287,11 @@ const authSlice = createSlice({
           user: action.payload.user,
           needsCurrencySelection: action.payload.needsCurrencySelection,
           mode: action.payload.mode
+        });
+        
+        // Initialize notifications after successful auth check
+        notificationService.initializeAfterLogin().catch(error => {
+          console.error('❌ Failed to initialize notifications after auth check:', error);
         });
         
         // Handle any pending currency changes

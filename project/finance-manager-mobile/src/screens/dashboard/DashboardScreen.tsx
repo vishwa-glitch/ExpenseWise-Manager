@@ -10,6 +10,7 @@ import {
   Animated,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useFocusEffect } from '@react-navigation/native';
 import { useAppDispatch } from '../../hooks/useAppDispatch';
 import { useTypedSelector, useUserData } from '../../hooks/useTypedSelector';
 import { fetchAccounts } from '../../store/slices/accountsSlice';
@@ -109,6 +110,16 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
       }
     }
   }, [isAuthenticated, user]);
+
+  // Auto-refresh dashboard data when screen comes into focus
+  useFocusEffect(
+    React.useCallback(() => {
+      if (isAuthenticated) {
+        console.log('🔄 Dashboard screen focused - refreshing data');
+        loadDashboardData();
+      }
+    }, [isAuthenticated])
+  );
 
   const loadDashboardData = async () => {
     // Double-check authentication before making API calls
@@ -364,13 +375,17 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
       
       switch (type.toLowerCase()) {
         case 'checking':
-          return '🏛️';
+          return '🏦';
         case 'savings':
-          return '💵';
+          return '💰';
         case 'credit':
           return '💳';
         case 'investment':
           return '📈';
+        case 'cash':
+          return '💵';
+        case 'other':
+          return '💼';
         default:
           return '💼';
       }
@@ -560,8 +575,14 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
             <SmartAlertCard 
               error={null}
               {...getMostRelevantBudgetAlert()}
-                            onPress={() => navigation.navigate('Budget')}
-              onDetailsPress={() => navigation.navigate('Budget')} 
+              onPress={() => navigation.navigate('GoalsBudget', { 
+                screen: 'GoalsBudgetMain',
+                params: { initialTab: 'budget' }
+              })}
+              onDetailsPress={() => navigation.navigate('GoalsBudget', { 
+                screen: 'GoalsBudgetMain',
+                params: { initialTab: 'budget' }
+              })} 
             />
           ) : null}
           {budgetsLoading || getMostRelevantBudgetAlert() ? (

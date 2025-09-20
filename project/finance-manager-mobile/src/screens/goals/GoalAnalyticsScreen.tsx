@@ -7,26 +7,34 @@ import {
   ScrollView,
   TouchableOpacity,
   RefreshControl,
+  Dimensions,
 } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useAppDispatch } from '../../hooks/useAppDispatch';
 import { useTypedSelector } from '../../hooks/useTypedSelector';
 import { fetchGoals } from '../../store/slices/goalsSlice';
-import { LineChart, PieChart, BarChart } from '../../components/charts';
 import { LoadingSpinner } from '../../components/common/LoadingSpinner';
-import { TimePeriodSelector, TimePeriod } from '../../components/common/TimePeriodSelector';
+import { GoalProgressCard } from '../../components/goals/GoalProgressCard';
+import { GoalAnalyticsSummary } from '../../components/goals/GoalAnalyticsSummary';
+import { GoalInsights } from '../../components/goals/GoalInsights';
+import { GoalContributionTimeline } from '../../components/goals/GoalContributionTimeline';
+import { Goal } from '../../types/goals';
 
 import { colors, typography, spacing } from '../../constants/colors';
-import { chartUtils } from '../../constants/chartConfig';
-import { formatCurrency, getCurrencySymbol } from '../../utils/currency';
+import { formatCurrency } from '../../utils/currency';
 
 interface GoalAnalyticsScreenProps {
   navigation: any;
 }
 
+type AnalyticsTab = 'overview' | 'insights' | 'timeline' | 'goals';
+
+const { width: screenWidth } = Dimensions.get('window');
+
 const GoalAnalyticsScreen: React.FC<GoalAnalyticsScreenProps> = ({ navigation }) => {
   const dispatch = useAppDispatch();
   const [refreshing, setRefreshing] = useState(false);
-  const [selectedPeriod, setSelectedPeriod] = useState<TimePeriod>('monthly');
+  const [activeTab, setActiveTab] = useState<AnalyticsTab>('overview');
 
   const { goals, isLoading } = useTypedSelector((state) => state.goals);
   const { isAuthenticated } = useTypedSelector((state) => state.auth);
@@ -55,193 +63,73 @@ const GoalAnalyticsScreen: React.FC<GoalAnalyticsScreenProps> = ({ navigation })
     setRefreshing(false);
   };
 
-  const getGoalsByCategory = () => {
-    const categoryMap = new Map();
-
-    // TODO: Implement proper currency conversion. For now, only aggregating goals in the display currency.
-    goals
-      .filter(goal => goal.currency === displayCurrency)
-      .forEach(goal => {
-        const category = goal.category || 'other';
-        if (!categoryMap.has(category)) {
-          categoryMap.set(category, {
-            name: category.charAt(0).toUpperCase() + category.slice(1),
-            count: 0,
-            totalTarget: 0,
-            totalCurrent: 0,
-          });
-        }
-
-        const categoryData = categoryMap.get(category);
-        categoryData.count += 1;
-        categoryData.totalTarget += goal.target_amount || 0;
-        categoryData.totalCurrent += goal.current_amount || 0;
-      });
-
-    return Array.from(categoryMap.values());
+  const handleGoalPress = (goalId: string) => {
+    navigation.navigate('GoalDetail', { goalId });
   };
 
-  const getCategoryChartData = () => {
-    const categoryData = getGoalsByCategory();
-    
-    // Filter out categories with no savings
-    const validCategories = categoryData.filter(category => category.totalCurrent > 0);
-    
-    if (validCategories.length === 0) {
-      return [];
+  const tabs = [
+    { id: 'overview', label: 'Overview', icon: '📊' },
+    { id: 'insights', label: 'Insights', icon: '💡' },
+    { id: 'timeline', label: 'Timeline', icon: '📈' },
+    { id: 'goals', label: 'Goals', icon: '🎯' },
+  ] as const;
+
+  const renderTabContent = () => {
+    switch (activeTab) {
+      case 'overview':
+        return (
+          <GoalAnalyticsSummary 
+            goals={goals as Goal[]} 
+            displayCurrency={displayCurrency} 
+          />
+        );
+      case 'insights':
+        return (
+          <GoalInsights 
+            goals={goals as Goal[]} 
+            displayCurrency={displayCurrency}
+            onGoalPress={handleGoalPress}
+          />
+        );
+      case 'timeline':
+        return (
+          <GoalContributionTimeline 
+            goals={goals as Goal[]} 
+            displayCurrency={displayCurrency}
+          />
+        );
+      case 'goals':
+        return (
+          <ScrollView showsVerticalScrollIndicator={false}>
+            {goals.filter(goal => goal.status === 'active').map((goal) => (
+              <GoalProgressCard
+                key={goal.id}
+                goal={goal as Goal}
+                onPress={() => handleGoalPress(goal.id)}
+                showDetails={true}
+              />
+            ))}
+            {goals.filter(goal => goal.status === 'active').length === 0 && (
+              <View style={styles.emptyGoals}>
+                <Text style={styles.emptyGoalsIcon}>🎯</Text>
+                <Text style={styles.emptyGoalsTitle}>No Active Goals</Text>
+                <Text style={styles.emptyGoalsText}>
+                  Create your first goal to start tracking your financial progress.
+                </Text>
+                <TouchableOpacity 
+                  style={styles.createGoalButton}
+                  onPress={() => navigation.navigate('CreateGoal')}
+                >
+                  <Text style={styles.createGoalButtonText}>Create Goal</Text>
+                </TouchableOpacity>
+              </View>
+            )}
+          </ScrollView>
+        );
+      default:
+        return null;
     }
-    
-    return validCategories.map((category, index) => ({
-      name: category.name,
-      amount: category.totalCurrent,
-      color: colors.categories[index % colors.categories.length],
-      legendFontColor: colors.text,
-      legendFontSize: 12,
-    }));
   };
-
-  const getGoalProgressData = () => {
-    const activeGoals = goals.filter(goal => goal.status === 'active');
-    
-    if (activeGoals.length === 0) {
-      return {
-        labels: ['No Goals'],
-        datasets: [{ data: [0] }]
-      };
-    }
-    
-    return {
-      labels: activeGoals.map(goal => chartUtils.truncateLabel(goal.title, 10)),
-      datasets: [
-        {
-          data: activeGoals.map(goal => goal.progress_percentage || 0),
-          color: (opacity = 1) => `rgba(46, 125, 87, ${opacity})`,
-        }
-      ]
-    };
-  };
-
-  const getGoalTimelineData = () => {
-    const activeGoals = goals.filter(goal => goal.status === 'active' && goal.days_remaining);
-    
-    if (activeGoals.length === 0) {
-      return {
-        labels: ['No Goals'],
-        datasets: [{ data: [0] }]
-      };
-    }
-    
-    return {
-      labels: activeGoals.map(goal => chartUtils.truncateLabel(goal.title, 10)),
-      datasets: [
-        {
-          data: activeGoals.map(goal => Math.max(0, goal.days_remaining || 0)),
-          color: (opacity = 1) => `rgba(255, 107, 53, ${opacity})`,
-        }
-      ]
-    };
-  };
-
-  const getGoalComparisonData = () => {
-    const activeGoals = goals.filter(goal => goal.status === 'active');
-    
-    if (activeGoals.length === 0) {
-      return {
-        labels: ['No Goals'],
-        datasets: [
-          { data: [0], color: (opacity = 1) => `rgba(46, 125, 87, ${opacity})` },
-          { data: [0], color: (opacity = 1) => `rgba(255, 107, 53, ${opacity})` }
-        ]
-      };
-    }
-    
-    return {
-      labels: activeGoals.map(goal => chartUtils.truncateLabel(goal.title, 8)),
-      datasets: [
-        {
-          data: activeGoals.map(goal => goal.current_amount || 0),
-          color: (opacity = 1) => `rgba(46, 125, 87, ${opacity})`,
-        },
-        {
-          data: activeGoals.map(goal => goal.target_amount || 0),
-          color: (opacity = 1) => `rgba(255, 107, 53, ${opacity})`,
-        }
-      ]
-    };
-  };
-
-  const getMonthlySavingsData = () => {
-    // Mock monthly savings data - in real app this would come from API
-    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'];
-    const totalSavings = calculateTotalSavings();
-    const monthlySavings = totalSavings / 6; // Distribute evenly for demo
-    
-    return {
-      labels: months,
-      datasets: [
-        {
-          data: months.map(() => monthlySavings + (Math.random() - 0.5) * monthlySavings * 0.3),
-          color: (opacity = 1) => `rgba(76, 175, 80, ${opacity})`,
-          strokeWidth: 2,
-        }
-      ]
-    };
-  };
-
-  const calculateTotalSavings = () => {
-    // TODO: Implement proper currency conversion. For now, only summing goals in the display currency.
-    return goals
-      .filter(goal => goal.currency === displayCurrency)
-      .reduce((total, goal) => total + (goal.current_amount || 0), 0);
-  };
-
-  const calculateTotalTarget = () => {
-    // TODO: Implement proper currency conversion. For now, only summing goals in the display currency.
-    return goals
-      .filter(goal => goal.currency === displayCurrency)
-      .reduce((total, goal) => total + (goal.target_amount || 0), 0);
-  };
-
-  const calculateAverageProgress = () => {
-    if (goals.length === 0) return 0;
-    const totalProgress = goals.reduce((sum, goal) => sum + (goal.progress_percentage || 0), 0);
-    return totalProgress / goals.length;
-  };
-
-  const getGoalInsights = () => {
-    const activeGoals = goals.filter(goal => goal.status === 'active');
-    const completedGoals = goals.filter(goal => goal.status === 'completed');
-    const totalSavings = calculateTotalSavings();
-    const totalTarget = calculateTotalTarget();
-    const completionRate = goals.length > 0 ? (completedGoals.length / goals.length) * 100 : 0;
-    
-    const onTrackGoals = activeGoals.filter(goal => {
-      if (!goal.target_date || !goal.monthly_savings_needed) return false;
-      const targetDate = new Date(goal.target_date);
-      const now = new Date();
-      const monthsRemaining = Math.max(1, (targetDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24 * 30));
-      const requiredMonthlySavings = (goal.target_amount - goal.current_amount) / monthsRemaining;
-      return goal.monthly_savings_needed <= requiredMonthlySavings * 1.1; // 10% buffer
-    });
-
-    return {
-      totalGoals: goals.length,
-      activeGoals: activeGoals.length,
-      completedGoals: completedGoals.length,
-      totalSavings,
-      totalTarget,
-      completionRate,
-      onTrackGoals: onTrackGoals.length,
-      averageProgress: calculateAverageProgress(),
-    };
-  };
-
-  const formatAmount = (amount: number) => {
-    // TODO: This should use a display currency and proper conversion for aggregated values
-    return formatCurrency(amount, displayCurrency);
-  };
-
-  const currencySymbol = getCurrencySymbol(displayCurrency);
 
   if (!isAuthenticated || isLoading) {
     return <LoadingSpinner />;
@@ -249,168 +137,98 @@ const GoalAnalyticsScreen: React.FC<GoalAnalyticsScreenProps> = ({ navigation })
 
   return (
     <SafeAreaView style={styles.container}>
-        <View style={styles.header}>
-          <TouchableOpacity
-            style={styles.backButton}
-            onPress={() => navigation.goBack()}
-          >
-            <Text style={styles.backIcon}>←</Text>
-          </TouchableOpacity>
-          <Text style={styles.headerTitle}>Goal Analytics</Text>
-          <View style={styles.placeholder} />
-        </View>
-
-        <ScrollView 
-          style={styles.scrollView}
-          refreshControl={
-            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
-          }
+      {/* Header */}
+      <LinearGradient
+        colors={['#2E7D57', '#1E5631']}
+        style={styles.header}
+      >
+        <TouchableOpacity
+          style={styles.backButton}
+          onPress={() => navigation.goBack()}
         >
-        {/* Summary Stats */}
-        <View style={styles.summaryContainer}>
-          <View style={styles.summaryCard}>
-            <Text style={styles.summaryLabel}>Total Saved</Text>
-            <Text style={styles.summaryValue}>
-              {formatAmount(calculateTotalSavings())}
-            </Text>
-          </View>
-          
-          <View style={styles.summaryCard}>
-            <Text style={styles.summaryLabel}>Total Target</Text>
-            <Text style={styles.summaryValue}>
-              {formatAmount(calculateTotalTarget())}
-            </Text>
-          </View>
-          
-          <View style={styles.summaryCard}>
-            <Text style={styles.summaryLabel}>Avg. Progress</Text>
-            <Text style={styles.summaryValue}>
-              {calculateAverageProgress().toFixed(1)}%
-            </Text>
-          </View>
-        </View>
-
-        {/* Time Period Selector */}
-        <TimePeriodSelector
-          selectedPeriod={selectedPeriod}
-          onPeriodChange={setSelectedPeriod}
-          isLoading={isLoading}
-        />
-
-        {/* Category Distribution */}
-        {getCategoryChartData().length > 0 && (
-          <PieChart
-            data={getCategoryChartData()}
-            title="Savings by Category"
-            timePeriod={selectedPeriod}
-            isLoading={isLoading}
-            showPercentages={true}
-            displayCurrency={displayCurrency}
-          />
-        )}
-
-        {/* Goal Progress */}
-        {goals.filter(goal => goal.status === 'active').length > 0 && (
-          <BarChart
-            data={getGoalProgressData()}
-            title="Goal Progress (%)"
-            yAxisSuffix="%"
-            showValuesOnTopOfBars={true}
-            timePeriod={selectedPeriod}
-            isLoading={isLoading}
-          />
-        )}
-
-        {/* Goal Timeline */}
-        {goals.filter(goal => goal.status === 'active' && goal.days_remaining).length > 0 && (
-          <BarChart
-            data={getGoalTimelineData()}
-            title="Days Remaining"
-            yAxisSuffix=" days"
-            showValuesOnTopOfBars={true}
-            timePeriod={selectedPeriod}
-            isLoading={isLoading}
-          />
-        )}
-
-        {/* Goal Comparison Chart */}
-        {goals.filter(goal => goal.status === 'active').length > 0 && (
-          <BarChart
-            data={getGoalComparisonData()}
-            title="Current vs Target Amount"
-            yAxisSuffix={currencySymbol}
-            showValuesOnTopOfBars={false}
-            timePeriod={selectedPeriod}
-            isLoading={isLoading}
-          />
-        )}
-
-        {/* Monthly Savings Trend */}
-        {goals.length > 0 && (
-          <LineChart
-            data={getMonthlySavingsData()}
-            title="Monthly Savings Trend"
-            yAxisSuffix={currencySymbol}
-            bezier={true}
-            timePeriod={selectedPeriod}
-            isLoading={isLoading}
-          />
-        )}
-
-        {/* Goal Insights */}
-        {goals.length > 0 && (
-          <View style={styles.insightsContainer}>
-            <Text style={styles.insightsTitle}>Goal Insights</Text>
-            <View style={styles.insightsGrid}>
-              <View style={styles.insightCard}>
-                <Text style={styles.insightValue}>{getGoalInsights().completionRate.toFixed(1)}%</Text>
-                <Text style={styles.insightLabel}>Completion Rate</Text>
-              </View>
-              <View style={styles.insightCard}>
-                <Text style={styles.insightValue}>{getGoalInsights().onTrackGoals}</Text>
-                <Text style={styles.insightLabel}>On Track</Text>
-              </View>
-              <View style={styles.insightCard}>
-                <Text style={styles.insightValue}>
-                  {chartUtils.formatCurrency(getGoalInsights().totalTarget - getGoalInsights().totalSavings)}
-                </Text>
-                <Text style={styles.insightLabel}>Remaining</Text>
-              </View>
-              <View style={styles.insightCard}>
-                <Text style={styles.insightValue}>{getGoalInsights().activeGoals}</Text>
-                <Text style={styles.insightLabel}>Active Goals</Text>
-              </View>
-            </View>
-          </View>
-        )}
-
-        {/* Empty State */}
-        {goals.length === 0 && (
-          <View style={styles.emptyState}>
-            <Text style={styles.emptyIcon}>🎯</Text>
-            <Text style={styles.emptyTitle}>No Goals Yet</Text>
-            <Text style={styles.emptyMessage}>
-              Create your first financial goal to start tracking your progress and see detailed analytics.
-            </Text>
-            <TouchableOpacity 
-              style={styles.createGoalButton}
-              onPress={() => navigation.navigate('CreateGoal')}
-            >
-              <Text style={styles.createGoalButtonText}>Create Goal</Text>
-            </TouchableOpacity>
-          </View>
-        )}
-
-        {/* Premium Feature Notice */}
-        <View style={styles.premiumNotice}>
-          <Text style={styles.premiumIcon}>⭐</Text>
-          <Text style={styles.premiumTitle}>Premium Feature</Text>
-          <Text style={styles.premiumText}>
-            You're enjoying detailed goal analytics as part of your premium subscription. This helps you track your progress and make better financial decisions.
+          <Text style={styles.backIcon}>←</Text>
+        </TouchableOpacity>
+        <View style={styles.headerContent}>
+          <Text style={styles.headerTitle}>Goal Analytics</Text>
+          <Text style={styles.headerSubtitle}>
+            {goals.length} {goals.length === 1 ? 'goal' : 'goals'} • {goals.filter(g => g.status === 'active').length} active
           </Text>
-                  </View>
+        </View>
+        <View style={styles.headerStats}>
+          <Text style={styles.headerStatsValue}>
+            {goals.length > 0 
+              ? (goals.reduce((sum, goal) => sum + (goal.progress_percentage || 0), 0) / goals.length).toFixed(0)
+              : 0}%
+          </Text>
+          <Text style={styles.headerStatsLabel}>Avg Progress</Text>
+        </View>
+      </LinearGradient>
+
+      {/* Tab Navigation */}
+      <View style={styles.tabContainer}>
+        <ScrollView 
+          horizontal 
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.tabScrollView}
+        >
+          {tabs.map((tab) => (
+            <TouchableOpacity
+              key={tab.id}
+              style={[
+                styles.tab,
+                activeTab === tab.id && styles.activeTab
+              ]}
+              onPress={() => setActiveTab(tab.id)}
+            >
+              <Text style={[
+                styles.tabIcon,
+                activeTab === tab.id && styles.activeTabIcon
+              ]}>
+                {tab.icon}
+              </Text>
+              <Text style={[
+                styles.tabLabel,
+                activeTab === tab.id && styles.activeTabLabel
+              ]}>
+                {tab.label}
+              </Text>
+            </TouchableOpacity>
+          ))}
         </ScrollView>
-      </SafeAreaView>
+      </View>
+
+      {/* Content */}
+      <ScrollView 
+        style={styles.content}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+        }
+        showsVerticalScrollIndicator={false}
+      >
+        {goals.length === 0 ? (
+          <View style={styles.emptyState}>
+            <LinearGradient
+              colors={['#4A90E2', '#2E5BBA']}
+              style={styles.emptyStateGradient}
+            >
+              <Text style={styles.emptyIcon}>🎯</Text>
+              <Text style={styles.emptyTitle}>Start Your Financial Journey</Text>
+              <Text style={styles.emptyMessage}>
+                Create your first financial goal to unlock powerful analytics and insights that will help you achieve your dreams.
+              </Text>
+              <TouchableOpacity 
+                style={styles.createGoalButton}
+                onPress={() => navigation.navigate('CreateGoal')}
+              >
+                <Text style={styles.createGoalButtonText}>Create Your First Goal</Text>
+              </TouchableOpacity>
+            </LinearGradient>
+          </View>
+        ) : (
+          renderTabContent()
+        )}
+      </ScrollView>
+    </SafeAreaView>
   );
 };
 
@@ -421,184 +239,173 @@ const styles = StyleSheet.create({
   },
   header: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
     paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.md,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
+    paddingVertical: spacing.xl,
+    paddingTop: spacing.lg,
   },
   backButton: {
     padding: spacing.sm,
+    marginRight: spacing.md,
   },
   backIcon: {
     fontSize: 24,
-    color: colors.text,
+    color: colors.background,
+    fontWeight: 'bold',
+  },
+  headerContent: {
+    flex: 1,
   },
   headerTitle: {
-    ...typography.h3,
-    color: colors.text,
+    ...typography.h2,
+    color: colors.background,
+    fontWeight: 'bold',
+    marginBottom: spacing.xs,
   },
-  placeholder: {
-    width: 40,
+  headerSubtitle: {
+    ...typography.caption,
+    color: colors.background + 'CC',
+    fontWeight: '500',
   },
-  scrollView: {
-    flex: 1,
-    padding: spacing.lg,
+  headerStats: {
+    alignItems: 'flex-end',
   },
-  summaryContainer: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: spacing.lg,
+  headerStatsValue: {
+    ...typography.h2,
+    color: colors.background,
+    fontWeight: 'bold',
   },
-  summaryCard: {
-    flex: 1,
+  headerStatsLabel: {
+    ...typography.caption,
+    color: colors.background + 'CC',
+    fontSize: 10,
+  },
+  tabContainer: {
     backgroundColor: colors.card,
-    borderRadius: 12,
-    padding: spacing.md,
-    alignItems: 'center',
-    marginHorizontal: spacing.xs,
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.1,
-    shadowRadius: 3.84,
-    elevation: 5,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
   },
-  summaryLabel: {
+  tabScrollView: {
+    paddingHorizontal: spacing.lg,
+  },
+  tab: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: spacing.md,
+    paddingHorizontal: spacing.lg,
+    marginRight: spacing.md,
+    borderRadius: 20,
+    backgroundColor: colors.surface,
+  },
+  activeTab: {
+    backgroundColor: colors.primary,
+  },
+  tabIcon: {
+    fontSize: 16,
+    marginRight: spacing.xs,
+  },
+  activeTabIcon: {
+    color: colors.background,
+  },
+  tabLabel: {
     ...typography.caption,
     color: colors.textSecondary,
-    marginBottom: spacing.xs,
     fontWeight: '600',
   },
-  summaryValue: {
-    ...typography.h3,
-    color: colors.primary,
-    fontWeight: 'bold',
+  activeTabLabel: {
+    color: colors.background,
+  },
+  content: {
+    flex: 1,
+    paddingTop: spacing.md,
   },
   emptyState: {
-    backgroundColor: colors.card,
-    borderRadius: 12,
-    padding: spacing.xl,
-    alignItems: 'center',
-    marginVertical: spacing.lg,
+    margin: spacing.lg,
+    borderRadius: 16,
+    overflow: 'hidden',
     shadowColor: '#000',
     shadowOffset: {
       width: 0,
-      height: 2,
+      height: 4,
     },
     shadowOpacity: 0.1,
-    shadowRadius: 3.84,
-    elevation: 5,
+    shadowRadius: 8,
+    elevation: 6,
+  },
+  emptyStateGradient: {
+    padding: spacing.xl,
+    alignItems: 'center',
   },
   emptyIcon: {
-    fontSize: 48,
-    marginBottom: spacing.md,
+    fontSize: 64,
+    marginBottom: spacing.lg,
   },
   emptyTitle: {
-    ...typography.h3,
-    color: colors.text,
+    ...typography.h2,
+    color: colors.background,
     fontWeight: 'bold',
-    marginBottom: spacing.sm,
+    marginBottom: spacing.md,
     textAlign: 'center',
   },
   emptyMessage: {
     ...typography.body,
-    color: colors.textSecondary,
+    color: colors.background + 'DD',
     textAlign: 'center',
     lineHeight: 22,
+    marginBottom: spacing.xl,
+  },
+  emptyGoals: {
+    backgroundColor: colors.card,
+    margin: spacing.lg,
+    borderRadius: 16,
+    padding: spacing.xl,
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  emptyGoalsIcon: {
+    fontSize: 48,
+    marginBottom: spacing.md,
+  },
+  emptyGoalsTitle: {
+    ...typography.h3,
+    color: colors.text,
+    fontWeight: 'bold',
+    marginBottom: spacing.sm,
+    textAlign: 'center',
+  },
+  emptyGoalsText: {
+    ...typography.body,
+    color: colors.textSecondary,
+    textAlign: 'center',
+    lineHeight: 20,
     marginBottom: spacing.lg,
   },
   createGoalButton: {
     backgroundColor: colors.primary,
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.sm,
-    borderRadius: 8,
+    paddingHorizontal: spacing.xl,
+    paddingVertical: spacing.md,
+    borderRadius: 12,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
   },
   createGoalButtonText: {
-    ...typography.caption,
+    ...typography.h4,
     color: colors.background,
-    fontWeight: '600',
-  },
-  premiumNotice: {
-    backgroundColor: colors.card,
-    borderRadius: 12,
-    padding: spacing.lg,
-    marginTop: spacing.lg,
-    marginBottom: spacing.lg,
-    alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.1,
-    shadowRadius: 3.84,
-    elevation: 5,
-  },
-  premiumIcon: {
-    fontSize: 32,
-    marginBottom: spacing.md,
-  },
-  premiumTitle: {
-    ...typography.h3,
-    color: colors.text,
     fontWeight: 'bold',
-    marginBottom: spacing.md,
-  },
-  premiumText: {
-    ...typography.body,
-    color: colors.textSecondary,
     textAlign: 'center',
-    lineHeight: 22,
-  },
-  insightsContainer: {
-    backgroundColor: colors.card,
-    borderRadius: 12,
-    padding: spacing.lg,
-    marginVertical: spacing.md,
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.1,
-    shadowRadius: 3.84,
-    elevation: 5,
-  },
-  insightsTitle: {
-    ...typography.h3,
-    color: colors.text,
-    fontWeight: 'bold',
-    marginBottom: spacing.md,
-    textAlign: 'center',
-  },
-  insightsGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    justifyContent: 'space-between',
-  },
-  insightCard: {
-    width: '48%',
-    backgroundColor: colors.surface,
-    borderRadius: 8,
-    padding: spacing.md,
-    alignItems: 'center',
-    marginBottom: spacing.sm,
-  },
-  insightValue: {
-    ...typography.h3,
-    color: colors.primary,
-    fontWeight: 'bold',
-    marginBottom: spacing.xs,
-  },
-  insightLabel: {
-    ...typography.caption,
-    color: colors.textSecondary,
-    textAlign: 'center',
-    fontWeight: '600',
   },
 });
 

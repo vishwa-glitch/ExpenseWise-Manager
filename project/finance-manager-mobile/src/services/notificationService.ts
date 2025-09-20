@@ -3,6 +3,10 @@ import * as Device from 'expo-device';
 import { Platform } from 'react-native';
 import { store } from '../store';
 import { fetchNotifications, fetchUnreadNotifications } from '../store/slices/notificationsSlice';
+// Import monitoring services (lazy import to avoid circular dependencies)
+let budgetMonitoringService: any = null;
+let goalMonitoringService: any = null;
+let notificationScheduler: any = null;
 
 // Configure notification behavior
 Notifications.setNotificationHandler({
@@ -10,6 +14,8 @@ Notifications.setNotificationHandler({
     shouldShowAlert: true,
     shouldPlaySound: true,
     shouldSetBadge: true,
+    shouldShowBanner: true,
+    shouldShowList: true,
   }),
 });
 
@@ -24,15 +30,54 @@ export interface NotificationData {
 
 class NotificationService {
   private expoPushToken: string | null = null;
+  private isInitialized: boolean = false;
 
   constructor() {
-    this.initialize();
-  }
-
-  private async initialize() {
-    await this.registerForPushNotificationsAsync();
+    // Don't auto-initialize - wait for explicit call after login
     this.setupNotificationListeners();
   }
+
+  // Public method to initialize notifications after login
+  async initializeAfterLogin() {
+    if (this.isInitialized) {
+      console.log('🔔 Notifications already initialized');
+      return;
+    }
+    
+    console.log('🔔 Initializing notifications after login...');
+    await this.registerForPushNotificationsAsync();
+    this.isInitialized = true;
+    
+    // Start monitoring services after notifications are initialized
+    try {
+      // Start budget monitoring
+      if (!budgetMonitoringService) {
+        const { budgetMonitoringService: service } = await import('./budgetMonitoringService');
+        budgetMonitoringService = service;
+      }
+      await budgetMonitoringService.startMonitoring();
+      console.log('🔔 Budget monitoring service started with notifications');
+      
+      // Start goal monitoring
+      if (!goalMonitoringService) {
+        const { goalMonitoringService: service } = await import('./goalMonitoringService');
+        goalMonitoringService = service;
+      }
+      await goalMonitoringService.startMonitoring();
+      console.log('🎯 Goal monitoring service started with notifications');
+      
+      // Initialize notification scheduler
+      if (!notificationScheduler) {
+        const { notificationScheduler: scheduler } = await import('./notificationScheduler');
+        notificationScheduler = scheduler;
+      }
+      await notificationScheduler.initialize();
+      console.log('📅 Notification scheduler initialized with notifications');
+    } catch (error) {
+      console.error('❌ Failed to start monitoring services:', error);
+    }
+  }
+
 
   private async registerForPushNotificationsAsync() {
     let token;
@@ -110,9 +155,27 @@ class NotificationService {
         break;
       case 'budget':
         // Navigate to budgets screen
+        // If it's a budget alert with specific budget ID, navigate to that budget
+        if (data?.budgetId) {
+          console.log(`🔔 Navigating to budget: ${data.budgetId}`);
+          // Could navigate to specific budget detail screen
+        } else {
+          console.log('🔔 Navigating to budgets overview');
+          // Navigate to budgets list screen
+        }
         break;
       case 'goal':
         // Navigate to goals screen
+        if (data?.goalId) {
+          console.log(`🎯 Navigating to goal: ${data.goalId}`);
+          // Could navigate to specific goal detail screen
+        } else if (data?.alertType === 'no_goals') {
+          console.log('🎯 Navigating to goal creation screen');
+          // Navigate to create goal screen
+        } else {
+          console.log('🎯 Navigating to goals overview');
+          // Navigate to goals list screen
+        }
         break;
       default:
         // Navigate to notifications screen
@@ -120,9 +183,36 @@ class NotificationService {
     }
   }
 
-  // Schedule a local notification
+  // Schedule a local notification (with smart scheduling for budget/goal notifications)
   async scheduleLocalNotification(notification: NotificationData, trigger?: Notifications.NotificationTriggerInput) {
     try {
+      // Check if this notification should be queued instead of sent immediately
+      if (!notificationScheduler) {
+        const { notificationScheduler: scheduler } = await import('./notificationScheduler');
+        notificationScheduler = scheduler;
+      }
+      
+      const shouldQueue = notificationScheduler.shouldQueue(
+        notification.type, 
+        notification.data?.alertType
+      );
+      
+      if (shouldQueue && !trigger) {
+        // Queue budget/goal notifications instead of sending immediately
+        await notificationScheduler.queueNotification({
+          id: notification.id,
+          type: notification.type as 'budget' | 'goal',
+          title: notification.title,
+          message: notification.body,
+          data: notification.data || {},
+          priority: notification.priority || 'normal',
+        });
+        
+        console.log('📅 Queued notification instead of sending immediately:', notification.title);
+        return `queued-${notification.id}`;
+      }
+      
+      // Send immediately for daily reminders, system notifications, or when trigger is specified
       const notificationId = await Notifications.scheduleNotificationAsync({
         content: {
           title: notification.title,
@@ -134,7 +224,7 @@ class NotificationService {
         trigger: trigger || null, // null means show immediately
       });
       
-      console.log('🔔 Scheduled notification:', notificationId);
+      console.log('🔔 Scheduled notification immediately:', notificationId);
       return notificationId;
     } catch (error) {
       console.error('❌ Error scheduling notification:', error);
@@ -154,7 +244,7 @@ class NotificationService {
       },
       {
         date,
-      }
+      } as Notifications.DateTriggerInput
     );
   }
 

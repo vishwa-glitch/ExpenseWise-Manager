@@ -3,6 +3,14 @@ import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { colors, typography, spacing } from '../../constants/colors';
 import { useTypedSelector } from '../../hooks/useTypedSelector';
 import { formatCurrency } from '../../utils/currency';
+import { 
+  getStatusDisplay, 
+  calculateBudgetStatus, 
+  calculateDaysRemaining,
+  getSpendingAdvice,
+  formatUtilizationRate,
+  type BudgetStatus 
+} from '../../utils/budgetStatus';
 
 interface BudgetCardProps {
   budget: {
@@ -16,6 +24,9 @@ interface BudgetCardProps {
     end_date: string;
     is_active: boolean;
     currency?: string;
+    status?: BudgetStatus;
+    utilization_rate?: number;
+    alert_threshold?: number;
   };
   onPress?: () => void;
   onEdit?: () => void;
@@ -40,12 +51,35 @@ export const BudgetCard: React.FC<BudgetCardProps> = ({ budget, onPress, onEdit,
     return budget.amount - (budget.spent_amount || 0);
   };
 
+  const getBudgetStatus = (): BudgetStatus => {
+    if (budget.status) {
+      return budget.status;
+    }
+    const utilizationRate = budget.utilization_rate || getProgressPercentage();
+    const alertThreshold = budget.alert_threshold || 80;
+    return calculateBudgetStatus(utilizationRate, alertThreshold);
+  };
+
   const getProgressColor = () => {
-    const percentage = getProgressPercentage();
-    if (percentage >= 100) return colors.error;
-    if (percentage >= 80) return colors.warning;
-    if (percentage >= 60) return colors.accent;
-    return colors.primary;
+    const status = getBudgetStatus();
+    const statusColors = {
+      green: colors.success || colors.primary,
+      blue: colors.info || colors.accent,
+      orange: colors.warning,
+      red: colors.error
+    };
+    return getStatusDisplay(status, statusColors).color;
+  };
+
+  const getStatusInfo = () => {
+    const status = getBudgetStatus();
+    const statusColors = {
+      green: colors.success || colors.primary,
+      blue: colors.info || colors.accent,
+      orange: colors.warning,
+      red: colors.error
+    };
+    return getStatusDisplay(status, statusColors);
   };
 
   const getPeriodIcon = (period: string) => {
@@ -123,11 +157,11 @@ export const BudgetCard: React.FC<BudgetCardProps> = ({ budget, onPress, onEdit,
   };
 
   const getDaysRemaining = () => {
-    const endDate = new Date(budget.end_date);
-    const today = new Date();
-    const diffTime = endDate.getTime() - today.getTime();
-    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-    return Math.max(0, diffDays);
+    return calculateDaysRemaining(budget.end_date);
+  };
+
+  const getUtilizationRate = () => {
+    return budget.utilization_rate || getProgressPercentage();
   };
 
   return (
@@ -154,32 +188,32 @@ export const BudgetCard: React.FC<BudgetCardProps> = ({ budget, onPress, onEdit,
           </View>
         </View>
         
-        {budget.is_active && (
-          <View style={styles.actionsContainer}>
-            {onEdit && (
-              <TouchableOpacity
-                style={styles.actionButton}
-                onPress={onEdit}
-              >
-                <Text style={styles.editIcon}>✏️</Text>
-              </TouchableOpacity>
-            )}
-            {onDelete && (
-              <TouchableOpacity
-                style={styles.actionButton}
-                onPress={onDelete}
-              >
-                <Text style={styles.deleteIcon}>🗑️</Text>
-              </TouchableOpacity>
-            )}
-          </View>
+        {budget.is_active && onEdit && (
+          <TouchableOpacity
+            style={styles.editButton}
+            onPress={onEdit}
+          >
+            <Text style={styles.editButtonText}>Edit</Text>
+          </TouchableOpacity>
         )}
       </View>
 
       <View style={styles.progressSection}>
         <View style={styles.progressHeader}>
           <Text style={styles.spentAmount}>
-            Spent: {formatAmount(budget.spent_amount || 0)}
+            Budget Used: {formatUtilizationRate(getUtilizationRate())}
+          </Text>
+          <View style={styles.statusChip}>
+            <Text style={styles.statusIcon}>{getStatusInfo().icon}</Text>
+            <Text style={[styles.statusText, { color: getStatusInfo().color }]}>
+              {getStatusInfo().text}
+            </Text>
+          </View>
+        </View>
+        
+        <View style={styles.amountRow}>
+          <Text style={styles.spentAmountDetail}>
+            {formatAmount(budget.spent_amount || 0)}
           </Text>
           <Text style={styles.totalAmount}>
             of {formatAmount(budget.amount)}
@@ -191,7 +225,7 @@ export const BudgetCard: React.FC<BudgetCardProps> = ({ budget, onPress, onEdit,
             style={[
               styles.progressFill,
               {
-                width: `${getProgressPercentage()}%`,
+                width: `${getUtilizationRate()}%`,
                 backgroundColor: getProgressColor(),
               },
             ]}
@@ -206,8 +240,8 @@ export const BudgetCard: React.FC<BudgetCardProps> = ({ budget, onPress, onEdit,
             {getRemainingAmount() >= 0 ? 'Remaining: ' : 'Over budget: '}
             {formatAmount(Math.abs(getRemainingAmount()))}
           </Text>
-          <Text style={styles.progressPercentage}>
-            {getProgressPercentage().toFixed(1)}%
+          <Text style={styles.contextInfo}>
+            {getStatusInfo().description}
           </Text>
         </View>
       </View>
@@ -290,19 +324,16 @@ const styles = StyleSheet.create({
     color: colors.textSecondary,
     textTransform: 'capitalize',
   },
-  actionsContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
+  editButton: {
+    backgroundColor: colors.primary,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    borderRadius: 8,
   },
-  actionButton: {
-    padding: spacing.sm,
-    marginLeft: spacing.xs,
-  },
-  editIcon: {
-    fontSize: 16,
-  },
-  deleteIcon: {
-    fontSize: 16,
+  editButtonText: {
+    ...typography.caption,
+    color: colors.white,
+    fontWeight: '600',
   },
   progressSection: {
     marginBottom: spacing.md,
@@ -311,7 +342,35 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
+    marginBottom: spacing.xs,
+  },
+  statusChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: colors.surface,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: spacing.xs,
+    borderRadius: 12,
+  },
+  statusIcon: {
+    fontSize: 14,
+    marginRight: spacing.xs,
+  },
+  statusText: {
+    ...typography.caption,
+    fontWeight: '600',
+    fontSize: 12,
+  },
+  amountRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
     marginBottom: spacing.sm,
+  },
+  spentAmountDetail: {
+    ...typography.body,
+    color: colors.text,
+    fontWeight: 'bold',
   },
   spentAmount: {
     ...typography.body,
@@ -341,10 +400,13 @@ const styles = StyleSheet.create({
     ...typography.caption,
     fontWeight: '600',
   },
-  progressPercentage: {
+  contextInfo: {
     ...typography.caption,
     color: colors.textSecondary,
-    fontWeight: '600',
+    fontSize: 11,
+    flex: 1,
+    textAlign: 'right',
+    marginLeft: spacing.sm,
   },
   footer: {
     flexDirection: 'row',

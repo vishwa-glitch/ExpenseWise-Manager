@@ -7,7 +7,9 @@ import {
   SafeAreaView,
   Dimensions,
 } from 'react-native';
+import LottieView from 'lottie-react-native';
 import { colors, typography, spacing } from '../../constants/colors';
+import peopleAnimation from '../../../assets/animations/people.json';
 
 const { width, height } = Dimensions.get('window');
 
@@ -22,9 +24,12 @@ const OnboardingScreen3: React.FC<OnboardingScreen3Props> = ({ onGetStarted, onB
       <View style={styles.content}>
         {/* Large illustration area */}
         <View style={styles.illustrationContainer}>
-          <View style={styles.illustrationPlaceholder}>
-            <Text style={styles.placeholderText}>📈</Text>
-          </View>
+          <LottieView
+            source={peopleAnimation}
+            autoPlay
+            loop
+            style={styles.lottieAnimation}
+          />
         </View>
 
         {/* Bottom section with text and navigation */}
@@ -74,16 +79,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingTop: spacing.xxl,
   },
-  illustrationPlaceholder: {
-    width: width * 0.7,
+  lottieAnimation: {
+    width: width * 0.8,
     height: height * 0.4,
-    backgroundColor: colors.surface,
-    borderRadius: 20,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  placeholderText: {
-    fontSize: 100,
   },
   bottomSection: {
     paddingHorizontal: spacing.lg,

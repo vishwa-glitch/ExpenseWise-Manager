@@ -51,18 +51,9 @@ const BudgetsListScreen: React.FC<BudgetsListScreenProps> = ({ navigation }) => 
   // Handle screen focus to refresh data and restore scroll functionality
   useFocusEffect(
     React.useCallback(() => {
-      // Only refresh data if we're coming back from budget creation/editing
-      // Don't refresh on every focus to prevent double loading
       if (isAuthenticated) {
-        // Check if we need to refresh (e.g., coming from CreateBudget or EditBudget)
-        const shouldRefresh = navigation.getState()?.routes?.some((route: any) => 
-          route.name === 'CreateBudget' || route.name === 'EditBudget'
-        );
-        
-        if (shouldRefresh) {
-          console.log('🔄 Refreshing budget data after budget creation/editing');
-          loadData();
-        }
+        console.log(' Budget screen focused - refreshing data');
+        loadData();
       }
       
       // Reset scroll position and ensure FlatList is properly initialized
@@ -72,7 +63,7 @@ const BudgetsListScreen: React.FC<BudgetsListScreenProps> = ({ navigation }) => 
           flatListRef.current?.scrollToOffset({ offset: 0, animated: false });
         }, 100);
       }
-    }, [isAuthenticated, navigation])
+    }, [isAuthenticated])
   );
 
   const restoreScrollPosition = () => {
@@ -276,8 +267,6 @@ const BudgetsListScreen: React.FC<BudgetsListScreenProps> = ({ navigation }) => 
 
   return (
     <SafeAreaView style={styles.container}>
-
-      
       <FlatList
         ref={flatListRef}
         data={budgets}
@@ -324,6 +313,30 @@ const BudgetsListScreen: React.FC<BudgetsListScreenProps> = ({ navigation }) => 
 };
 
 const styles = StyleSheet.create({
+  fab: {
+    position: 'absolute',
+    bottom: spacing.xl,
+    right: spacing.lg,
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: colors.primary,
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 4,
+    },
+    shadowOpacity: 0.3,
+    shadowRadius: 4.65,
+    elevation: 8,
+  },
+  fabIcon: {
+    fontSize: 24,
+    color: colors.background,
+    fontWeight: 'bold',
+  },
   container: {
     flex: 1,
     backgroundColor: colors.background,
@@ -429,30 +442,6 @@ const styles = StyleSheet.create({
     ...typography.body,
     color: colors.background,
     fontWeight: '600',
-  },
-  fab: {
-    position: 'absolute',
-    bottom: spacing.xl,
-    right: spacing.lg,
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    backgroundColor: colors.primary,
-    justifyContent: 'center',
-    alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 4,
-    },
-    shadowOpacity: 0.3,
-    shadowRadius: 4.65,
-    elevation: 8,
-  },
-  fabIcon: {
-    fontSize: 24,
-    color: colors.background,
-    fontWeight: 'bold',
   },
 });
 

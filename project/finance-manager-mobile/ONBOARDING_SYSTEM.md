@@ -4,39 +4,24 @@ This document describes the onboarding system implemented for new users in the F
 
 ## Overview
 
-The onboarding system provides a guided experience for new users to set up their financial tracking by creating accounts, transactions, and budgets. Users can skip any step if they prefer to set up these features later.
+The onboarding system provides a comprehensive guided experience for new users through all major app features. It includes both initial welcome screens with Lottie animations and an interactive overlay system that guides users through the main app functionality.
 
 ## Features
 
-### 1. Welcome Screen
-- Introduces the app and its key features
-- Shows benefits of using the app
-- Provides "Get Started" and "Skip for now" options
+### Phase 1: Initial Welcome Screens (with Lottie Animations)
+1. **Welcome Screen** - Bank animation, introduces financial growth concept
+2. **Organization Screen** - Coins animation, explains transaction categorization
+3. **Data Control Screen** - People animation, highlights export capabilities
 
-### 2. Account Creation
-- Guides users to create their first account
-- Supports different account types (Checking, Savings, Credit Card, Investment)
-- Collects account name and current balance
-- Includes skip option with confirmation dialog
-
-### 3. Transaction Setup
-- Helps users add their first transaction
-- Supports both income and expense transactions
-- Includes category selection
-- Collects transaction name and amount
-- Includes skip option with confirmation dialog
-
-### 4. Budget Creation
-- Guides users to create their first budget
-- Supports different budget periods (Weekly, Monthly, Yearly)
-- Includes category selection
-- Collects budget name and amount
-- Includes skip option with confirmation dialog
-
-### 5. Completion Screen
-- Shows success message and app features summary
-- Auto-completes onboarding after 2 seconds
-- Provides manual "Get Started" button
+### Phase 2: Interactive Guided Tour (Overlay System)
+1. **Dashboard Welcome** - Guides to "Add Account" button
+2. **Account Creation** - Walks through account setup process
+3. **Transaction Tracking** - Shows how to add transactions
+4. **Calendar View** - Demonstrates transaction calendar navigation
+5. **Budget Management** - Guides through budget creation
+6. **Custom Categories** - Shows category customization features
+7. **Financial Goals** - Introduces savings goal tracking
+8. **Completion** - Final congratulations and app readiness confirmation
 
 ## Technical Implementation
 
@@ -44,20 +29,17 @@ The onboarding system provides a guided experience for new users to set up their
 - **Redux Slice**: `onboardingSlice.ts`
 - **State Properties**:
   - `isOnboardingComplete`: Whether onboarding is finished
-  - `currentStep`: Current step in the flow (0-4)
-  - `totalSteps`: Total number of steps (4)
+  - `currentStep`: Current step in the overlay flow (0-7)
+  - `totalSteps`: Total number of overlay steps (8)
+  - `isOverlayVisible`: Whether the guided overlay is shown
   - `hasCreatedAccount`: Whether user created an account
   - `hasCreatedTransaction`: Whether user created a transaction
   - `hasCreatedBudget`: Whether user created a budget
 
 ### Navigation
-- **Navigator**: `OnboardingNavigator.tsx`
-- **Screens**:
-  - `OnboardingWelcomeScreen`
-  - `OnboardingAccountScreen`
-  - `OnboardingTransactionScreen`
-  - `OnboardingBudgetScreen`
-  - `OnboardingCompletionScreen`
+- **Initial Screens**: `OnboardingNavigator.tsx` with Lottie animations
+- **Overlay System**: `OnboardingOverlay.tsx` component used across screens
+- **Hook**: `useOnboardingOverlay.ts` manages overlay state and navigation
 
 ### Integration
 - Integrated into `AppNavigator.tsx`
@@ -67,11 +49,12 @@ The onboarding system provides a guided experience for new users to set up their
 
 ## User Flow
 
-1. **New User Registration** → Currency Selection → Onboarding
-2. **Existing User Login** → Main App (no onboarding)
-3. **Onboarding Flow**:
-   - Welcome → Account → Transaction → Budget → Completion → Main App
-4. **Skip Options**: Available at each step with confirmation dialogs
+1. **App Launch (Unauthenticated)** → Lottie Onboarding Screens → Login/Register
+2. **New User Registration** → Currency Selection → Main App with Overlay Tour
+3. **Existing User Login** → Main App (no onboarding)
+4. **Complete Onboarding Flow**:
+   - **Phase 1**: Welcome (Bank) → Organization (Coins) → Data Control (People) → Login/Register
+   - **Phase 2**: Dashboard → Accounts → Transactions → Calendar → Budgets → Categories → Goals → Complete
 
 ## Persistence
 

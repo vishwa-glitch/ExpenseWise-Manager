@@ -96,6 +96,7 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) => {
     </View>
   );
 
+
   return (
     <ScreenContainer>
       <ScreenHeader

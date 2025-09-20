@@ -21,6 +21,8 @@ import { currencyService, Currency } from '../../services/currencyService';
 import { apiService } from '../../services/api';
 import { completeCurrencySelection, clearRegistrationCredentials } from '../../store/slices/authSlice';
 import { setDisplayCurrency } from '../../store/slices/userSlice';
+import { showOverlay, resetOnboarding } from '../../store/slices/onboardingSlice';
+import { notificationService } from '../../services/notificationService';
 
 interface CurrencySelectionScreenProps {
   navigation: any;
@@ -323,7 +325,19 @@ const CurrencySelectionScreen: React.FC<CurrencySelectionScreenProps> = ({ navig
     // Clear registration credentials for security
     dispatch(clearRegistrationCredentials());
     
+    // Initialize notifications for new users
+    console.log('🔔 Initializing notifications for new user...');
+    notificationService.initializeAfterLogin().catch(error => {
+      console.error('❌ Failed to initialize notifications after registration:', error);
+    });
+    
+    // Initialize onboarding overlay for new users
+    console.log('🎯 Initializing onboarding overlay for new user...');
+    dispatch(resetOnboarding()); // Reset any previous onboarding state
+    dispatch(showOverlay()); // Show the onboarding overlay
+    
     console.log('✅ Proceeding to main app with currency:', selectedCurrency);
+    console.log('🎯 Onboarding overlay will be shown to guide the user');
     
     // No need to navigate - the AppNavigator will automatically show the Main screen
     // when needsCurrencySelection becomes false

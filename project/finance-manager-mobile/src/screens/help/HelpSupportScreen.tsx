@@ -64,6 +64,7 @@ const HelpSupportScreen: React.FC = () => {
     }
   ];
 
+
   const contactOptions = [
     {
       title: "Email Support",
@@ -125,6 +126,7 @@ const HelpSupportScreen: React.FC = () => {
   const requestFeature = () => {
     Linking.openURL('mailto:wealthwise523@gmail.com?subject=Feature Request');
   };
+
 
   const restartOnboarding = () => {
     Alert.alert(
