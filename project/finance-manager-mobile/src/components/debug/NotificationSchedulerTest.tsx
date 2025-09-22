@@ -12,9 +12,18 @@ export const NotificationSchedulerTest: React.FC = () => {
   const [status, setStatus] = useState<any>(null);
 
   const handleGetStatus = () => {
-    const currentStatus = notificationScheduler.getQueueStatus();
+    const currentStatus = notificationScheduler.getDetailedStatus();
     setStatus(currentStatus);
     Alert.alert('Scheduler Status', JSON.stringify(currentStatus, null, 2));
+  };
+
+  const handleSendImmediateTest = async () => {
+    try {
+      await notificationScheduler.sendImmediateTestNotification();
+      Alert.alert('Success', 'Immediate test notification sent! You should see it now.');
+    } catch (error) {
+      Alert.alert('Error', `Failed to send immediate notification: ${error}`);
+    }
   };
 
   const handleQueueBudgetNotification = async () => {
@@ -81,6 +90,20 @@ export const NotificationSchedulerTest: React.FC = () => {
       handleGetStatus(); // Refresh status
     } catch (error) {
       Alert.alert('Error', `Failed to clear queue: ${error}`);
+    }
+  };
+
+  const handleAddTestNotification = async () => {
+    try {
+      await notificationScheduler.addTestNotification(
+        'budget',
+        '🧪 Quick Test Notification',
+        'This test notification should appear in 30 seconds!'
+      );
+      Alert.alert('Success', 'Test notification added! It will appear in 30 seconds.');
+      handleGetStatus(); // Refresh status
+    } catch (error) {
+      Alert.alert('Error', `Failed to add test notification: ${error}`);
     }
   };
 
@@ -164,8 +187,16 @@ export const NotificationSchedulerTest: React.FC = () => {
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>Immediate Notifications</Text>
         
+        <TouchableOpacity style={styles.immediateButton} onPress={handleSendImmediateTest}>
+          <Text style={styles.buttonText}>Send Immediate Test (Bypass Queue)</Text>
+        </TouchableOpacity>
+
         <TouchableOpacity style={styles.immediateButton} onPress={handleSendImmediateNotification}>
-          <Text style={styles.buttonText}>Send Immediate Notification</Text>
+          <Text style={styles.buttonText}>Send Immediate via Service</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity style={styles.queueButton} onPress={handleAddTestNotification}>
+          <Text style={styles.buttonText}>Add 30-Second Test</Text>
         </TouchableOpacity>
       </View>
 

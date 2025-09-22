@@ -10,6 +10,8 @@ interface GoalCardProps {
     title: string;
     target_amount?: number;
     current_amount?: number;
+    initial_amount?: number;
+    contributed_amount?: number;
     progress_percentage?: number;
     target_date?: string;
     days_remaining?: number;
@@ -18,6 +20,7 @@ interface GoalCardProps {
     category?: string;
     priority?: string;
     currency?: string;
+    is_goal_exceeded?: boolean;
   };
   onPress?: () => void;
   onContribute?: () => void;
@@ -81,7 +84,8 @@ export const GoalCard: React.FC<GoalCardProps> = ({ goal, onPress, onContribute,
 
   const getProgressColor = () => {
     const progress = goal.progress_percentage || 0;
-    if (progress >= 100) return colors.success;
+    if (progress > 100) return colors.success; // Exceeded goal
+    if (progress >= 100) return colors.success; // Completed goal
     if (progress >= 75) return colors.primary;
     if (progress >= 50) return colors.warning;
     return colors.accent;
@@ -138,7 +142,30 @@ export const GoalCard: React.FC<GoalCardProps> = ({ goal, onPress, onContribute,
   const getRemainingAmount = () => {
     const target = typeof goal.target_amount === 'number' && !isNaN(goal.target_amount) ? goal.target_amount : 0;
     const current = typeof goal.current_amount === 'number' && !isNaN(goal.current_amount) ? goal.current_amount : 0;
-    return target - current;
+    
+    // Return actual remaining amount (can be negative if goal exceeded)
+    const remaining = target - current;
+    return typeof remaining === 'number' && !isNaN(remaining) ? remaining : 0;
+  };
+
+  const getCompletionStatus = () => {
+    const progress = goal.progress_percentage || 0;
+    const current = typeof goal.current_amount === 'number' && !isNaN(goal.current_amount) ? goal.current_amount : 0;
+    const target = typeof goal.target_amount === 'number' && !isNaN(goal.target_amount) ? goal.target_amount : 0;
+    
+    // Use backend flag if available, otherwise calculate
+    const isExceeded = goal.is_goal_exceeded !== undefined 
+      ? goal.is_goal_exceeded 
+      : current >= target;
+    
+    if (goal.status === 'completed' || progress >= 100 || isExceeded) {
+      const message = isExceeded && current > target 
+        ? '🎉 Goal Exceeded!' 
+        : '🎉 Goal Achieved!';
+      return { isCompleted: true, message, isExceeded };
+    }
+    
+    return { isCompleted: false, message: null, isExceeded: false };
   };
 
   return (
@@ -156,30 +183,33 @@ export const GoalCard: React.FC<GoalCardProps> = ({ goal, onPress, onContribute,
             <Text style={styles.icon}>{getCategoryIcon(goal.category)}</Text>
           </View>
           <View style={styles.titleContainer}>
-            <Text style={styles.title} numberOfLines={1}>
+            <Text style={styles.title} numberOfLines={2}>
               {goal.title || 'Untitled Goal'}
             </Text>
             {!compact && goal.category ? (
               <Text style={styles.category}>
-                {typeof goal.category === 'string' ? goal.category.charAt(0).toUpperCase() + goal.category.slice(1) : String(goal.category || '')}
+                {getCategoryIcon(goal.category)} {(() => {
+                  const category = goal.category;
+                  if (typeof category === 'string' && category.length > 0) {
+                    return category.charAt(0).toUpperCase() + category.slice(1);
+                  }
+                  return String(category || '');
+                })()}
               </Text>
             ) : null}
           </View>
         </View>
         <View style={styles.headerRight}>
-          {goal.priority && getPriorityDisplay() ? (
-            <View style={[styles.priorityBadge, { backgroundColor: getPriorityColor() }]}>
-              <Text style={styles.priorityText}>{String(getPriorityDisplay() || '')}</Text>
-            </View>
-          ) : null}
-          <View style={[styles.statusBadge, { backgroundColor: getTransparentColor(getStatusColor(), 0.2) }]}>
-            <Text style={[styles.statusText, { color: getStatusColor() }]}>
-              {(() => {
-                const status = goal.status || 'active';
-                return typeof status === 'string' ? status.charAt(0).toUpperCase() + status.slice(1) : String(status);
-              })()}
+          {goal.target_date && formatDate(goal.target_date) ? (
+            <Text style={styles.targetDate}>
+              🗓️ {formatDate(goal.target_date)}
             </Text>
-          </View>
+          ) : null}
+          {goal.days_remaining !== undefined && typeof goal.days_remaining === 'number' && goal.days_remaining > 0 ? (
+            <Text style={[styles.daysRemaining, { color: getDaysRemainingColor() }]}>
+              ⏰ {goal.days_remaining} days left
+            </Text>
+          ) : null}
         </View>
       </View>
 
@@ -209,39 +239,63 @@ export const GoalCard: React.FC<GoalCardProps> = ({ goal, onPress, onContribute,
 
       {/* Enhanced Amount Section */}
       <View style={styles.amountSection}>
-        <View style={styles.amountRow}>
-          <Text style={styles.amountLabel}>Current</Text>
-          <Text style={styles.currentAmount}>
-            {formatAmount(goal.current_amount)}
-          </Text>
-        </View>
-        <View style={styles.amountRow}>
-          <Text style={styles.amountLabel}>Target</Text>
-          <Text style={styles.targetAmount}>
-            {formatAmount(goal.target_amount)}
-          </Text>
-        </View>
-        <View style={styles.amountRow}>
-          <Text style={styles.amountLabel}>Remaining</Text>
-          <Text style={styles.remainingAmount}>
-            {formatAmount(getRemainingAmount())}
-          </Text>
-        </View>
+        {getCompletionStatus().isCompleted ? (
+          <View style={[styles.completionBanner, getCompletionStatus().isExceeded ? styles.exceededBanner : null]}>
+            <Text style={[styles.completionText, getCompletionStatus().isExceeded ? styles.exceededText : null]}>
+              {getCompletionStatus().message}
+            </Text>
+            <Text style={styles.completionSubtext}>
+              {getCompletionStatus().isExceeded 
+                ? `Exceeded target by ${formatAmount(Math.abs(getRemainingAmount()))}!`
+                : `Saved ${formatAmount(goal.current_amount)} of ${formatAmount(goal.target_amount)}`
+              }
+            </Text>
+          </View>
+        ) : (
+          <>
+            <View style={styles.amountRow}>
+              <Text style={styles.amountLabel}>💰 Current Savings</Text>
+              <Text style={styles.currentAmount}>
+                {formatAmount(goal.current_amount)}
+              </Text>
+            </View>
+            <View style={styles.amountRow}>
+              <Text style={styles.amountLabel}>🎯 Target Amount</Text>
+              <Text style={styles.targetAmount}>
+                {formatAmount(goal.target_amount)}
+              </Text>
+            </View>
+            <View style={styles.amountRow}>
+              <Text style={styles.amountLabel}>
+                {getRemainingAmount() < 0 ? '🎉 Exceeded By' : '📈 Still Needed'}
+              </Text>
+              <Text style={[styles.remainingAmount, getRemainingAmount() < 0 ? styles.exceededAmount : null]}>
+                {getRemainingAmount() < 0 
+                  ? formatAmount(Math.abs(getRemainingAmount()))
+                  : formatAmount(getRemainingAmount())
+                }
+              </Text>
+            </View>
+          </>
+        )}
       </View>
 
       {!compact && (
         <View style={styles.footer}>
           <View style={styles.footerLeft}>
-            {goal.target_date && formatDate(goal.target_date) ? (
-              <Text style={styles.targetDate}>
-                🗓️ {formatDate(goal.target_date)}
-              </Text>
+            {goal.priority && getPriorityDisplay() ? (
+              <View style={[styles.priorityBadge, { backgroundColor: getPriorityColor() }]}>
+                <Text style={styles.priorityText}>{String(getPriorityDisplay() || '')}</Text>
+              </View>
             ) : null}
-            {goal.days_remaining !== undefined && typeof goal.days_remaining === 'number' && goal.days_remaining > 0 ? (
-              <Text style={[styles.daysRemaining, { color: getDaysRemainingColor() }]}>
-                ⏰ {goal.days_remaining} days left
+            <View style={[styles.statusBadge, { backgroundColor: getTransparentColor(getStatusColor(), 0.2) }]}>
+              <Text style={[styles.statusText, { color: getStatusColor() }]}>
+                {(() => {
+                  const status = goal.status || 'active';
+                  return typeof status === 'string' ? status.charAt(0).toUpperCase() + status.slice(1) : String(status);
+                })()}
               </Text>
-            ) : null}
+            </View>
           </View>
           
           {/* Quick Contribute Button */}
@@ -326,18 +380,23 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   title: {
-    ...typography.h3,
+    ...typography.h2,
     color: colors.text,
     marginBottom: spacing.xs,
     fontWeight: 'bold',
+    fontSize: 18,
+    lineHeight: 24,
   },
   category: {
-    ...typography.small,
-    color: colors.textSecondary,
+    ...typography.body,
+    color: colors.primary,
     textTransform: 'capitalize',
+    fontWeight: '600',
+    fontSize: 14,
   },
   headerRight: {
     alignItems: 'flex-end',
+    justifyContent: 'flex-start',
   },
   priorityBadge: {
     paddingHorizontal: spacing.sm,
@@ -371,19 +430,23 @@ const styles = StyleSheet.create({
     marginBottom: spacing.sm,
   },
   progressLabel: {
-    ...typography.caption,
-    color: colors.textSecondary,
+    ...typography.body,
+    color: colors.text,
     fontWeight: '600',
+    fontSize: 14,
   },
   progressText: {
-    ...typography.caption,
+    ...typography.body,
     fontWeight: 'bold',
+    fontSize: 16,
   },
   progressBar: {
-    height: 8,
+    height: 12,
     backgroundColor: colors.surface,
-    borderRadius: 4,
+    borderRadius: 6,
     overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: colors.border,
   },
   progressFill: {
     height: '100%',
@@ -392,34 +455,72 @@ const styles = StyleSheet.create({
   amountSection: {
     backgroundColor: colors.surface,
     borderRadius: 12,
-    padding: spacing.md,
+    padding: spacing.lg,
     marginBottom: spacing.md,
+    borderWidth: 1,
+    borderColor: colors.border,
   },
   amountRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: spacing.xs,
+    marginBottom: spacing.md,
+    paddingVertical: spacing.xs,
   },
   amountLabel: {
-    ...typography.caption,
-    color: colors.textSecondary,
-    fontWeight: '600',
-  },
-  currentAmount: {
-    ...typography.body,
-    color: colors.primary,
-    fontWeight: 'bold',
-  },
-  targetAmount: {
     ...typography.body,
     color: colors.text,
+    fontWeight: '600',
+    fontSize: 14,
+  },
+  currentAmount: {
+    ...typography.h3,
+    color: colors.success,
     fontWeight: 'bold',
+    fontSize: 16,
+  },
+  targetAmount: {
+    ...typography.h3,
+    color: colors.text,
+    fontWeight: 'bold',
+    fontSize: 16,
   },
   remainingAmount: {
-    ...typography.body,
+    ...typography.h3,
     color: colors.warning,
     fontWeight: 'bold',
+    fontSize: 16,
+  },
+  exceededAmount: {
+    color: colors.success,
+  },
+  completionBanner: {
+    backgroundColor: colors.success + '15',
+    borderRadius: 12,
+    padding: spacing.lg,
+    alignItems: 'center',
+    borderWidth: 2,
+    borderColor: colors.success + '30',
+  },
+  completionText: {
+    ...typography.h2,
+    color: colors.success,
+    fontWeight: 'bold',
+    fontSize: 18,
+    marginBottom: spacing.sm,
+  },
+  completionSubtext: {
+    ...typography.body,
+    color: colors.text,
+    fontWeight: '600',
+    fontSize: 14,
+  },
+  exceededBanner: {
+    backgroundColor: colors.success + '20',
+    borderColor: colors.success + '40',
+  },
+  exceededText: {
+    color: colors.success,
   },
   footer: {
     flexDirection: 'row',
@@ -429,15 +530,20 @@ const styles = StyleSheet.create({
   },
   footerLeft: {
     flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
   },
   targetDate: {
     ...typography.small,
     color: colors.textSecondary,
     marginBottom: spacing.xs,
+    fontSize: 13.2, // 10% bigger than small font size (12 * 1.1)
   },
   daysRemaining: {
     ...typography.small,
     fontWeight: '600',
+    fontSize: 13.2, // 10% bigger than small font size (12 * 1.1)
   },
   savingsNeeded: {
     backgroundColor: colors.info + '10',
@@ -462,9 +568,9 @@ const styles = StyleSheet.create({
   },
   contributeButton: {
     backgroundColor: colors.primary,
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.md,
-    borderRadius: 20,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    borderRadius: 16,
     shadowColor: '#000',
     shadowOffset: {
       width: 0,
@@ -473,9 +579,8 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.2,
     shadowRadius: 3,
     elevation: 4,
-    minWidth: 140,
     alignItems: 'center',
-    marginTop: spacing.sm,
+    alignSelf: 'flex-start',
   },
   contributeButtonText: {
     ...typography.caption,

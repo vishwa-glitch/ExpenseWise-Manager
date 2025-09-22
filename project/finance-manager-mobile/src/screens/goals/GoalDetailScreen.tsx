@@ -130,8 +130,15 @@ const GoalDetailScreen: React.FC<GoalDetailScreenProps> = ({ navigation, route }
   };
 
   const formatAmount = (amount: number) => {
-    const currency = selectedGoal?.currency || 'USD';
-    return formatCurrency(amount, currency);
+    const currency = selectedGoal?.currency || displayCurrency || 'USD';
+    try {
+      const formatted = formatCurrency(amount, currency);
+      // Ensure we always return a string
+      return typeof formatted === 'string' ? formatted : String(amount);
+    } catch (error) {
+      console.warn('Error formatting amount in GoalDetailScreen:', error);
+      return String(amount);
+    }
   };
 
   const formatDate = (dateString?: string) => {
@@ -193,9 +200,14 @@ const GoalDetailScreen: React.FC<GoalDetailScreenProps> = ({ navigation, route }
                   ]}
                   onPress={() => setSelectedAccountId(account.id)}
                 >
-                  <Text style={styles.accountOptionText}>{account.name}</Text>
+                  <Text style={styles.accountOptionText}>
+                    {typeof account.name === 'string' ? account.name : 'Account'}
+                  </Text>
                   <Text style={styles.accountBalance}>
-                    {formatCurrency(account.balance, account.currency)}
+                    {formatCurrency(
+                      typeof account.balance === 'number' ? account.balance : 0, 
+                      typeof account.currency === 'string' ? account.currency : 'USD'
+                    )}
                   </Text>
                 </TouchableOpacity>
               ))}
@@ -265,7 +277,9 @@ const GoalDetailScreen: React.FC<GoalDetailScreenProps> = ({ navigation, route }
               {getCategoryIcon(selectedGoal.category)}
             </Text>
             <View style={styles.goalDetails}>
-              <Text style={styles.goalTitle}>{selectedGoal.title || 'Untitled Goal'}</Text>
+              <Text style={styles.goalTitle}>
+                {typeof selectedGoal.title === 'string' ? selectedGoal.title : 'Untitled Goal'}
+              </Text>
               <Text style={styles.goalCategory}>
                 {selectedGoal.category && typeof selectedGoal.category === 'string' 
                   ? selectedGoal.category.charAt(0).toUpperCase() + selectedGoal.category.slice(1) 
@@ -278,11 +292,11 @@ const GoalDetailScreen: React.FC<GoalDetailScreenProps> = ({ navigation, route }
         {/* Progress Section */}
         <View style={styles.progressSection}>
           <ProgressDonut
-            progress={selectedGoal.progress_percentage || 0}
+            progress={typeof selectedGoal.progress_percentage === 'number' ? selectedGoal.progress_percentage : 0}
             size={80}
             strokeWidth={6}
             color={colors.primary}
-            centerText={`${(selectedGoal.progress_percentage || 0).toFixed(1)}%`}
+            centerText={`${(typeof selectedGoal.progress_percentage === 'number' ? selectedGoal.progress_percentage : 0).toFixed(1)}%`}
             centerSubtext="Complete"
             title="Progress"
           />
@@ -291,19 +305,22 @@ const GoalDetailScreen: React.FC<GoalDetailScreenProps> = ({ navigation, route }
             <View style={styles.amountRow}>
               <Text style={styles.amountLabel}>Current:</Text>
               <Text style={styles.currentAmount}>
-                {formatAmount(selectedGoal.current_amount || 0)}
+                {formatAmount(typeof selectedGoal.current_amount === 'number' ? selectedGoal.current_amount : 0)}
               </Text>
             </View>
             <View style={styles.amountRow}>
               <Text style={styles.amountLabel}>Target:</Text>
               <Text style={styles.targetAmount}>
-                {formatAmount(selectedGoal.target_amount || 0)}
+                {formatAmount(typeof selectedGoal.target_amount === 'number' ? selectedGoal.target_amount : 0)}
               </Text>
             </View>
             <View style={styles.amountRow}>
               <Text style={styles.amountLabel}>Remaining:</Text>
               <Text style={styles.remainingAmount}>
-                {formatAmount((selectedGoal.target_amount || 0) - (selectedGoal.current_amount || 0))}
+                {formatAmount(
+                  (typeof selectedGoal.target_amount === 'number' ? selectedGoal.target_amount : 0) - 
+                  (typeof selectedGoal.current_amount === 'number' ? selectedGoal.current_amount : 0)
+                )}
               </Text>
             </View>
           </View>
@@ -320,19 +337,19 @@ const GoalDetailScreen: React.FC<GoalDetailScreenProps> = ({ navigation, route }
             </Text>
           </View>
 
-          {selectedGoal.days_remaining !== undefined && (
+          {typeof selectedGoal.days_remaining === 'number' && (
             <View style={styles.detailItem}>
               <Text style={styles.detailLabel}>Days Remaining:</Text>
               <Text style={[
                 styles.detailValue,
-                { color: (selectedGoal.days_remaining || 0) < 30 ? colors.warning : colors.text }
+                { color: selectedGoal.days_remaining < 30 ? colors.warning : colors.text }
               ]}>
-                {(selectedGoal.days_remaining || 0) > 0 ? `${selectedGoal.days_remaining || 0} days` : 'Overdue'}
+                {selectedGoal.days_remaining > 0 ? `${selectedGoal.days_remaining} days` : 'Overdue'}
               </Text>
             </View>
           )}
 
-          {selectedGoal.monthly_savings_needed && (
+          {typeof selectedGoal.monthly_savings_needed === 'number' && selectedGoal.monthly_savings_needed > 0 && (
             <View style={styles.detailItem}>
               <Text style={styles.detailLabel}>Monthly Savings:</Text>
               <Text style={styles.detailValue}>
@@ -601,80 +618,100 @@ const styles = StyleSheet.create({
   },
   modalContent: {
     backgroundColor: colors.background,
-    borderRadius: 12,
-    padding: spacing.md,
-    width: '90%',
-    maxWidth: 400,
+    borderRadius: 16,
+    padding: spacing.lg,
+    width: '92%',
+    maxWidth: 420,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 4,
+    },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 8,
   },
   modalTitle: {
-    fontSize: 18,
-    fontWeight: '600',
+    fontSize: 20,
+    fontWeight: '700',
     color: colors.text,
     textAlign: 'center',
-    marginBottom: spacing.md,
+    marginBottom: spacing.lg,
   },
   inputIcon: {
     fontSize: 18,
   },
   accountSelector: {
-    marginBottom: spacing.md,
+    marginBottom: spacing.lg,
   },
   accountSelectorLabel: {
-    fontSize: 12,
+    fontSize: 14,
     color: colors.text,
-    fontWeight: '500',
-    marginBottom: spacing.sm,
+    fontWeight: '600',
+    marginBottom: spacing.md,
   },
   accountOption: {
     backgroundColor: colors.surface,
-    borderRadius: 6,
-    padding: spacing.sm,
-    marginRight: spacing.sm,
+    borderRadius: 12,
+    padding: spacing.md,
+    marginRight: spacing.md,
     borderWidth: 2,
-    borderColor: 'transparent',
-    minWidth: 100,
+    borderColor: colors.border,
+    minWidth: 120,
+    alignItems: 'center',
   },
   accountOptionSelected: {
-    backgroundColor: colors.primary + '20',
+    backgroundColor: colors.primary + '15',
     borderColor: colors.primary,
+    shadowColor: colors.primary,
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 3,
   },
   accountOptionText: {
     fontSize: 14,
     color: colors.text,
-    fontWeight: '500',
+    fontWeight: '600',
     marginBottom: spacing.xs,
+    textAlign: 'center',
   },
   accountBalance: {
-    fontSize: 10,
+    fontSize: 11,
     color: colors.textSecondary,
+    fontWeight: '500',
+    textAlign: 'center',
   },
   modalActions: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginTop: spacing.sm,
-    gap: spacing.sm,
+    marginTop: spacing.lg,
+    gap: spacing.md,
   },
   modalButton: {
     flex: 1,
+    minHeight: 48,
   },
   amountInput: {
-    height: 80,
-    fontSize: 24,
+    height: 60,
+    fontSize: 20,
     paddingVertical: spacing.md,
-    paddingHorizontal: spacing.md,
+    paddingHorizontal: spacing.lg,
     borderRadius: 12,
     backgroundColor: colors.surface,
     borderWidth: 2,
     borderColor: colors.primary,
     marginVertical: spacing.md,
-    minHeight: 80,
     textAlign: 'center',
     width: '100%',
-    flex: 1,
+    fontWeight: '600',
   },
   amountInputContainer: {
     width: '100%',
-    marginBottom: spacing.md,
+    marginBottom: spacing.lg,
   },
   errorContainer: {
     flex: 1,

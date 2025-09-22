@@ -642,8 +642,8 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
         <Text style={styles.fabIcon}>+</Text>
       </TouchableOpacity>
 
-      {/* Onboarding Overlay - show for step 0 (welcome) and step 6 (complete) */}
-      {onboardingOverlay.isVisible && (onboardingOverlay.currentStep === 0 || onboardingOverlay.currentStep === 6) && (
+      {/* Onboarding Overlay - show for step 0 (welcome) and step 7 (complete) */}
+      {onboardingOverlay.isVisible && (onboardingOverlay.currentStep === 0 || onboardingOverlay.currentStep === 7) && (
         <OnboardingOverlay
           isVisible={onboardingOverlay.isVisible}
           currentStep={onboardingOverlay.currentStep}

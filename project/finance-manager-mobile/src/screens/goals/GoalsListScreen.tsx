@@ -391,15 +391,18 @@ const GoalsListScreen: React.FC<GoalsListScreenProps> = ({ navigation }) => {
 
       {renderContributeModal()}
 
-      <OnboardingOverlay
-        isVisible={onboardingOverlay.isVisible}
-        currentStep={onboardingOverlay.currentStep}
-        totalSteps={onboardingOverlay.totalSteps}
-        steps={onboardingOverlay.steps}
-        onNext={onboardingOverlay.handleNext}
-        onSkip={onboardingOverlay.handleSkip}
-        onComplete={onboardingOverlay.handleComplete}
-      />
+      {/* Onboarding Overlay - show only for step 6 (goals) */}
+      {onboardingOverlay.isVisible && onboardingOverlay.currentStep === 6 && (
+        <OnboardingOverlay
+          isVisible={onboardingOverlay.isVisible}
+          currentStep={onboardingOverlay.currentStep}
+          totalSteps={onboardingOverlay.totalSteps}
+          steps={onboardingOverlay.steps}
+          onNext={onboardingOverlay.handleNext}
+          onSkip={onboardingOverlay.handleSkip}
+          onComplete={onboardingOverlay.handleComplete}
+        />
+      )}
     </SafeAreaView>
   );
 };

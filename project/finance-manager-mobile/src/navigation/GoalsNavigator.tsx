@@ -111,6 +111,7 @@ const GoalsNavigator: React.FC = () => {
       <Stack.Screen name="GoalsMain" component={GoalsTopTabs} />
       <Stack.Screen name="GoalDetail" component={GoalDetailScreen} />
       <Stack.Screen name="AddManualGoal" component={AddManualGoalScreen} />
+      <Stack.Screen name="EditGoal" component={AddManualGoalScreen} />
       <Stack.Screen name="GoalAnalytics" component={GoalAnalyticsScreen} />
       <Stack.Screen name="BudgetDetail" component={BudgetDetailScreen} />
       <Stack.Screen name="CreateBudget" component={CreateEditBudgetScreen} />

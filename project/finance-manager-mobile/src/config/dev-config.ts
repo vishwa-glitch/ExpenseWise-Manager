@@ -6,7 +6,7 @@ import { Platform } from 'react-native';
 // Replace with your computer's local IP address.
 // On Windows, run `ipconfig` in your terminal.
 // This allows your Expo Go app on your phone to connect to the local backend.
-const LOCAL_DEV_IP = '10.39.149.131'; // <-- IMPORTANT: REPLACE WITH YOUR IP
+const LOCAL_DEV_IP = '192.168.1.4'; // <-- IMPORTANT: REPLACE WITH YOUR IP
 
 // The port your local backend is running on.
 const LOCAL_DEV_PORT = 3000;

@@ -34,7 +34,6 @@ const CreateEditBudgetScreen: React.FC<CreateEditBudgetScreenProps> = ({ navigat
   const { budgets } = useTypedSelector((state) => state.budgets);
 
   const [formData, setFormData] = useState({
-    name: '',
     amount: '',
     period: 'monthly',
     category_id: '', // Empty string means no category selected (all categories)
@@ -45,7 +44,6 @@ const CreateEditBudgetScreen: React.FC<CreateEditBudgetScreenProps> = ({ navigat
   });
 
   const [errors, setErrors] = useState({
-    name: '',
     amount: '',
     category_id: '',
     start_date: '',
@@ -68,7 +66,6 @@ const CreateEditBudgetScreen: React.FC<CreateEditBudgetScreenProps> = ({ navigat
     
     if (isEditing && budget) {
       setFormData({
-        name: budget.name || '',
         amount: budget.amount?.toString() || '',
         period: budget.period || 'monthly',
         category_id: budget.category_id || '',
@@ -112,7 +109,6 @@ const CreateEditBudgetScreen: React.FC<CreateEditBudgetScreenProps> = ({ navigat
 
   const validateForm = () => {
     const newErrors = {
-      name: '',
       amount: '',
       category_id: '',
       start_date: '',
@@ -120,12 +116,6 @@ const CreateEditBudgetScreen: React.FC<CreateEditBudgetScreenProps> = ({ navigat
     };
 
     let hasError = false;
-
-    // Name validation
-    if (!formData.name.trim()) {
-      newErrors.name = 'Budget name is required';
-      hasError = true;
-    }
 
     // Amount validation
     if (!formData.amount.trim()) {
@@ -180,7 +170,6 @@ const CreateEditBudgetScreen: React.FC<CreateEditBudgetScreenProps> = ({ navigat
 
     try {
       const budgetData: any = {
-        name: formData.name.trim(),
         amount: parseFloat(formData.amount),
         period: formData.period,
         start_date: formData.start_date,

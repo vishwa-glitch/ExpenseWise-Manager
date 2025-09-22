@@ -5,11 +5,14 @@
  */
 
 import { store } from '../store';
-import { fetchBudgetStatus } from '../store/slices/budgetsSlice';
+import { fetchBudgets } from '../store/slices/budgetsSlice';
 import { notificationService } from './notificationService';
-import { calculateBudgetStatus, getStatusDisplay } from '../utils/budgetStatus';
-import { Budget, BudgetAnalyticsResponse } from '../types/api';
+import { notificationMemoryService } from './notificationMemoryService';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { apiService } from './api';
+import { calculateBudgetStatus } from '../utils/budgetStatus';
+import { getBudgetDisplayName, getBudgetNotificationName } from '../utils/budgetDisplayUtils';
+import { Budget, BudgetAnalyticsResponse } from '../types/api';
 
 export interface BudgetAlert {
   id: string;
@@ -55,10 +58,11 @@ class BudgetMonitoringService {
     console.log('🔍 Starting budget monitoring service...');
     this.isMonitoring = true;
 
-    // Initial check after 5 minutes to avoid immediate notifications on app launch
+    // Initial check after 30 seconds for immediate testing (was 5 minutes)
     setTimeout(async () => {
+      console.log('🔍 Running initial budget check...');
       await this.checkBudgetMetrics();
-    }, 5 * 60 * 1000);
+    }, 30 * 1000);
 
     // Set up periodic monitoring (every 30 minutes)
     this.monitoringInterval = setInterval(async () => {
@@ -81,20 +85,26 @@ class BudgetMonitoringService {
   }
 
   /**
-   * Check all budget metrics and trigger notifications if needed
+   * Check budget metrics and generate alerts
    */
   private async checkBudgetMetrics() {
     try {
       console.log('🔍 Checking budget metrics...');
-
-      // Fetch current budget data
-      const budgetsResponse = await apiService.getBudgets();
-      const budgets = budgetsResponse.budgets || [];
-
-      if (budgets.length === 0) {
-        console.log('🔍 No budgets found, skipping monitoring');
+      
+      // Get current budgets from the store
+      const state = store.getState();
+      const budgets = state.budgets.budgets;
+      
+      if (!budgets || budgets.length === 0) {
+        console.log('🔍 No budgets found, skipping check');
         return;
       }
+
+      console.log(`🔍 Found ${budgets.length} budgets to check:`);
+      budgets.forEach((budget: any) => {
+        const utilization = budget.amount > 0 ? (budget.spent_amount || 0) / budget.amount : 0;
+        console.log(`🔍 Budget "${budget.name}": $${budget.spent_amount || 0}/$${budget.amount} (${Math.round(utilization * 100)}%)`);
+      });
 
       // Filter active budgets
       const activeBudgets = budgets.filter((budget: Budget) => budget.is_active);
@@ -121,6 +131,11 @@ class BudgetMonitoringService {
       }
 
       // Send notifications for new alerts
+      console.log(`🔍 Generated ${alerts.length} alerts:`);
+      alerts.forEach(alert => {
+        console.log(`🔍 Alert: ${alert.type} - ${alert.title}`);
+      });
+      
       await this.processAlerts(alerts);
 
     } catch (error) {
@@ -142,15 +157,15 @@ class BudgetMonitoringService {
         id: `approaching_${budget.id}`,
         type: 'approaching_limit',
         severity: 'medium',
-        title: `Budget Alert: ${budget.name}`,
-        message: `You've used ${Math.round(utilizationRate)}% of your ${budget.name} budget. Consider monitoring your spending.`,
+        title: `Budget Alert: ${getBudgetNotificationName(budget.category_name)}`,
+        message: `You've used ${Math.round(utilizationRate)}% of your ${getBudgetNotificationName(budget.category_name)} budget. Consider monitoring your spending.`,
         budgetId: budget.id,
-        budgetName: budget.name,
+        budgetName: getBudgetNotificationName(budget.category_name),
         data: {
           utilizationRate,
           spentAmount: budget.spent_amount,
           budgetAmount: budget.amount,
-          category: budget.name,
+          category: getBudgetNotificationName(budget.category_name),
         },
       });
     }
@@ -162,16 +177,16 @@ class BudgetMonitoringService {
         id: `over_${budget.id}`,
         type: 'over_budget',
         severity: 'high',
-        title: `Budget Exceeded: ${budget.name}`,
-        message: `You've exceeded your ${budget.name} budget by $${overAmount.toFixed(2)}. Consider reviewing recent expenses.`,
+        title: `Budget Exceeded: ${getBudgetNotificationName(budget.category_name)}`,
+        message: `You've exceeded your ${getBudgetNotificationName(budget.category_name)} budget by $${overAmount.toFixed(2)}. Consider reviewing recent expenses.`,
         budgetId: budget.id,
-        budgetName: budget.name,
+        budgetName: getBudgetNotificationName(budget.category_name),
         data: {
           utilizationRate,
           spentAmount: budget.spent_amount,
           budgetAmount: budget.amount,
           overAmount,
-          category: budget.name,
+          category: getBudgetNotificationName(budget.category_name),
         },
       });
     }
@@ -211,10 +226,10 @@ class BudgetMonitoringService {
         id: `daily_${budget.id}`,
         type: 'daily_overspend',
         severity: 'medium',
-        title: `High Daily Spending: ${budget.name}`,
-        message: `Your daily spending rate for ${budget.name} is ${Math.round(spendingRatePercentage)}% of your daily allowance. Consider slowing down.`,
+        title: `High Daily Spending: ${getBudgetNotificationName(budget.category_name)}`,
+        message: `Your daily spending rate for ${getBudgetNotificationName(budget.category_name)} is ${Math.round(spendingRatePercentage)}% of your daily allowance. Consider slowing down.`,
         budgetId: budget.id,
-        budgetName: budget.name,
+        budgetName: getBudgetNotificationName(budget.category_name),
         data: {
           dailySpendingRate: currentDailySpendingRate,
           dailyAllowance: dailyBudgetAllowance,
@@ -239,7 +254,7 @@ class BudgetMonitoringService {
 
     if (overBudgets.length >= this.thresholds.multipleOverBudgetCount && 
         !this.hasRecentAlert('multiple_over')) {
-      const budgetNames = overBudgets.slice(0, 3).map(b => b.name).join(', ');
+      const budgetNames = overBudgets.slice(0, 3).map(b => getBudgetNotificationName(b.category_name)).join(', ');
       const additionalCount = Math.max(0, overBudgets.length - 3);
       const namesText = additionalCount > 0 ? `${budgetNames} and ${additionalCount} more` : budgetNames;
 
@@ -253,7 +268,7 @@ class BudgetMonitoringService {
           overBudgetCount: overBudgets.length,
           overBudgets: overBudgets.map(b => ({
             id: b.id,
-            name: b.name,
+            name: getBudgetNotificationName(b.category_name),
             overAmount: b.spent_amount - b.amount,
           })),
         },
@@ -313,6 +328,18 @@ class BudgetMonitoringService {
   private async processAlerts(alerts: BudgetAlert[]) {
     for (const alert of alerts) {
       try {
+        // Check if this alert was already sent recently
+        const wasRecentlySent = notificationMemoryService.wasRecentlySent(
+          'budget',
+          alert.type,
+          alert.budgetId || 'unknown'
+        );
+
+        if (wasRecentlySent) {
+          console.log(`🔔 Skipping duplicate budget alert: ${alert.title}`);
+          continue;
+        }
+
         // Send notification
         await notificationService.scheduleLocalNotification({
           id: alert.id,
@@ -328,10 +355,21 @@ class BudgetMonitoringService {
           },
         });
 
-        // Record alert timestamp for cooldown
+        // Record alert timestamp for cooldown (legacy)
         this.lastAlertTimestamps.set(alert.id, Date.now());
 
+        // Record in memory service to prevent duplicates
+        await notificationMemoryService.recordSentNotification(
+          'budget',
+          alert.type,
+          alert.budgetId || 'unknown',
+          alert.title,
+          alert.message
+        );
+
         console.log(`🔔 Sent budget alert: ${alert.title}`);
+        console.log(`🔔 Alert details: ${alert.message}`);
+        console.log(`🔔 Alert data:`, alert.data);
       } catch (error) {
         console.error(`❌ Failed to send budget alert ${alert.id}:`, error);
       }
@@ -382,6 +420,45 @@ class BudgetMonitoringService {
       alertCount: this.lastAlertTimestamps.size,
       lastCheck: this.monitoringInterval ? 'Active' : 'Inactive',
     };
+  }
+
+  /**
+   * Generate a test budget notification for debugging
+   */
+  async generateTestNotification() {
+    try {
+      console.log('🔍 Generating test budget notification...');
+      
+      // Import notification service dynamically to avoid circular dependency
+      const { notificationService } = await import('./notificationService');
+      
+      await notificationService.scheduleLocalNotification({
+        id: `test-budget-${Date.now()}`,
+        title: '🧪 Test Budget Alert',
+        body: 'This is a test budget notification generated manually for debugging.',
+        type: 'budget',
+        priority: 'high',
+        data: {
+          alertType: 'test',
+          category: 'Test Category',
+          amount: 100,
+          budgetId: 'test-budget',
+        },
+      });
+      
+      console.log('✅ Test budget notification generated');
+    } catch (error) {
+      console.error('❌ Error generating test budget notification:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Manually trigger budget check immediately (for debugging)
+   */
+  async triggerImmediateCheck() {
+    console.log('🔍 Manually triggering immediate budget check...');
+    await this.checkBudgetMetrics();
   }
 }
 

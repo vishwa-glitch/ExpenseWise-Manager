@@ -31,6 +31,8 @@ class AppUpdateService {
   private readonly APP_BUNDLE_ID = appUpdateConfig.APP_BUNDLE_ID;
   private readonly REMIND_LATER_STORAGE_KEY = 'app_update_remind_later_timestamp';
   private readonly REMIND_LATER_COOLDOWN = 24 * 60 * 60 * 1000; // 24 hours in milliseconds
+  private readonly LAST_CHECK_STORAGE_KEY = 'app_update_last_check_timestamp';
+  private lastCheckTime: number = 0;
 
   private constructor() {
     this.initialize();
@@ -44,7 +46,10 @@ class AppUpdateService {
   }
 
   private async initialize() {
-    // Check for updates on app start
+    // Load last check time from storage
+    await this.loadLastCheckTime();
+    
+    // Check for updates on app start (with throttling)
     await this.checkForUpdates();
     
     // Set up periodic update checks based on configuration
@@ -54,12 +59,68 @@ class AppUpdateService {
   }
 
   /**
+   * Load last check time from storage
+   */
+  private async loadLastCheckTime(): Promise<void> {
+    try {
+      const lastCheckStr = await AsyncStorage.getItem(this.LAST_CHECK_STORAGE_KEY);
+      if (lastCheckStr) {
+        this.lastCheckTime = parseInt(lastCheckStr, 10);
+        console.log('📱 Last update check was:', new Date(this.lastCheckTime).toLocaleString());
+      }
+    } catch (error) {
+      console.warn('⚠️ Error loading last check time:', error);
+      this.lastCheckTime = 0;
+    }
+  }
+
+  /**
+   * Save last check time to storage
+   */
+  private async saveLastCheckTime(): Promise<void> {
+    try {
+      this.lastCheckTime = Date.now();
+      await AsyncStorage.setItem(this.LAST_CHECK_STORAGE_KEY, this.lastCheckTime.toString());
+      console.log('📱 Saved last check time:', new Date(this.lastCheckTime).toLocaleString());
+    } catch (error) {
+      console.warn('⚠️ Error saving last check time:', error);
+    }
+  }
+
+  /**
+   * Check if enough time has passed since last update check
+   */
+  private shouldThrottleCheck(forceCheck: boolean = false): boolean {
+    if (forceCheck) {
+      console.log('📱 Force check requested - bypassing throttle');
+      return false;
+    }
+
+    const currentTime = Date.now();
+    const timeSinceLastCheck = currentTime - this.lastCheckTime;
+    const minInterval = appUpdateConfig.MIN_CHECK_INTERVAL;
+
+    if (timeSinceLastCheck < minInterval) {
+      const remainingMinutes = Math.ceil((minInterval - timeSinceLastCheck) / (60 * 1000));
+      console.log(`📱 Update check throttled - ${remainingMinutes} minutes remaining`);
+      return true;
+    }
+
+    return false;
+  }
+
+  /**
    * Check for app updates by comparing current version with latest available version
    */
-  public async checkForUpdates(ignoreCooldown: boolean = false): Promise<AppUpdateInfo | null> {
+  public async checkForUpdates(ignoreCooldown: boolean = false, forceCheck: boolean = false): Promise<AppUpdateInfo | null> {
     try {
       if (Platform.OS !== 'android') {
         console.log('📱 App update check only supported on Android');
+        return null;
+      }
+
+      // Check throttling first (unless it's a force check)
+      if (this.shouldThrottleCheck(forceCheck)) {
         return null;
       }
 
@@ -73,6 +134,9 @@ class AppUpdateService {
         }
       }
 
+      // Save the check time before making the API call
+      await this.saveLastCheckTime();
+
       const currentVersion = Constants.expoConfig?.version || '1.0.0';
       console.log('📱 Current app version:', currentVersion);
 
@@ -80,8 +144,8 @@ class AppUpdateService {
       let versionData;
       try {
         versionData = await this.getVersionDataFromBackend();
-      } catch (apiError) {
-        console.warn('⚠️ Backend API unavailable, skipping update check:', apiError.message);
+      } catch (apiError: any) {
+        console.warn('⚠️ Backend API unavailable, skipping update check:', apiError?.message || apiError);
         // Don't crash the app - just skip the update check
         return null;
       }
@@ -117,8 +181,8 @@ class AppUpdateService {
       try {
         store.dispatch(setUpdateInfo(updateInfo));
         store.dispatch(setUpdateRequired(isUpdateRequired));
-      } catch (storeError) {
-        console.warn('⚠️ Error updating store:', storeError.message);
+      } catch (storeError: any) {
+        console.warn('⚠️ Error updating store:', storeError?.message || storeError);
         // Don't crash - just log the error
       }
 
@@ -282,7 +346,7 @@ class AppUpdateService {
    * Force check for updates (can be called manually)
    */
   public async forceCheckForUpdates(): Promise<void> {
-    await this.checkForUpdates();
+    await this.checkForUpdates(false, true); // Force check, bypassing throttle
   }
 
   /**

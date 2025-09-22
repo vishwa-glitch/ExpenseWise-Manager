@@ -27,14 +27,17 @@ export const appUpdateConfig = {
   PLAY_STORE_URL: 'https://play.google.com/store/apps/details?id=',
   
   // Update check intervals (in milliseconds)
-  UPDATE_CHECK_INTERVAL: 6 * 60 * 60 * 1000, // 6 hours
+  UPDATE_CHECK_INTERVAL: 24 * 60 * 60 * 1000, // 24 hours (once per day)
+  
+  // Minimum time between update checks (prevents frequent checks)
+  MIN_CHECK_INTERVAL: 4 * 60 * 60 * 1000, // 4 hours minimum between checks
   
   // Force update settings - Environment-based configuration
   FORCE_UPDATE_ENABLED: getForceUpdateSetting(),
   
-  // Update check settings - Temporarily disabled to prevent crashes
-  CHECK_ON_APP_START: true,
-  CHECK_ON_APP_FOREGROUND: true,
+  // Update check settings - Reasonable frequency to prevent spam
+  CHECK_ON_APP_START: true, // Only once per app launch
+  CHECK_ON_APP_FOREGROUND: false, // Disabled to prevent frequent checks
   
   // Backend API configuration
   BACKEND_API: {

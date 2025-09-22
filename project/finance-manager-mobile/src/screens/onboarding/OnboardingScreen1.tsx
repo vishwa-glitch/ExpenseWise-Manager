@@ -9,6 +9,8 @@ import {
 } from 'react-native';
 import LottieView from 'lottie-react-native';
 import { colors, typography, spacing } from '../../constants/colors';
+import { useOnboardingContext } from '../../contexts/OnboardingContext';
+import ProgressIndicator from '../../components/onboarding/ProgressIndicator';
 import bankAnimation from '../../../assets/animations/bank.json';
 
 const { width, height } = Dimensions.get('window');
@@ -18,6 +20,8 @@ interface OnboardingScreen1Props {
 }
 
 const OnboardingScreen1: React.FC<OnboardingScreen1Props> = ({ onNext }) => {
+  const { currentScreen, totalScreens } = useOnboardingContext();
+
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.content}>
@@ -48,11 +52,7 @@ const OnboardingScreen1: React.FC<OnboardingScreen1Props> = ({ onNext }) => {
           {/* Navigation section */}
           <View style={styles.navigationContainer}>
             {/* Progress indicators */}
-            <View style={styles.progressContainer}>
-              <View style={[styles.progressDot, styles.activeDot]} />
-              <View style={styles.progressDot} />
-              <View style={styles.progressDot} />
-            </View>
+            <ProgressIndicator currentStep={currentScreen} totalSteps={totalScreens} />
 
             {/* Arrow button */}
             <TouchableOpacity style={styles.arrowButton} onPress={onNext}>
@@ -113,19 +113,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-  },
-  progressContainer: {
-    flexDirection: 'row',
-  },
-  progressDot: {
-    width: 12,
-    height: 12,
-    borderRadius: 6,
-    backgroundColor: colors.border,
-    marginRight: spacing.sm,
-  },
-  activeDot: {
-    backgroundColor: colors.primary,
   },
   arrowButton: {
     width: 56,

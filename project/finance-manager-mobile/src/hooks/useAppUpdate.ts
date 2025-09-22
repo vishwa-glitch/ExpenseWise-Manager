@@ -9,10 +9,12 @@ export const useAppUpdate = () => {
     (state) => state.appUpdate
   );
   const [isChecking, setIsChecking] = useState(false);
+  const [hasCheckedOnStart, setHasCheckedOnStart] = useState(false);
 
   useEffect(() => {
-    // Only check for updates if enabled in config
-    if (appUpdateConfig.CHECK_ON_APP_START) {
+    // Only check for updates once on app start if enabled in config
+    if (appUpdateConfig.CHECK_ON_APP_START && !hasCheckedOnStart) {
+      setHasCheckedOnStart(true);
       checkForUpdates();
     }
 
@@ -22,7 +24,7 @@ export const useAppUpdate = () => {
     return () => {
       subscription?.remove();
     };
-  }, []);
+  }, [hasCheckedOnStart]);
 
   const handleAppStateChange = (nextAppState: AppStateStatus) => {
     if (nextAppState === 'active' && appUpdateConfig.CHECK_ON_APP_FOREGROUND) {

@@ -7,6 +7,8 @@ import {
   ScrollView,
   TouchableOpacity,
   Platform,
+  Linking,
+  Image,
 } from 'react-native';
 import { useAppDispatch } from '../../hooks/useAppDispatch';
 import { useTypedSelector, useUserData } from '../../hooks/useTypedSelector';
@@ -45,6 +47,49 @@ const MoreScreen: React.FC<MoreScreenProps> = ({ navigation }) => {
 
   const handleLogout = async () => {
     await dispatch(logout());
+  };
+
+  const contactOptions = [
+    {
+      title: "Email Support",
+      description: "Get help via email",
+      icon: "📧",
+      action: () => openEmail()
+    },
+    {
+      title: "Telegram Support",
+      description: "Chat with us on Telegram",
+      icon: "telegram",
+      action: () => openTelegram()
+    },
+    {
+      title: "Report a Bug",
+      description: "Help us improve the app",
+      icon: "🐛",
+      action: () => reportBug()
+    },
+    {
+      title: "Feature Request",
+      description: "Suggest new features",
+      icon: "💡",
+      action: () => requestFeature()
+    }
+  ];
+
+  const openEmail = () => {
+    Linking.openURL('mailto:wealthwise523@gmail.com?subject=Help Request');
+  };
+
+  const openTelegram = () => {
+    Linking.openURL('https://t.me/WealthWiseSuppo');
+  };
+
+  const reportBug = () => {
+    Linking.openURL('mailto:wealthwise523@gmail.com?subject=Bug Report');
+  };
+
+  const requestFeature = () => {
+    Linking.openURL('mailto:wealthwise523@gmail.com?subject=Feature Request');
   };
 
   const renderMenuItem = (item: any) => (
@@ -112,56 +157,31 @@ const MoreScreen: React.FC<MoreScreenProps> = ({ navigation }) => {
           {menuItems.map(renderMenuItem)}
         </View>
 
-        {/* Quick Actions */}
-        <View style={styles.quickActionsSection}>
-          <Text style={styles.sectionTitle}>Quick Actions</Text>
-          <View style={styles.quickActionsGrid}>
+        {/* Customer Support */}
+        <View style={styles.customerSupportSection}>
+          <Text style={styles.sectionTitle}>Customer Support</Text>
+          {contactOptions.map((contact, index) => (
             <TouchableOpacity
-              style={styles.quickActionButton}
-              onPress={() =>
-                navigation.navigate('Transactions', {
-                  screen: 'AddEditTransaction',
-                })
-              }
+              key={index}
+              style={styles.contactItem}
+              onPress={contact.action}
+              activeOpacity={0.7}
             >
-              <Text style={styles.quickActionIcon}>💵</Text>
-              <Text style={styles.quickActionText}>Add Transaction</Text>
+              {contact.icon === "telegram" ? (
+                <Image 
+                  source={require('../../../assets/telegram-logo.png')} 
+                  style={styles.telegramIcon} 
+                />
+              ) : (
+                <Text style={styles.contactIcon}>{contact.icon}</Text>
+              )}
+              <View style={styles.contactContent}>
+                <Text style={styles.contactTitle}>{contact.title}</Text>
+                <Text style={styles.contactDescription}>{contact.description}</Text>
+              </View>
+              <Text style={styles.chevron}>›</Text>
             </TouchableOpacity>
-            {/* Goals functionality removed for now - kept for future use */}
-            {/* <TouchableOpacity
-              style={styles.quickActionButton}
-              onPress={() =>
-                navigation.navigate('Goals', {
-                  screen: 'GoalsList',
-                })
-              }
-            >
-              <Text style={styles.quickActionIcon}>🎯</Text>
-              <Text style={styles.quickActionText}>Create Goal</Text>
-            </TouchableOpacity> */}
-            <TouchableOpacity
-              style={styles.quickActionButton}
-              onPress={() =>
-                navigation.navigate('Accounts', {
-                  screen: 'AddEditAccount',
-                })
-              }
-            >
-              <Text style={styles.quickActionIcon}>🏛️</Text>
-              <Text style={styles.quickActionText}>Add Account</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={styles.quickActionButton}
-              onPress={() =>
-                navigation.navigate('GoalsBudget', {
-                  screen: 'CreateBudget',
-                })
-              }
-            >
-              <Text style={styles.quickActionIcon}>📈</Text>
-              <Text style={styles.quickActionText}>Create Budget</Text>
-            </TouchableOpacity>
-          </View>
+          ))}
         </View>
 
         {/* Settings */}
@@ -396,40 +416,48 @@ const styles = StyleSheet.create({
     ...typography.h3,
     color: colors.textSecondary,
   },
-  quickActionsSection: {
+  customerSupportSection: {
     paddingHorizontal: spacing.lg,
     marginBottom: spacing.lg,
   },
-  quickActionsGrid: {
+  contactItem: {
     flexDirection: 'row',
-    flexWrap: 'wrap',
-    justifyContent: 'space-between',
-  },
-  quickActionButton: {
-    width: '48%',
-    backgroundColor: colors.card,
-    borderRadius: 12,
-    padding: spacing.md,
     alignItems: 'center',
+    backgroundColor: colors.card,
+    padding: spacing.lg,
+    borderRadius: 12,
     marginBottom: spacing.sm,
     shadowColor: '#000',
     shadowOffset: {
       width: 0,
-      height: 2,
+      height: 1,
     },
-    shadowOpacity: 0.1,
-    shadowRadius: 3.84,
-    elevation: 5,
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
+    elevation: 2,
   },
-  quickActionIcon: {
-    fontSize: 24,
-    marginBottom: spacing.sm,
+  contactIcon: {
+    fontSize: 20,
+    marginRight: spacing.md,
   },
-  quickActionText: {
-    ...typography.small,
+  telegramIcon: {
+    width: 20,
+    height: 20,
+    marginRight: spacing.md,
+    resizeMode: 'contain',
+  },
+  contactContent: {
+    flex: 1,
+  },
+  contactTitle: {
+    ...typography.body,
     color: colors.text,
-    textAlign: 'center',
     fontWeight: '600',
+    marginBottom: spacing.xs,
+  },
+  contactDescription: {
+    ...typography.small,
+    color: colors.textSecondary,
   },
   settingsSection: {
     paddingHorizontal: spacing.lg,

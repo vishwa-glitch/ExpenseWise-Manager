@@ -19,6 +19,7 @@ import { LoadingSpinner } from '../../components/common/LoadingSpinner';
 import { CustomButton } from '../../components/common/CustomButton';
 import { colors, typography, spacing } from '../../constants/colors';
 import { formatCurrency } from '../../utils/currency';
+import { getBudgetDisplayName } from '../../utils/budgetDisplayUtils';
 
 interface BudgetDetailScreenProps {
   navigation: any;
@@ -67,7 +68,7 @@ const BudgetDetailScreen: React.FC<BudgetDetailScreenProps> = ({ navigation, rou
   const handleDeleteBudget = () => {
     Alert.alert(
       'Delete Budget',
-      `Are you sure you want to delete "${selectedBudget?.name}"? This action cannot be undone.`,
+      `Are you sure you want to delete "${getBudgetDisplayName(selectedBudget?.category_name || '')}"? This action cannot be undone.`,
       [
         { text: 'Cancel', style: 'cancel' },
         {
@@ -337,7 +338,7 @@ const BudgetDetailScreen: React.FC<BudgetDetailScreenProps> = ({ navigation, rou
         >
           <Text style={styles.backIcon}>←</Text>
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>{selectedBudget.name}</Text>
+        <Text style={styles.headerTitle}>{getBudgetDisplayName(selectedBudget.category_name)}</Text>
         <TouchableOpacity
           style={styles.editButton}
           onPress={handleEditBudget}

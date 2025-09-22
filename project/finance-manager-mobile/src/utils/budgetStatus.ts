@@ -60,6 +60,10 @@ export const getStatusDisplay = (status: BudgetStatus, colors: StatusColors): St
  * @returns Formatted percentage string
  */
 export const formatUtilizationRate = (rate: number): string => {
+  // Handle undefined, null, or NaN values
+  if (rate === undefined || rate === null || isNaN(rate)) {
+    return '0%';
+  }
   return `${Math.round(rate)}%`;
 };
 

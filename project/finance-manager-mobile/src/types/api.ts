@@ -15,10 +15,11 @@ export interface BudgetStatusResponse {
 
 export interface Budget {
   id: string;
-  name: string;
   amount: number;
   spent_amount: number;
-  category_id?: string;
+  category_id: string;
+  category_name: string;
+  category_color?: string;
   is_active: boolean;
   period: 'monthly' | 'weekly' | 'yearly' | 'custom';
   start_date: string;

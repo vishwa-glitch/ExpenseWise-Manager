@@ -5,7 +5,7 @@
  */
 
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { notificationService } from './notificationService';
+import * as Notifications from 'expo-notifications';
 
 export interface ScheduledNotification {
   id: string;
@@ -27,7 +27,7 @@ export interface NotificationQueue {
 class NotificationScheduler {
   private static readonly STORAGE_KEY = 'notification_queue';
   private static readonly NOTIFICATION_INTERVAL = 2 * 60 * 60 * 1000; // 2 hours in milliseconds
-  private static readonly MIN_DELAY_AFTER_LAUNCH = 5 * 60 * 1000; // 5 minutes after app launch
+  private static readonly MIN_DELAY_AFTER_LAUNCH = 2 * 60 * 1000; // 2 minutes after app launch (reduced for testing)
   
   private queue: NotificationQueue = {
     notifications: [],
@@ -55,7 +55,10 @@ class NotificationScheduler {
     // Clean up expired notifications
     this.cleanupExpiredNotifications();
     
-    // Start processing interval (check every 30 minutes)
+    // Check for due notifications immediately
+    await this.processQueuedNotifications();
+    
+    // Start processing interval (check every 5 minutes for better responsiveness)
     this.startProcessingInterval();
     
     this.isInitialized = true;
@@ -144,10 +147,10 @@ class NotificationScheduler {
       clearInterval(this.processingInterval);
     }
     
-    // Check every 30 minutes for due notifications
+    // Check every 5 minutes for due notifications (more responsive for testing)
     this.processingInterval = setInterval(async () => {
       await this.processQueuedNotifications();
-    }, 30 * 60 * 1000);
+    }, 5 * 60 * 1000);
     
     console.log('📅 Started notification processing interval');
   }
@@ -160,7 +163,14 @@ class NotificationScheduler {
       const now = Date.now();
       const dueNotifications = this.queue.notifications.filter(n => n.scheduledFor <= now);
       
+      console.log(`📅 Checking queue: ${this.queue.notifications.length} total, ${dueNotifications.length} due`);
+      
       if (dueNotifications.length === 0) {
+        if (this.queue.notifications.length > 0) {
+          const nextDue = Math.min(...this.queue.notifications.map(n => n.scheduledFor));
+          const minutesUntilNext = Math.round((nextDue - now) / (60 * 1000));
+          console.log(`📅 Next notification due in ${minutesUntilNext} minutes`);
+        }
         return;
       }
       
@@ -177,13 +187,21 @@ class NotificationScheduler {
       // Send the highest priority notification
       const notificationToSend = dueNotifications[0];
       
-      await notificationService.scheduleLocalNotification({
-        id: notificationToSend.id,
-        title: notificationToSend.title,
-        body: notificationToSend.message,
-        type: notificationToSend.type,
-        priority: notificationToSend.priority,
-        data: notificationToSend.data,
+      // Send notification directly using Expo Notifications to avoid circular dependency
+      await Notifications.scheduleNotificationAsync({
+        content: {
+          title: notificationToSend.title,
+          body: notificationToSend.message,
+          data: {
+            type: notificationToSend.type,
+            ...notificationToSend.data,
+          },
+          sound: true,
+          priority: notificationToSend.priority === 'high' 
+            ? Notifications.AndroidNotificationPriority.HIGH 
+            : Notifications.AndroidNotificationPriority.DEFAULT,
+        },
+        trigger: null, // Send immediately
       });
       
       console.log(`📅 Sent scheduled notification: ${notificationToSend.title}`);
@@ -322,23 +340,95 @@ class NotificationScheduler {
    * Daily reminders and system notifications are sent immediately
    */
   shouldQueue(notificationType: string, alertType?: string): boolean {
-    // Don't queue daily reminders - they should be sent immediately
-    if (notificationType === 'reminder') {
-      return false;
-    }
-    
-    // Don't queue system notifications
-    if (notificationType === 'system') {
-      return false;
-    }
-    
-    // Queue budget and goal notifications
-    if (notificationType === 'budget' || notificationType === 'goal') {
-      return true;
-    }
-    
-    // Default to not queuing
+    // Send all notifications immediately now (user requested change)
     return false;
+    
+    // Previous queuing logic (disabled):
+    // - Budget and goal notifications are now sent immediately
+    // - App will remember sent notifications to avoid duplicates
+  }
+
+  /**
+   * Add a test notification for immediate testing (bypasses normal delays)
+   */
+  async addTestNotification(type: 'budget' | 'goal', title: string, message: string) {
+    const testNotification: ScheduledNotification = {
+      id: `test-${type}-${Date.now()}`,
+      type,
+      title,
+      message,
+      data: { test: true, alertType: 'test' },
+      priority: 'high',
+      scheduledFor: Date.now() + 30000, // 30 seconds from now
+      createdAt: Date.now(),
+    };
+    
+    this.queue.notifications.push(testNotification);
+    await this.saveQueue();
+    this.updateNextScheduledTime();
+    
+    console.log(`📅 Added test notification: ${title} (due in 30 seconds)`);
+    return testNotification.id;
+  }
+
+  /**
+   * Send an immediate test notification to verify the notification system works
+   */
+  async sendImmediateTestNotification() {
+    try {
+      console.log('📅 Sending immediate test notification...');
+      
+      const notificationId = await Notifications.scheduleNotificationAsync({
+        content: {
+          title: '🧪 Immediate Test Notification',
+          body: 'If you see this, the notification system is working! This bypasses all queuing.',
+          data: {
+            type: 'test',
+            immediate: true,
+            timestamp: Date.now(),
+          },
+          sound: true,
+          priority: Notifications.AndroidNotificationPriority.HIGH,
+        },
+        trigger: null, // Send immediately
+      });
+      
+      console.log(`📅 Sent immediate test notification with ID: ${notificationId}`);
+      return notificationId;
+    } catch (error) {
+      console.error('❌ Failed to send immediate test notification:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Get detailed debug information about the scheduler state
+   */
+  getDetailedStatus() {
+    const now = Date.now();
+    return {
+      isInitialized: this.isInitialized,
+      queuedNotifications: this.queue.notifications.length,
+      nextScheduledTime: this.queue.nextScheduledTime,
+      nextScheduledDate: this.queue.nextScheduledTime ? new Date(this.queue.nextScheduledTime).toLocaleString() : 'None',
+      lastProcessed: this.queue.lastProcessed,
+      lastProcessedDate: this.queue.lastProcessed ? new Date(this.queue.lastProcessed).toLocaleString() : 'Never',
+      currentTime: new Date(now).toLocaleString(),
+      notifications: this.queue.notifications.map(n => ({
+        id: n.id,
+        type: n.type,
+        title: n.title,
+        priority: n.priority,
+        scheduledFor: new Date(n.scheduledFor).toLocaleString(),
+        isDue: n.scheduledFor <= now,
+        minutesUntilDue: Math.round((n.scheduledFor - now) / (60 * 1000)),
+      })),
+      intervals: {
+        notificationInterval: NotificationScheduler.NOTIFICATION_INTERVAL / (60 * 60 * 1000) + ' hours',
+        minDelayAfterLaunch: NotificationScheduler.MIN_DELAY_AFTER_LAUNCH / (60 * 1000) + ' minutes',
+        processingInterval: '5 minutes',
+      },
+    };
   }
 }
 

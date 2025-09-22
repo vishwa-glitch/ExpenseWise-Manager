@@ -11,15 +11,16 @@ import {
   formatUtilizationRate,
   type BudgetStatus 
 } from '../../utils/budgetStatus';
+import { getBudgetDisplayName } from '../../utils/budgetDisplayUtils';
 
 interface BudgetCardProps {
   budget: {
     id: string;
-    name: string;
     amount: number;
     spent_amount?: number;
     period: string;
-    category_name?: string;
+    category_name: string;
+    category_color?: string;
     start_date: string;
     end_date: string;
     is_active: boolean;
@@ -161,7 +162,9 @@ export const BudgetCard: React.FC<BudgetCardProps> = ({ budget, onPress, onEdit,
   };
 
   const getUtilizationRate = () => {
-    return budget.utilization_rate || getProgressPercentage();
+    const rate = budget.utilization_rate || getProgressPercentage();
+    // Ensure we return a valid number
+    return typeof rate === 'number' && !isNaN(rate) ? rate : 0;
   };
 
   return (
@@ -181,7 +184,7 @@ export const BudgetCard: React.FC<BudgetCardProps> = ({ budget, onPress, onEdit,
             </Text>
           </View>
           <View style={styles.titleContainer}>
-            <Text style={styles.name}>{budget.name}</Text>
+            <Text style={styles.name}>{getBudgetDisplayName(budget.category_name)}</Text>
             <Text style={styles.category}>
               {budget.category_name || 'All Categories'} • {budget.period}
             </Text>

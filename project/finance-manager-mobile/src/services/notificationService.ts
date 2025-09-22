@@ -73,6 +73,11 @@ class NotificationService {
       }
       await notificationScheduler.initialize();
       console.log('📅 Notification scheduler initialized with notifications');
+      
+      // Initialize notification memory service
+      const { notificationMemoryService } = await import('./notificationMemoryService');
+      await notificationMemoryService.initialize();
+      console.log('💭 Notification memory service initialized with notifications');
     } catch (error) {
       console.error('❌ Failed to start monitoring services:', error);
     }

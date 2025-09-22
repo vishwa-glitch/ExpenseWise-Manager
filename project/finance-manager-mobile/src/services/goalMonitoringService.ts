@@ -7,6 +7,7 @@
 import { store } from '../store';
 import { fetchGoals } from '../store/slices/goalsSlice';
 import { notificationService } from './notificationService';
+import { notificationMemoryService } from './notificationMemoryService';
 import { Goal, GoalContribution } from '../types/goals';
 import { apiService } from './api';
 
@@ -56,10 +57,11 @@ class GoalMonitoringService {
     console.log('🎯 Starting goal monitoring service...');
     this.isMonitoring = true;
 
-    // Initial check after 10 minutes to avoid immediate notifications on app launch
+    // Initial check after 45 seconds for immediate testing (was 10 minutes)
     setTimeout(async () => {
+      console.log('🎯 Running initial goal check...');
       await this.checkGoalMetrics();
-    }, 10 * 60 * 1000);
+    }, 45 * 1000);
 
     // Set up periodic monitoring (every 6 hours)
     this.monitoringInterval = setInterval(async () => {
@@ -92,10 +94,17 @@ class GoalMonitoringService {
       const goalsResponse = await apiService.getGoals();
       const goals = goalsResponse.goals || [];
 
+      console.log(`🎯 Found ${goals.length} goals to check:`);
+      goals.forEach((goal: Goal) => {
+        const progress = goal.target_amount > 0 ? (goal.current_amount || 0) / goal.target_amount : 0;
+        console.log(`🎯 Goal "${goal.title}": $${goal.current_amount || 0}/$${goal.target_amount} (${Math.round(progress * 100)}%) - Status: ${goal.status}`);
+      });
+
       const alerts: GoalAlert[] = [];
 
       // 1. Check if user has no goals
       if (goals.length === 0) {
+        console.log('🎯 No goals found - checking for no goals alert');
         const noGoalsAlert = this.checkNoGoals();
         if (noGoalsAlert) {
           alerts.push(noGoalsAlert);
@@ -131,7 +140,19 @@ class GoalMonitoringService {
         }
       }
 
+      // Check for daily contribution reminders
+      if (notificationMemoryService.shouldSendDailyReminders()) {
+        const dailyReminders = await this.generateDailyContributionReminders(goals);
+        alerts.push(...dailyReminders);
+        await notificationMemoryService.markDailyRemindersChecked();
+      }
+
       // Send notifications for new alerts
+      console.log(`🎯 Generated ${alerts.length} goal alerts:`);
+      alerts.forEach(alert => {
+        console.log(`🎯 Alert: ${alert.type} - ${alert.title}`);
+      });
+      
       await this.processAlerts(alerts);
 
     } catch (error) {
@@ -313,7 +334,7 @@ class GoalMonitoringService {
   }
 
   /**
-   * Check if a goal is near completion
+   * Check if a goal is near completion or already achieved
    */
   private checkNearCompletion(goal: Goal): GoalAlert | null {
     const alertId = `completion_${goal.id}`;
@@ -322,22 +343,50 @@ class GoalMonitoringService {
       return null;
     }
 
-    if (goal.progress_percentage >= this.thresholds.completionNearPercentage) {
-      const remainingAmount = goal.remaining_amount || 0;
-      
+    // Calculate actual progress based on current vs target amounts
+    const currentAmount = goal.current_amount || 0;
+    const targetAmount = goal.target_amount || 1;
+    const actualProgress = (currentAmount / targetAmount) * 100;
+    const remainingAmount = Math.max(0, targetAmount - currentAmount);
+
+    // If goal is over-achieved (100%+), send congratulations
+    if (actualProgress >= 100) {
+      const overAmount = currentAmount - targetAmount;
+      return {
+        id: alertId,
+        type: 'goal_completion_near',
+        severity: 'high',
+        title: `🎉 Goal Achieved: ${goal.title}!`,
+        message: `Congratulations! You've achieved your ${goal.title} goal and even exceeded it by $${overAmount.toFixed(2)}! 🎊`,
+        goalId: goal.id,
+        goalTitle: goal.title,
+        data: {
+          progressPercentage: Math.round(actualProgress),
+          remainingAmount: 0,
+          targetAmount: goal.target_amount,
+          currentAmount: goal.current_amount,
+          overAmount,
+          achieved: true,
+        },
+      };
+    }
+
+    // If goal is near completion (90%+), encourage to finish
+    if (actualProgress >= this.thresholds.completionNearPercentage) {
       return {
         id: alertId,
         type: 'goal_completion_near',
         severity: 'high',
         title: `🎉 Almost there with ${goal.title}!`,
-        message: `You're ${Math.round(goal.progress_percentage)}% complete! Just $${remainingAmount.toFixed(0)} more to achieve your ${goal.title} goal!`,
+        message: `You're ${Math.round(actualProgress)}% complete! Just $${remainingAmount.toFixed(2)} more to achieve your ${goal.title} goal!`,
         goalId: goal.id,
         goalTitle: goal.title,
         data: {
-          progressPercentage: goal.progress_percentage,
+          progressPercentage: Math.round(actualProgress),
           remainingAmount,
           targetAmount: goal.target_amount,
           currentAmount: goal.current_amount,
+          achieved: false,
         },
       };
     }
@@ -360,30 +409,140 @@ class GoalMonitoringService {
   }
 
   /**
+   * Generate daily contribution reminders for active goals
+   */
+  private async generateDailyContributionReminders(goals: Goal[]): Promise<GoalAlert[]> {
+    const reminders: GoalAlert[] = [];
+    const activeGoals = goals.filter((goal: Goal) => goal.status === 'active');
+
+    console.log(`🎯 Checking daily reminders for ${activeGoals.length} active goals`);
+
+    for (const goal of activeGoals) {
+      // Skip if already sent today
+      if (notificationMemoryService.wasDailyReminderSentToday(goal.id)) {
+        console.log(`🎯 Daily reminder already sent today for goal: ${goal.title}`);
+        continue;
+      }
+
+      // Skip if goal is already completed (100% or more)
+      const progress = goal.target_amount > 0 ? (goal.current_amount || 0) / goal.target_amount : 0;
+      if (progress >= 1.0) {
+        console.log(`🎯 Skipping daily reminder for completed/over-achieved goal: ${goal.title} (${Math.round(progress * 100)}% complete)`);
+        continue;
+      }
+
+      // Skip if goal has very little remaining (less than $1)
+      const remainingAmount = Math.max(0, goal.target_amount - (goal.current_amount || 0));
+      if (remainingAmount < 1) {
+        console.log(`🎯 Skipping daily reminder for nearly complete goal: ${goal.title} (only $${remainingAmount.toFixed(2)} remaining)`);
+        continue;
+      }
+
+      const progressPercentage = Math.round(progress * 100);
+
+      reminders.push({
+        id: `daily_contribution_${goal.id}`,
+        type: 'contribution_reminder',
+        severity: 'low',
+        title: `💰 Small Steps Count!`,
+        message: `Even a small contribution to your "${goal.title}" goal makes a difference! You're ${progressPercentage}% there with $${remainingAmount.toFixed(2)} remaining.`,
+        goalId: goal.id,
+        goalTitle: goal.title,
+        data: {
+          goalId: goal.id,
+          goalTitle: goal.title,
+          currentAmount: goal.current_amount || 0,
+          targetAmount: goal.target_amount,
+          remainingAmount,
+          progressPercentage,
+          reminderType: 'daily_contribution',
+        },
+      });
+
+      console.log(`🎯 Generated daily reminder for goal: ${goal.title} (${progressPercentage}% complete)`);
+    }
+
+    return reminders;
+  }
+
+  /**
    * Process and send notifications for alerts
    */
   private async processAlerts(alerts: GoalAlert[]) {
     for (const alert of alerts) {
       try {
-        // Send notification
-        await notificationService.scheduleLocalNotification({
-          id: alert.id,
-          title: alert.title,
-          body: alert.message,
-          type: 'goal',
-          priority: alert.severity === 'high' ? 'high' : 'normal',
-          data: {
-            alertType: alert.type,
-            goalId: alert.goalId,
-            goalTitle: alert.goalTitle,
-            ...alert.data,
-          },
-        });
+        // For daily reminders, use different logic
+        if (alert.data?.reminderType === 'daily_contribution') {
+          // Send daily reminder notification
+          await notificationService.scheduleLocalNotification({
+            id: alert.id,
+            title: alert.title,
+            body: alert.message,
+            type: 'goal',
+            priority: 'normal',
+            data: {
+              alertType: alert.type,
+              goalId: alert.goalId,
+              goalTitle: alert.goalTitle,
+              ...alert.data,
+            },
+          });
 
-        // Record alert timestamp for cooldown
+          // Record daily reminder
+          await notificationMemoryService.recordSentNotification(
+            'daily_reminder',
+            'daily_contribution',
+            alert.goalId || 'unknown',
+            alert.title,
+            alert.message
+          );
+
+          console.log(`🎯 Sent daily contribution reminder: ${alert.title}`);
+        } else {
+          // Check if this alert was already sent recently (for regular alerts)
+          const wasRecentlySent = notificationMemoryService.wasRecentlySent(
+            'goal',
+            alert.type,
+            alert.goalId || 'unknown'
+          );
+
+          if (wasRecentlySent) {
+            console.log(`🎯 Skipping duplicate goal alert: ${alert.title}`);
+            continue;
+          }
+
+          // Send regular goal notification
+          await notificationService.scheduleLocalNotification({
+            id: alert.id,
+            title: alert.title,
+            body: alert.message,
+            type: 'goal',
+            priority: alert.severity === 'high' ? 'high' : 'normal',
+            data: {
+              alertType: alert.type,
+              goalId: alert.goalId,
+              goalTitle: alert.goalTitle,
+              ...alert.data,
+            },
+          });
+
+          // Record in memory service to prevent duplicates
+          await notificationMemoryService.recordSentNotification(
+            'goal',
+            alert.type,
+            alert.goalId || 'unknown',
+            alert.title,
+            alert.message
+          );
+
+          console.log(`🎯 Sent goal alert: ${alert.title}`);
+        }
+
+        // Record alert timestamp for cooldown (legacy)
         this.lastAlertTimestamps.set(alert.id, Date.now());
 
-        console.log(`🎯 Sent goal alert: ${alert.title}`);
+        console.log(`🎯 Alert details: ${alert.message}`);
+        console.log(`🎯 Alert data:`, alert.data);
       } catch (error) {
         console.error(`❌ Failed to send goal alert ${alert.id}:`, error);
       }
@@ -481,6 +640,44 @@ class GoalMonitoringService {
     } catch (error) {
       console.error('❌ Error checking goals after activity:', error);
     }
+  }
+
+  /**
+   * Generate a test goal notification for debugging
+   */
+  async generateTestNotification() {
+    try {
+      console.log('🎯 Generating test goal notification...');
+      
+      // Import notification service dynamically to avoid circular dependency
+      const { notificationService } = await import('./notificationService');
+      
+      await notificationService.scheduleLocalNotification({
+        id: `test-goal-${Date.now()}`,
+        title: '🧪 Test Goal Reminder',
+        body: 'This is a test goal notification generated manually for debugging.',
+        type: 'goal',
+        priority: 'high',
+        data: {
+          alertType: 'test',
+          goalId: 'test-goal',
+          goalTitle: 'Test Goal',
+        },
+      });
+      
+      console.log('✅ Test goal notification generated');
+    } catch (error) {
+      console.error('❌ Error generating test goal notification:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Manually trigger goal check immediately (for debugging)
+   */
+  async triggerImmediateCheck() {
+    console.log('🎯 Manually triggering immediate goal check...');
+    await this.checkGoalMetrics();
   }
 }
 

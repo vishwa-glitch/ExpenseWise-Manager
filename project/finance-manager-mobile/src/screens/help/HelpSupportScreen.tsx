@@ -6,9 +6,7 @@ import {
   SafeAreaView,
   ScrollView,
   TouchableOpacity,
-  Linking,
   Alert,
-  Image,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { colors, typography, spacing } from '../../constants/colors';
@@ -65,32 +63,6 @@ const HelpSupportScreen: React.FC = () => {
   ];
 
 
-  const contactOptions = [
-    {
-      title: "Email Support",
-      description: "Get help via email",
-      icon: "📧",
-      action: () => openEmail()
-    },
-    {
-      title: "Telegram Support",
-      description: "Chat with us on Telegram",
-      icon: "telegram",
-      action: () => openTelegram()
-    },
-    {
-      title: "Report a Bug",
-      description: "Help us improve the app",
-      icon: "🐛",
-      action: () => reportBug()
-    },
-    {
-      title: "Feature Request",
-      description: "Suggest new features",
-      icon: "💡",
-      action: () => requestFeature()
-    }
-  ];
 
   const helpOptions = [
     {
@@ -111,21 +83,6 @@ const HelpSupportScreen: React.FC = () => {
     setExpandedFAQ(expandedFAQ === index ? null : index);
   };
 
-  const openEmail = () => {
-    Linking.openURL('mailto:wealthwise523@gmail.com?subject=Help Request');
-  };
-
-  const openTelegram = () => {
-    Linking.openURL('https://t.me/WealthWiseSuppo');
-  };
-
-  const reportBug = () => {
-    Linking.openURL('mailto:wealthwise523@gmail.com?subject=Bug Report');
-  };
-
-  const requestFeature = () => {
-    Linking.openURL('mailto:wealthwise523@gmail.com?subject=Feature Request');
-  };
 
 
   const restartOnboarding = () => {
@@ -189,21 +146,14 @@ const HelpSupportScreen: React.FC = () => {
     </TouchableOpacity>
   );
 
-  const renderContactItem = (contact: any, index: number) => (
+  const renderHelpItem = (contact: any, index: number) => (
     <TouchableOpacity
       key={index}
       style={styles.contactItem}
       onPress={contact.action}
       activeOpacity={0.7}
     >
-      {contact.icon === "telegram" ? (
-        <Image 
-          source={require('../../../assets/telegram-logo.png')} 
-          style={styles.telegramIcon} 
-        />
-      ) : (
-        <Text style={styles.contactIcon}>{contact.icon}</Text>
-      )}
+      <Text style={styles.contactIcon}>{contact.icon}</Text>
       <View style={styles.contactContent}>
         <Text style={styles.contactTitle}>{contact.title}</Text>
         <Text style={styles.contactDescription}>{contact.description}</Text>
@@ -226,16 +176,11 @@ const HelpSupportScreen: React.FC = () => {
           {faqs.map(renderFAQItem)}
         </View>
 
-        {/* Contact Support Section */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Contact Support</Text>
-          {contactOptions.map(renderContactItem)}
-        </View>
 
         {/* Help Options Section */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Help Options</Text>
-          {helpOptions.map(renderContactItem)}
+          {helpOptions.map(renderHelpItem)}
         </View>
 
         {/* App Info Section */}
@@ -369,12 +314,6 @@ const styles = StyleSheet.create({
   contactIcon: {
     fontSize: 20,
     marginRight: spacing.md,
-  },
-  telegramIcon: {
-    width: 20,
-    height: 20,
-    marginRight: spacing.md,
-    resizeMode: 'contain',
   },
   contactContent: {
     flex: 1,
