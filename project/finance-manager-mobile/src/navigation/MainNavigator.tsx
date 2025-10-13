@@ -29,7 +29,8 @@ import AddEditAccountScreen from '../screens/accounts/AddEditAccountScreen';
 import AccountSharingScreen from '../screens/accounts/AccountSharingScreen';
 
 // Import global components
-import OnboardingOverlay from '../components/onboarding/OnboardingOverlay';
+import OnboardingOverlay from '../components/common/OnboardingOverlay';
+import { useOnboardingOverlay } from '../hooks/useOnboardingOverlay';
 
 const Tab = createBottomTabNavigator();
 const Stack = createStackNavigator();
@@ -167,6 +168,8 @@ const TabNavigator: React.FC = () => {
 
 // Main Navigator (removed drawer navigation)
 const MainNavigator: React.FC = () => {
+  const onboardingOverlay = useOnboardingOverlay();
+
   return (
     <>
       <Stack.Navigator
@@ -186,7 +189,15 @@ const MainNavigator: React.FC = () => {
       </Stack.Navigator>
       
       {/* Global Onboarding Overlay */}
-      <OnboardingOverlay />
+      <OnboardingOverlay
+        isVisible={onboardingOverlay.isVisible}
+        currentStep={onboardingOverlay.currentStep}
+        totalSteps={onboardingOverlay.totalSteps}
+        steps={onboardingOverlay.steps}
+        onNext={onboardingOverlay.handleNext}
+        onSkip={onboardingOverlay.handleSkip}
+        onComplete={onboardingOverlay.handleComplete}
+      />
     </>
   );
 };

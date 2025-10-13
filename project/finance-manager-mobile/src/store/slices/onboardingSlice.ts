@@ -173,6 +173,12 @@ const onboardingSlice = createSlice({
       state.hasCreatedTransaction = false;
       state.hasCreatedBudget = false;
     },
+    // Action to mark onboarding screens complete but prepare overlay for new users
+    completeOnboardingScreens: (state) => {
+      state.isOnboardingComplete = true;
+      state.isOverlayVisible = true;
+      state.currentStep = 0;
+    },
     resetOnboarding: (state) => {
       state.isOnboardingComplete = false;
       state.currentStep = 0;

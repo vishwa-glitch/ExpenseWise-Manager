@@ -25,7 +25,7 @@
         }
       ]
     ],
-    "owner": "vikas555",
+    "owner": "vishwa555",
     "android": {
       "package": "com.vishwa567.fintech",
       "jsEngine": "hermes",
@@ -37,9 +37,8 @@
     },
     "extra": {
       "eas": {
-        "projectId": "63bbde36-d8de-4d3a-8c47-861f25369ab1"
+        "projectId": "ff962fea-4c50-456b-a4bf-e0a752f5507d"
       }
     }
   }
 }
-

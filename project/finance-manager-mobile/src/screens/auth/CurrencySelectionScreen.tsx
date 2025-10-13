@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo } from "react";
 import {
   View,
   Text,
@@ -10,51 +10,59 @@ import {
   KeyboardAvoidingView,
   Platform,
   Alert,
-} from 'react-native';
-import * as SecureStore from 'expo-secure-store';
-import { useAppDispatch } from '../../hooks/useAppDispatch';
-import { useTypedSelector } from '../../hooks/useTypedSelector';
-import { CustomTextInput } from '../../components/common/CustomTextInput';
-import { CustomButton } from '../../components/common/CustomButton';
-import { colors, typography, spacing } from '../../constants/colors';
-import { currencyService, Currency } from '../../services/currencyService';
-import { apiService } from '../../services/api';
-import { completeCurrencySelection, clearRegistrationCredentials } from '../../store/slices/authSlice';
-import { setDisplayCurrency } from '../../store/slices/userSlice';
-import { showOverlay, completeOnboarding } from '../../store/slices/onboardingSlice';
-import { notificationService } from '../../services/notificationService';
+} from "react-native";
+import * as SecureStore from "expo-secure-store";
+import { useAppDispatch } from "../../hooks/useAppDispatch";
+import { useTypedSelector } from "../../hooks/useTypedSelector";
+import { CustomTextInput } from "../../components/common/CustomTextInput";
+import { CustomButton } from "../../components/common/CustomButton";
+import { colors, typography, spacing } from "../../constants/colors";
+import { currencyService, Currency } from "../../services/currencyService";
+import { apiService } from "../../services/api";
+import {
+  completeCurrencySelection,
+  clearRegistrationCredentials,
+} from "../../store/slices/authSlice";
+import { setDisplayCurrency } from "../../store/slices/userSlice";
+import { showOverlay } from "../../store/slices/onboardingSlice";
+import { notificationService } from "../../services/notificationService";
 
 interface CurrencySelectionScreenProps {
   navigation: any;
 }
 
-const CurrencySelectionScreen: React.FC<CurrencySelectionScreenProps> = ({ navigation }) => {
+const CurrencySelectionScreen: React.FC<CurrencySelectionScreenProps> = ({
+  navigation,
+}) => {
   const dispatch = useAppDispatch();
-  const { isAuthenticated, registrationCredentials } = useTypedSelector((state) => state.auth);
+  const { isAuthenticated, registrationCredentials } = useTypedSelector(
+    (state) => state.auth
+  );
   const [currencies, setCurrencies] = useState<Currency[]>([]);
   const [isLoadingCurrencies, setIsLoadingCurrencies] = useState(true);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [selectedCurrency, setSelectedCurrency] = useState<string>('');
+  const [searchQuery, setSearchQuery] = useState("");
+  const [selectedCurrency, setSelectedCurrency] = useState<string>("");
 
   useEffect(() => {
     const fetchCurrencies = async () => {
       try {
-        console.log('🔄 Loading supported currencies...');
+        console.log("🔄 Loading supported currencies...");
         setIsLoadingCurrencies(true);
-        const supportedCurrencies = await currencyService.getSupportedCurrencies();
+        const supportedCurrencies =
+          await currencyService.getSupportedCurrencies();
         console.log(`✅ Loaded ${supportedCurrencies.length} currencies`);
         setCurrencies(supportedCurrencies);
-        
+
         // Set a default selection if none is selected
         if (!selectedCurrency && supportedCurrencies.length > 0) {
           // Try to find USD first, otherwise use the first currency
-          const usdCurrency = supportedCurrencies.find(c => c.code === 'USD');
+          const usdCurrency = supportedCurrencies.find((c) => c.code === "USD");
           const defaultCurrency = usdCurrency || supportedCurrencies[0];
           setSelectedCurrency(defaultCurrency.code);
           console.log(`🎯 Set default currency to: ${defaultCurrency.code}`);
         }
       } catch (error) {
-        console.error('❌ Failed to load currencies:', error);
+        console.error("❌ Failed to load currencies:", error);
       } finally {
         setIsLoadingCurrencies(false);
       }
@@ -67,7 +75,7 @@ const CurrencySelectionScreen: React.FC<CurrencySelectionScreenProps> = ({ navig
     if (!searchQuery.trim()) {
       return currencies;
     }
-    
+
     const query = searchQuery.toLowerCase().trim();
     return currencies.filter(
       (currency) =>
@@ -79,192 +87,273 @@ const CurrencySelectionScreen: React.FC<CurrencySelectionScreenProps> = ({ navig
 
   const handleContinue = async () => {
     try {
-      console.log('🎯 Setting user currency to:', selectedCurrency);
-      console.log('🔐 User authentication status:', isAuthenticated);
-      
+      console.log("🎯 Setting user currency to:", selectedCurrency);
+      console.log("🔐 User authentication status:", isAuthenticated);
+
       if (!isAuthenticated) {
-        throw new Error('User is not authenticated');
+        throw new Error("User is not authenticated");
       }
-      
+
       // Check token status before proceeding
-      console.log('🔍 Checking token status before currency change...');
+      console.log("🔍 Checking token status before currency change...");
       await apiService.checkTokenStatus();
-      
+
       // Try multiple approaches to set the currency with retry logic
       let currencySet = false;
       const maxRetries = 3; // Reduced retries for better UX
-      
+
       for (let attempt = 1; attempt <= maxRetries; attempt++) {
         try {
           console.log(`🔄 Attempt ${attempt}/${maxRetries} to set currency...`);
-          
+
           // Method 1: Try the dedicated currency change endpoint
           try {
-            console.log('📡 Trying /user/change-currency endpoint...');
+            console.log("📡 Trying /user/change-currency endpoint...");
             await apiService.changeUserCurrency(selectedCurrency, false);
-            console.log('✅ Currency change successful via dedicated endpoint');
-            
+            console.log("✅ Currency change successful via dedicated endpoint");
+
             // The changeUserCurrency method already stores locally, but let's ensure it
             try {
-              await SecureStore.setItemAsync('user_currency', selectedCurrency);
-              console.log('✅ User currency preference confirmed locally:', selectedCurrency);
+              await SecureStore.setItemAsync("user_currency", selectedCurrency);
+              console.log(
+                "✅ User currency preference confirmed locally:",
+                selectedCurrency
+              );
             } catch (storageError) {
-              console.error('❌ Failed to store currency preference locally:', storageError);
+              console.error(
+                "❌ Failed to store currency preference locally:",
+                storageError
+              );
             }
-            
+
             currencySet = true;
             break;
           } catch (currencyError: any) {
-            console.error(`❌ Currency change endpoint failed (attempt ${attempt}):`, currencyError);
-            
+            console.error(
+              `❌ Currency change endpoint failed (attempt ${attempt}):`,
+              currencyError
+            );
+
             // If it's a 401 error, try token refresh
             if (currencyError.response?.status === 401) {
-              console.log('🔄 Token expired, attempting refresh...');
+              console.log("🔄 Token expired, attempting refresh...");
               try {
                 await apiService.testTokenRefresh();
-                console.log('✅ Token refreshed, retrying currency change...');
+                console.log("✅ Token refreshed, retrying currency change...");
                 await apiService.changeUserCurrency(selectedCurrency, false);
-                console.log('✅ Currency change successful after token refresh');
+                console.log(
+                  "✅ Currency change successful after token refresh"
+                );
                 currencySet = true;
                 break;
               } catch (refreshError) {
-                console.error('❌ Token refresh failed:', refreshError);
+                console.error("❌ Token refresh failed:", refreshError);
               }
             }
           }
-          
+
           // Method 2: Try updating user profile with preferred_currency
           if (!currencySet) {
             try {
-              console.log('📡 Trying profile update with preferred_currency...');
-              await apiService.updateUserProfile({ preferred_currency: selectedCurrency });
-              console.log('✅ Currency set via profile update');
-              
+              console.log(
+                "📡 Trying profile update with preferred_currency..."
+              );
+              await apiService.updateUserProfile({
+                preferred_currency: selectedCurrency,
+              });
+              console.log("✅ Currency set via profile update");
+
               // Store the currency locally after successful profile update
               try {
-                await SecureStore.setItemAsync('user_currency', selectedCurrency);
-                console.log('✅ User currency preference stored locally after profile update:', selectedCurrency);
+                await SecureStore.setItemAsync(
+                  "user_currency",
+                  selectedCurrency
+                );
+                console.log(
+                  "✅ User currency preference stored locally after profile update:",
+                  selectedCurrency
+                );
               } catch (storageError) {
-                console.error('❌ Failed to store currency preference locally:', storageError);
+                console.error(
+                  "❌ Failed to store currency preference locally:",
+                  storageError
+                );
               }
-              
+
               currencySet = true;
               break;
             } catch (profileError: any) {
-              console.error(`❌ Profile update failed (attempt ${attempt}):`, profileError);
-              
+              console.error(
+                `❌ Profile update failed (attempt ${attempt}):`,
+                profileError
+              );
+
               // If it's a 401 error, try token refresh
               if (profileError.response?.status === 401) {
-                console.log('🔄 Token expired, attempting refresh...');
+                console.log("🔄 Token expired, attempting refresh...");
                 try {
                   await apiService.testTokenRefresh();
-                  console.log('✅ Token refreshed, retrying profile update...');
-                  await apiService.updateUserProfile({ preferred_currency: selectedCurrency });
-                  console.log('✅ Currency set via profile update after token refresh');
+                  console.log("✅ Token refreshed, retrying profile update...");
+                  await apiService.updateUserProfile({
+                    preferred_currency: selectedCurrency,
+                  });
+                  console.log(
+                    "✅ Currency set via profile update after token refresh"
+                  );
                   currencySet = true;
                   break;
                 } catch (refreshError) {
-                  console.error('❌ Token refresh failed:', refreshError);
+                  console.error("❌ Token refresh failed:", refreshError);
                 }
               }
             }
           }
-          
+
           // Method 3: Try direct API call with fresh token
           if (!currencySet && attempt >= 2) {
             try {
-              console.log('📡 Trying direct API call with current token...');
-              const token = await SecureStore.getItemAsync('access_token');
+              console.log("📡 Trying direct API call with current token...");
+              const token = await SecureStore.getItemAsync("access_token");
               if (token) {
-                await apiService.directApiCall('/user/change-currency', 'POST', {
-                  new_currency: selectedCurrency,
-                  convert_existing_data: false,
-                }, token);
-                console.log('✅ Currency change successful via direct API call');
-                
+                await apiService.directApiCall(
+                  "/user/change-currency",
+                  "POST",
+                  {
+                    new_currency: selectedCurrency,
+                    convert_existing_data: false,
+                  },
+                  token
+                );
+                console.log(
+                  "✅ Currency change successful via direct API call"
+                );
+
                 // Store the currency locally after successful direct API call
                 try {
-                  await SecureStore.setItemAsync('user_currency', selectedCurrency);
-                  console.log('✅ User currency preference stored locally after direct API call:', selectedCurrency);
+                  await SecureStore.setItemAsync(
+                    "user_currency",
+                    selectedCurrency
+                  );
+                  console.log(
+                    "✅ User currency preference stored locally after direct API call:",
+                    selectedCurrency
+                  );
                 } catch (storageError) {
-                  console.error('❌ Failed to store currency preference locally:', storageError);
+                  console.error(
+                    "❌ Failed to store currency preference locally:",
+                    storageError
+                  );
                 }
-                
+
                 currencySet = true;
                 break;
               }
             } catch (directApiError) {
-              console.error('❌ Direct API call failed:', directApiError);
+              console.error("❌ Direct API call failed:", directApiError);
             }
           }
-          
+
           // Method 3: Try re-registering the user if tokens are completely invalid
           if (!currencySet && attempt >= 3 && registrationCredentials) {
             try {
-              console.log('🔄 Tokens seem invalid, attempting to re-register user...');
-              console.log('📋 Using stored registration credentials');
-              
+              console.log(
+                "🔄 Tokens seem invalid, attempting to re-register user..."
+              );
+              console.log("📋 Using stored registration credentials");
+
               // Re-register with stored credentials
-              const registerResponse = await apiService.register(registrationCredentials);
-              
-              console.log('✅ Re-registration successful, retrying currency change...');
+              const registerResponse = await apiService.register(
+                registrationCredentials
+              );
+
+              console.log(
+                "✅ Re-registration successful, retrying currency change..."
+              );
               await apiService.changeUserCurrency(selectedCurrency, false);
-              console.log('✅ Currency change successful after re-registration');
-              
+              console.log(
+                "✅ Currency change successful after re-registration"
+              );
+
               // Store the currency locally after successful re-registration
               try {
-                await SecureStore.setItemAsync('user_currency', selectedCurrency);
-                console.log('✅ User currency preference stored locally after re-registration:', selectedCurrency);
+                await SecureStore.setItemAsync(
+                  "user_currency",
+                  selectedCurrency
+                );
+                console.log(
+                  "✅ User currency preference stored locally after re-registration:",
+                  selectedCurrency
+                );
               } catch (storageError) {
-                console.error('❌ Failed to store currency preference locally:', storageError);
+                console.error(
+                  "❌ Failed to store currency preference locally:",
+                  storageError
+                );
               }
-              
+
               currencySet = true;
               break;
             } catch (reRegisterError) {
-              console.error('❌ Re-registration failed:', reRegisterError);
+              console.error("❌ Re-registration failed:", reRegisterError);
             }
           }
-          
+
           // Method 4: Try direct API call with fresh token after re-registration
           if (!currencySet && attempt >= 4 && registrationCredentials) {
             try {
-              console.log('🔄 Attempting direct API call with fresh registration...');
-              
+              console.log(
+                "🔄 Attempting direct API call with fresh registration..."
+              );
+
               // Re-register to get fresh tokens
-              const registerResponse = await apiService.register(registrationCredentials);
+              const registerResponse = await apiService.register(
+                registrationCredentials
+              );
               const freshToken = registerResponse.tokens.access_token;
-              
+
               // Use direct API call to avoid interceptor issues
-              await apiService.directApiCall('/user/change-currency', 'POST', {
-                new_currency: selectedCurrency,
-                convert_existing_data: false,
-              }, freshToken);
-              
-              console.log('✅ Currency change successful via direct API call');
-              
+              await apiService.directApiCall(
+                "/user/change-currency",
+                "POST",
+                {
+                  new_currency: selectedCurrency,
+                  convert_existing_data: false,
+                },
+                freshToken
+              );
+
+              console.log("✅ Currency change successful via direct API call");
+
               // Store the currency locally after successful direct API call with fresh token
               try {
-                await SecureStore.setItemAsync('user_currency', selectedCurrency);
-                console.log('✅ User currency preference stored locally after direct API call with fresh token:', selectedCurrency);
+                await SecureStore.setItemAsync(
+                  "user_currency",
+                  selectedCurrency
+                );
+                console.log(
+                  "✅ User currency preference stored locally after direct API call with fresh token:",
+                  selectedCurrency
+                );
               } catch (storageError) {
-                console.error('❌ Failed to store currency preference locally:', storageError);
+                console.error(
+                  "❌ Failed to store currency preference locally:",
+                  storageError
+                );
               }
-              
+
               currencySet = true;
               break;
             } catch (directApiError) {
-              console.error('❌ Direct API call failed:', directApiError);
+              console.error("❌ Direct API call failed:", directApiError);
             }
           }
-          
+
           // If all methods failed, wait before retry
           if (!currencySet && attempt < maxRetries) {
             const delay = Math.pow(2, attempt) * 1000; // Exponential backoff: 2s, 4s, 8s, 16s, 32s
             console.log(`⏳ Waiting ${delay}ms before retry...`);
-            await new Promise(resolve => setTimeout(resolve, delay));
+            await new Promise((resolve) => setTimeout(resolve, delay));
           }
-          
         } catch (attemptError) {
           console.error(`❌ Attempt ${attempt} failed:`, attemptError);
           if (attempt === maxRetries) {
@@ -272,42 +361,49 @@ const CurrencySelectionScreen: React.FC<CurrencySelectionScreenProps> = ({ navig
           }
         }
       }
-      
+
       if (currencySet) {
-        console.log('✅ Currency successfully set, proceeding to main app');
+        console.log("✅ Currency successfully set, proceeding to main app");
         proceedToMainApp();
       } else {
         // If all attempts failed, we'll still proceed but log a warning
-        console.warn('⚠️ Failed to set currency on backend, but proceeding to main app');
-        console.log('💡 User selected currency:', selectedCurrency, '- will be set on next successful API call');
-        
+        console.warn(
+          "⚠️ Failed to set currency on backend, but proceeding to main app"
+        );
+        console.log(
+          "💡 User selected currency:",
+          selectedCurrency,
+          "- will be set on next successful API call"
+        );
+
         // Store the selected currency locally for future use
         try {
-          await SecureStore.setItemAsync('selected_currency', selectedCurrency);
+          await SecureStore.setItemAsync("selected_currency", selectedCurrency);
         } catch (error) {
-          console.error('❌ Failed to store selected currency locally:', error);
+          console.error("❌ Failed to store selected currency locally:", error);
         }
-        
+
         proceedToMainApp();
       }
-      
     } catch (error: any) {
-      console.error('❌ Failed to set currency:', error);
-      
+      console.error("❌ Failed to set currency:", error);
+
       // Show a warning but allow the user to proceed
       Alert.alert(
-        'Currency Setting Issue',
-        'We had trouble setting your currency preference, but you can continue using the app. Your currency will be set automatically on your next successful connection.',
+        "Currency Setting Issue",
+        "We had trouble setting your currency preference, but you can continue using the app. Your currency will be set automatically on your next successful connection.",
         [
           {
-            text: 'Continue Anyway',
+            text: "Continue Anyway",
             onPress: () => {
-              console.log('✅ User chose to continue despite currency setting issue');
+              console.log(
+                "✅ User chose to continue despite currency setting issue"
+              );
               proceedToMainApp();
             },
           },
           {
-            text: 'Try Again',
+            text: "Try Again",
             onPress: () => handleContinue(),
           },
         ]
@@ -315,44 +411,32 @@ const CurrencySelectionScreen: React.FC<CurrencySelectionScreenProps> = ({ navig
     }
   };
 
-  const proceedToMainApp = async () => {
-    try {
-      // Mark currency selection as complete
-      dispatch(completeCurrencySelection());
-      
-      // Update the user's display currency in Redux store
-      dispatch(setDisplayCurrency(selectedCurrency));
-      
-      // Clear registration credentials for security
-      dispatch(clearRegistrationCredentials());
-      
-      // Mark onboarding screens as complete and show overlay for new users
-      console.log('🎯 Marking onboarding screens as complete and showing overlay...');
-      await dispatch(completeOnboarding()).unwrap();
-      console.log('✅ Onboarding screens marked as complete');
-      
-      // IMPORTANT: Show overlay AFTER completeOnboarding finishes
-      // Add a small delay to ensure state updates properly
-      console.log('🎯 Showing onboarding overlay...');
-      setTimeout(() => {
-        dispatch(showOverlay());
-        console.log('✅ Onboarding overlay dispatched - should now be visible');
-      }, 100);
-      
-      // Initialize notifications for new users
-      console.log('🔔 Initializing notifications for new user...');
-      notificationService.initializeAfterLogin().catch(error => {
-        console.error('❌ Failed to initialize notifications after registration:', error);
-      });
-      
-      console.log('✅ Proceeding to main app with currency:', selectedCurrency);
-      console.log('🎯 Onboarding overlay will be shown to guide the user');
-    } catch (error) {
-      console.error('❌ Error in proceedToMainApp:', error);
-      // Still proceed and show overlay even if there's an error
-      dispatch(showOverlay());
-    }
-    
+  const proceedToMainApp = () => {
+    // Mark currency selection as complete
+    dispatch(completeCurrencySelection());
+
+    // Update the user's display currency in Redux store
+    dispatch(setDisplayCurrency(selectedCurrency));
+
+    // Clear registration credentials for security
+    dispatch(clearRegistrationCredentials());
+
+    // Show the onboarding overlay to guide the new user through the app
+    console.log("🎯 Showing onboarding overlay for new user...");
+    dispatch(showOverlay());
+    console.log("✅ Onboarding overlay should now be visible");
+
+    // Initialize notifications for new users
+    console.log("🔔 Initializing notifications for new user...");
+    notificationService.initializeAfterLogin().catch((error) => {
+      console.error(
+        "❌ Failed to initialize notifications after registration:",
+        error
+      );
+    });
+
+    console.log("✅ Proceeding to main app with currency:", selectedCurrency);
+
     // No need to navigate - the AppNavigator will automatically show the Main screen
     // when needsCurrencySelection becomes false
   };
@@ -401,7 +485,8 @@ const CurrencySelectionScreen: React.FC<CurrencySelectionScreenProps> = ({ navig
       />
       {searchQuery.length > 0 && (
         <Text style={styles.searchResults}>
-          {filteredCurrencies.length} currency{filteredCurrencies.length !== 1 ? 'ies' : ''} found
+          {filteredCurrencies.length} currency
+          {filteredCurrencies.length !== 1 ? "ies" : ""} found
         </Text>
       )}
     </View>
@@ -452,7 +537,12 @@ const CurrencySelectionScreen: React.FC<CurrencySelectionScreenProps> = ({ navig
       <View style={styles.selectedCurrencyInfo}>
         <Text style={styles.selectedCurrencyLabel}>Selected:</Text>
         <Text style={styles.selectedCurrencyValue}>
-          {selectedCurrency ? `${currencies.find(c => c.code === selectedCurrency)?.symbol || '$'} ${selectedCurrency}` : 'No currency selected'}
+          {selectedCurrency
+            ? `${
+                currencies.find((c) => c.code === selectedCurrency)?.symbol ||
+                "$"
+              } ${selectedCurrency}`
+            : "No currency selected"}
         </Text>
       </View>
       <CustomButton
@@ -467,12 +557,10 @@ const CurrencySelectionScreen: React.FC<CurrencySelectionScreenProps> = ({ navig
   return (
     <SafeAreaView style={styles.container}>
       <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
         style={styles.keyboardAvoid}
       >
-        <View style={styles.content}>
-          {renderCurrencyList()}
-        </View>
+        <View style={styles.content}>{renderCurrencyList()}</View>
         {renderFooter()}
       </KeyboardAvoidingView>
     </SafeAreaView>
@@ -494,7 +582,7 @@ const styles = StyleSheet.create({
     padding: spacing.lg,
   },
   header: {
-    alignItems: 'center',
+    alignItems: "center",
     marginBottom: spacing.lg,
   },
   logo: {
@@ -505,12 +593,12 @@ const styles = StyleSheet.create({
     ...typography.h1,
     color: colors.text,
     marginBottom: spacing.sm,
-    textAlign: 'center',
+    textAlign: "center",
   },
   subtitle: {
     ...typography.body,
     color: colors.textSecondary,
-    textAlign: 'center',
+    textAlign: "center",
     lineHeight: 22,
   },
   searchSection: {
@@ -525,12 +613,12 @@ const styles = StyleSheet.create({
   searchResults: {
     ...typography.caption,
     color: colors.textSecondary,
-    textAlign: 'center',
+    textAlign: "center",
   },
   loadingContainer: {
     flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
     paddingVertical: spacing.xl,
   },
   loadingText: {
@@ -540,8 +628,8 @@ const styles = StyleSheet.create({
   },
   emptyContainer: {
     flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
     paddingVertical: spacing.xl,
   },
   emptyIcon: {
@@ -556,7 +644,7 @@ const styles = StyleSheet.create({
   emptySubtitle: {
     ...typography.body,
     color: colors.textSecondary,
-    textAlign: 'center',
+    textAlign: "center",
   },
   currencyList: {
     flex: 1,
@@ -569,12 +657,12 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     padding: spacing.md,
     marginBottom: spacing.sm,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
     borderWidth: 2,
     borderColor: colors.border,
-    shadowColor: '#000',
+    shadowColor: "#000",
     shadowOffset: {
       width: 0,
       height: 1,
@@ -584,7 +672,7 @@ const styles = StyleSheet.create({
     elevation: 2,
   },
   currencyItemSelected: {
-    backgroundColor: '#E8F5E9',
+    backgroundColor: "#E8F5E9",
     borderColor: colors.primary,
     borderWidth: 3,
     shadowColor: colors.primary,
@@ -597,14 +685,14 @@ const styles = StyleSheet.create({
     elevation: 4,
   },
   currencyLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     flex: 1,
   },
   currencySymbol: {
     fontSize: 28,
     width: 50,
-    textAlign: 'center',
+    textAlign: "center",
     marginRight: spacing.md,
     color: colors.text,
   },
@@ -613,7 +701,7 @@ const styles = StyleSheet.create({
   },
   currencyCode: {
     ...typography.body,
-    fontWeight: '600',
+    fontWeight: "600",
     color: colors.text,
     marginBottom: spacing.xs,
   },
@@ -626,13 +714,13 @@ const styles = StyleSheet.create({
     height: 24,
     borderRadius: 12,
     backgroundColor: colors.primary,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
   },
   selectedIcon: {
     color: colors.background,
     fontSize: 16,
-    fontWeight: 'bold',
+    fontWeight: "bold",
   },
   footer: {
     backgroundColor: colors.background,
@@ -641,9 +729,9 @@ const styles = StyleSheet.create({
     borderTopColor: colors.border,
   },
   selectedCurrencyInfo: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
     marginBottom: spacing.md,
   },
   selectedCurrencyLabel: {
@@ -654,7 +742,7 @@ const styles = StyleSheet.create({
   selectedCurrencyValue: {
     ...typography.h3,
     color: colors.primary,
-    fontWeight: '600',
+    fontWeight: "600",
   },
   continueButton: {
     marginTop: spacing.sm,

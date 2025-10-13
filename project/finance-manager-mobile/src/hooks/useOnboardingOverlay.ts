@@ -198,7 +198,7 @@ export const useOnboardingOverlay = () => {
   // Remove the problematic useEffect that was causing continuous re-rendering
 
   return {
-    isVisible: isOverlayVisible && !isOnboardingComplete,
+    isVisible: isOverlayVisible,
     currentStep,
     totalSteps,
     steps: onboardingSteps,
