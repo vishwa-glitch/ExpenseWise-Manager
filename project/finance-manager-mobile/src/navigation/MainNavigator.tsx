@@ -29,8 +29,7 @@ import AddEditAccountScreen from '../screens/accounts/AddEditAccountScreen';
 import AccountSharingScreen from '../screens/accounts/AccountSharingScreen';
 
 // Import global components
-
-
+import OnboardingOverlay from '../components/onboarding/OnboardingOverlay';
 
 const Tab = createBottomTabNavigator();
 const Stack = createStackNavigator();
@@ -186,8 +185,8 @@ const MainNavigator: React.FC = () => {
         <Stack.Screen name="AccountDeletion" component={AccountDeletionScreen} />
       </Stack.Navigator>
       
-      {/* Global Premium Modal */}
-      
+      {/* Global Onboarding Overlay */}
+      <OnboardingOverlay />
     </>
   );
 };

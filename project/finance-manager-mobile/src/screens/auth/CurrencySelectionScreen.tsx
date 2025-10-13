@@ -21,7 +21,7 @@ import { currencyService, Currency } from '../../services/currencyService';
 import { apiService } from '../../services/api';
 import { completeCurrencySelection, clearRegistrationCredentials } from '../../store/slices/authSlice';
 import { setDisplayCurrency } from '../../store/slices/userSlice';
-import { showOverlay, resetOnboarding } from '../../store/slices/onboardingSlice';
+import { showOverlay, completeOnboarding } from '../../store/slices/onboardingSlice';
 import { notificationService } from '../../services/notificationService';
 
 interface CurrencySelectionScreenProps {
@@ -315,29 +315,43 @@ const CurrencySelectionScreen: React.FC<CurrencySelectionScreenProps> = ({ navig
     }
   };
 
-  const proceedToMainApp = () => {
-    // Mark currency selection as complete
-    dispatch(completeCurrencySelection());
-    
-    // Update the user's display currency in Redux store
-    dispatch(setDisplayCurrency(selectedCurrency));
-    
-    // Clear registration credentials for security
-    dispatch(clearRegistrationCredentials());
-    
-    // Initialize notifications for new users
-    console.log('🔔 Initializing notifications for new user...');
-    notificationService.initializeAfterLogin().catch(error => {
-      console.error('❌ Failed to initialize notifications after registration:', error);
-    });
-    
-    // Initialize onboarding overlay for new users
-    console.log('🎯 Initializing onboarding overlay for new user...');
-    dispatch(resetOnboarding()); // Reset any previous onboarding state
-    dispatch(showOverlay()); // Show the onboarding overlay
-    
-    console.log('✅ Proceeding to main app with currency:', selectedCurrency);
-    console.log('🎯 Onboarding overlay will be shown to guide the user');
+  const proceedToMainApp = async () => {
+    try {
+      // Mark currency selection as complete
+      dispatch(completeCurrencySelection());
+      
+      // Update the user's display currency in Redux store
+      dispatch(setDisplayCurrency(selectedCurrency));
+      
+      // Clear registration credentials for security
+      dispatch(clearRegistrationCredentials());
+      
+      // Mark onboarding screens as complete and show overlay for new users
+      console.log('🎯 Marking onboarding screens as complete and showing overlay...');
+      await dispatch(completeOnboarding()).unwrap();
+      console.log('✅ Onboarding screens marked as complete');
+      
+      // IMPORTANT: Show overlay AFTER completeOnboarding finishes
+      // Add a small delay to ensure state updates properly
+      console.log('🎯 Showing onboarding overlay...');
+      setTimeout(() => {
+        dispatch(showOverlay());
+        console.log('✅ Onboarding overlay dispatched - should now be visible');
+      }, 100);
+      
+      // Initialize notifications for new users
+      console.log('🔔 Initializing notifications for new user...');
+      notificationService.initializeAfterLogin().catch(error => {
+        console.error('❌ Failed to initialize notifications after registration:', error);
+      });
+      
+      console.log('✅ Proceeding to main app with currency:', selectedCurrency);
+      console.log('🎯 Onboarding overlay will be shown to guide the user');
+    } catch (error) {
+      console.error('❌ Error in proceedToMainApp:', error);
+      // Still proceed and show overlay even if there's an error
+      dispatch(showOverlay());
+    }
     
     // No need to navigate - the AppNavigator will automatically show the Main screen
     // when needsCurrencySelection becomes false
@@ -559,7 +573,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     borderWidth: 2,
-    borderColor: 'transparent',
+    borderColor: colors.border,
     shadowColor: '#000',
     shadowOffset: {
       width: 0,
@@ -570,8 +584,17 @@ const styles = StyleSheet.create({
     elevation: 2,
   },
   currencyItemSelected: {
-    backgroundColor: colors.primaryLight + '20',
+    backgroundColor: '#E8F5E9',
     borderColor: colors.primary,
+    borderWidth: 3,
+    shadowColor: colors.primary,
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.25,
+    shadowRadius: 4,
+    elevation: 4,
   },
   currencyLeft: {
     flexDirection: 'row',

@@ -13,7 +13,9 @@ import {
   TouchableWithoutFeedback,
   KeyboardEvent,
   Image,
+  Dimensions,
 } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useAppDispatch } from '../../hooks/useAppDispatch';
 import { useTypedSelector } from '../../hooks/useTypedSelector';
 import { register } from '../../store/slices/authSlice';
@@ -30,6 +32,11 @@ const RegisterScreen: React.FC<RegisterScreenProps> = ({ navigation }) => {
   const dispatch = useAppDispatch();
   const { isLoading } = useTypedSelector((state) => state.auth);
   const scrollViewRef = useRef<ScrollView>(null);
+  
+  // Refs for measuring input positions
+  const nameRowRef = useRef<View>(null);
+  const emailRef = useRef<View>(null);
+  const passwordRef = useRef<View>(null);
 
   const [formData, setFormData] = useState({
     email: '',
@@ -225,133 +232,188 @@ const RegisterScreen: React.FC<RegisterScreenProps> = ({ navigation }) => {
     Keyboard.dismiss();
   };
 
-  const handleInputFocus = () => {
-    // Scroll to ensure the focused input is visible
+  const handleInputFocus = (inputType: 'name' | 'email' | 'password') => {
     setTimeout(() => {
-      scrollViewRef.current?.scrollToEnd({ animated: true });
+      let targetRef;
+      
+      switch (inputType) {
+        case 'name':
+          targetRef = nameRowRef;
+          break;
+        case 'email':
+          targetRef = emailRef;
+          break;
+        case 'password':
+          targetRef = passwordRef;
+          break;
+      }
+
+      if (targetRef?.current && scrollViewRef.current) {
+        targetRef.current.measureLayout(
+          scrollViewRef.current as any,
+          (x, y) => {
+            // Scroll to position with some offset for better visibility
+            scrollViewRef.current?.scrollTo({
+              y: y - 100, // Offset to show some content above
+              animated: true,
+            });
+          },
+          () => {
+            // Fallback if measure fails
+            console.log('Failed to measure layout');
+          }
+        );
+      }
     }, 300);
   };
 
 
   return (
-    <SafeAreaView style={styles.container}>
-      <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        style={styles.keyboardAvoid}
-        keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
-      >
-        <TouchableWithoutFeedback onPress={dismissKeyboard}>
-          <ScrollView
-            ref={scrollViewRef}
-            style={styles.scrollView}
-            contentContainerStyle={styles.scrollContent}
-            showsVerticalScrollIndicator={false}
-            keyboardShouldPersistTaps="handled"
-          >
-            <View style={styles.content}>
-              <View style={styles.header}>
-                <Text style={styles.title}>Create Account</Text>
-                <Text style={styles.subtitle}>Join Expense Manager today</Text>
-              </View>
+    <View style={styles.container}>
+      <LinearGradient
+        colors={['#4CAF50', '#45a049', '#388E3C']}
+        style={styles.gradientBackground}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+      />
+      <SafeAreaView style={styles.safeArea}>
+        <KeyboardAvoidingView
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          style={styles.keyboardAvoid}
+          keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
+        >
+          <TouchableWithoutFeedback onPress={dismissKeyboard}>
+            <ScrollView
+              ref={scrollViewRef}
+              style={styles.scrollView}
+              contentContainerStyle={styles.scrollContent}
+              showsVerticalScrollIndicator={false}
+              keyboardShouldPersistTaps="handled"
+            >
+              <View style={styles.content}>
+                <View style={styles.header}>
+                  <View style={styles.logoContainer}>
+                    <Text style={styles.logo}>💰</Text>
+                  </View>
+                  <Text style={styles.title}>Create Account</Text>
+                  <Text style={styles.subtitle}>Start managing your finances today</Text>
+                </View>
 
-              <View style={styles.form}>
-                <View style={styles.nameRow}>
+              <View style={styles.formCard}>
+                <View style={styles.form}>
+                  <View style={styles.nameRow} ref={nameRowRef}>
+                    <CustomTextInput
+                      label="First Name"
+                      value={formData.firstName}
+                      onChangeText={(value) => updateFormData('firstName', value)}
+                      placeholder="First name"
+                      error={errors.firstName}
+                      style={styles.nameInput}
+                      leftIcon={<Text style={styles.inputIcon}>👤</Text>}
+                      onFocus={() => handleInputFocus('name')}
+                    />
+                    <CustomTextInput
+                      label="Last Name"
+                      value={formData.lastName}
+                      onChangeText={(value) => updateFormData('lastName', value)}
+                      placeholder="Last name"
+                      error={errors.lastName}
+                      style={styles.nameInput}
+                      leftIcon={<Text style={styles.inputIcon}>👤</Text>}
+                      onFocus={() => handleInputFocus('name')}
+                    />
+                  </View>
+
+                <View ref={emailRef}>
                   <CustomTextInput
-                    label="First Name"
-                    value={formData.firstName}
-                    onChangeText={(value) => updateFormData('firstName', value)}
-                    placeholder="First name"
-                    error={errors.firstName}
-                    style={styles.nameInput}
-                    leftIcon={<Text style={styles.inputIcon}>👤</Text>}
-                    onFocus={handleInputFocus}
-                  />
-                  <CustomTextInput
-                    label="Last Name"
-                    value={formData.lastName}
-                    onChangeText={(value) => updateFormData('lastName', value)}
-                    placeholder="Last name"
-                    error={errors.lastName}
-                    style={styles.nameInput}
-                    leftIcon={<Text style={styles.inputIcon}>👤</Text>}
-                    onFocus={handleInputFocus}
+                    label="Email Address"
+                    value={formData.email}
+                    onChangeText={(value) => updateFormData('email', value)}
+                    placeholder="Enter your email"
+                    keyboardType="email-address"
+                    error={errors.email}
+                    leftIcon={<Text style={styles.inputIcon}>✉️</Text>}
+                    onFocus={() => handleInputFocus('email')}
                   />
                 </View>
 
-                <CustomTextInput
-                  label="Email Address"
-                  value={formData.email}
-                  onChangeText={(value) => updateFormData('email', value)}
-                  placeholder="Enter your email"
-                  keyboardType="email-address"
-                  error={errors.email}
-                  leftIcon={<Text style={styles.inputIcon}>✉️</Text>}
-                  onFocus={handleInputFocus}
-                />
+                <View ref={passwordRef}>
+                  <CustomTextInput
+                    label="Password"
+                    value={formData.password}
+                    onChangeText={(value) => updateFormData('password', value)}
+                    placeholder="Create a password"
+                    secureTextEntry
+                    error={errors.password}
+                    leftIcon={<Text style={styles.inputIcon}>🔐</Text>}
+                    onFocus={() => handleInputFocus('password')}
+                  />
 
-                <CustomTextInput
-                  label="Password"
-                  value={formData.password}
-                  onChangeText={(value) => updateFormData('password', value)}
-                  placeholder="Create a password"
-                  secureTextEntry
-                  error={errors.password}
-                  leftIcon={<Text style={styles.inputIcon}>🔐</Text>}
-                  onFocus={handleInputFocus}
-                />
+                  {renderPasswordRequirements()}
 
-                {renderPasswordRequirements()}
+                  <CustomTextInput
+                    label="Confirm Password"
+                    value={formData.confirmPassword}
+                    onChangeText={(value) => updateFormData('confirmPassword', value)}
+                    placeholder="Confirm your password"
+                    secureTextEntry
+                    error={errors.confirmPassword}
+                    leftIcon={<Text style={styles.inputIcon}>🔐</Text>}
+                    onFocus={() => handleInputFocus('password')}
+                  />
+                </View>
 
-                <CustomTextInput
-                  label="Confirm Password"
-                  value={formData.confirmPassword}
-                  onChangeText={(value) => updateFormData('confirmPassword', value)}
-                  placeholder="Confirm your password"
-                  secureTextEntry
-                  error={errors.confirmPassword}
-                  leftIcon={<Text style={styles.inputIcon}>🔐</Text>}
-                  onFocus={handleInputFocus}
-                />
+                  <CustomButton
+                    title="Create Account"
+                    onPress={handleRegister}
+                    loading={isLoading}
+                    style={styles.registerButton}
+                  />
 
-                <CustomButton
-                  title="Create Account"
-                  onPress={handleRegister}
-                  loading={isLoading}
-                  style={styles.registerButton}
-                />
-
-                {/* Terms and Privacy Notice */}
-                <View style={styles.termsContainer}>
-                  <Text style={styles.termsText}>
-                    By creating an account, you agree to our{' '}
-                    <Text style={styles.termsLink}>Terms of Service</Text>
-                    {' '}and{' '}
-                    <Text style={styles.termsLink}>Privacy Policy</Text>
-                  </Text>
+                  {/* Terms and Privacy Notice */}
+                  <View style={styles.termsContainer}>
+                    <Text style={styles.termsText}>
+                      By creating an account, you agree to our{' '}
+                      <Text style={styles.termsLink}>Terms of Service</Text>
+                      {' '}and{' '}
+                      <Text style={styles.termsLink}>Privacy Policy</Text>
+                    </Text>
+                  </View>
                 </View>
               </View>
 
               <View style={styles.footer}>
                 <Text style={styles.footerText}>Already have an account?</Text>
-                <CustomButton
-                  title="Sign In"
+                <TouchableOpacity 
                   onPress={() => navigation.navigate('Login')}
-                  variant="outline"
                   style={styles.loginButton}
-                />
+                >
+                  <Text style={styles.loginButtonText}>Sign In</Text>
+                </TouchableOpacity>
               </View>
             </View>
           </ScrollView>
         </TouchableWithoutFeedback>
       </KeyboardAvoidingView>
     </SafeAreaView>
+    </View>
   );
 };
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.background,
+    backgroundColor: colors.primary,
+  },
+  gradientBackground: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    top: 0,
+    bottom: 0,
+  },
+  safeArea: {
+    flex: 1,
   },
   keyboardAvoid: {
     flex: 1,
@@ -361,8 +423,8 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     flexGrow: 1,
-    justifyContent: 'center',
     paddingBottom: spacing.xl * 2,
+    paddingTop: spacing.xl,
   },
   content: {
     padding: spacing.lg,
@@ -372,21 +434,62 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: spacing.xl,
   },
+  logoContainer: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: spacing.md,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 4,
+    },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 8,
+  },
+  logo: {
+    fontSize: 48,
+  },
   title: {
     ...typography.h1,
-    color: colors.text,
+    color: '#FFFFFF',
     marginBottom: spacing.xs,
     textAlign: 'center',
-    fontSize: 24,
+    fontSize: 32,
+    fontWeight: 'bold',
+    textShadowColor: 'rgba(0, 0, 0, 0.2)',
+    textShadowOffset: { width: 0, height: 2 },
+    textShadowRadius: 4,
   },
   subtitle: {
     ...typography.body,
-    color: colors.textSecondary,
+    color: 'rgba(255, 255, 255, 0.9)',
     textAlign: 'center',
-    fontSize: 14,
+    fontSize: 16,
+    textShadowColor: 'rgba(0, 0, 0, 0.1)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 2,
+  },
+  formCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 24,
+    padding: spacing.lg,
+    marginBottom: spacing.lg,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 8,
+    },
+    shadowOpacity: 0.25,
+    shadowRadius: 16,
+    elevation: 12,
   },
   form: {
-    marginBottom: spacing.xl,
+    marginBottom: spacing.sm,
   },
   nameRow: {
     flexDirection: 'row',
@@ -454,16 +557,32 @@ const styles = StyleSheet.create({
   },
   footer: {
     alignItems: 'center',
-    marginTop: spacing.lg,
+    marginTop: spacing.md,
   },
   footerText: {
     ...typography.body,
-    color: colors.textSecondary,
+    color: 'rgba(255, 255, 255, 0.9)',
     marginBottom: spacing.sm,
-    fontSize: 14,
+    fontSize: 15,
+    textShadowColor: 'rgba(0, 0, 0, 0.1)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 2,
   },
   loginButton: {
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    paddingHorizontal: spacing.xl,
+    paddingVertical: spacing.md,
+    borderRadius: 12,
+    borderWidth: 2,
+    borderColor: 'rgba(255, 255, 255, 0.4)',
     minWidth: 180,
+    alignItems: 'center',
+  },
+  loginButtonText: {
+    ...typography.body,
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '600',
   },
 });
 

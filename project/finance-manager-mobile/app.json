@@ -1,8 +1,8 @@
 {
   "expo": {
     "name": "ExpenseWise Manager & Budgets",
-    "slug": "fintech",
-    "version": "1.0.5",
+    "slug": "vishwa-fintech",
+    "version": "1.0.6",
     "sdkVersion": "53.0.0",
     "jsEngine": "hermes",
     "icon": "./assets/icon.png",
@@ -19,18 +19,13 @@
             "targetSdkVersion": 35,
             "buildToolsVersion": "35.0.0",
             "minSdkVersion": 24,
-            "versionCode": 7,
+            "versionCode": 8,
             "newArchEnabled": false
           }
         }
       ]
     ],
-    "extra": {
-      "eas": {
-        "projectId": "08cb1df3-0c2c-4482-9bcc-68006b5f2ab8"
-      }
-    },
-    "owner": "vishwa567",
+    "owner": "vikas555",
     "android": {
       "package": "com.vishwa567.fintech",
       "jsEngine": "hermes",
@@ -39,6 +34,12 @@
         "foregroundImage": "./assets/icon.png",
         "backgroundColor": "#ffffff"
       }
+    },
+    "extra": {
+      "eas": {
+        "projectId": "63bbde36-d8de-4d3a-8c47-861f25369ab1"
+      }
     }
   }
 }
+

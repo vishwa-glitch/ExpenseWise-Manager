@@ -1,25 +1,20 @@
 import React, { useState, useRef } from 'react';
 import { View, StyleSheet, Dimensions } from 'react-native';
-import { createStackNavigator } from '@react-navigation/stack';
-import { useNavigation } from '@react-navigation/native';
-import PagerView from 'react-native-pager-view';
 import { useAppDispatch } from '../hooks/useAppDispatch';
 import { completeOnboarding } from '../store/slices/onboardingSlice';
 import { OnboardingProvider } from '../contexts/OnboardingContext';
 import OnboardingScreen1 from '../screens/onboarding/OnboardingScreen1';
 import OnboardingScreen2 from '../screens/onboarding/OnboardingScreen2';
 import OnboardingScreen3 from '../screens/onboarding/OnboardingScreen3';
-import LoginScreen from '../screens/auth/LoginScreen';
-import RegisterScreen from '../screens/auth/RegisterScreen';
+import PagerView from 'react-native-pager-view';
 
 const { width } = Dimensions.get('window');
-const Stack = createStackNavigator();
 
 // Component to handle onboarding screens with swipeable navigation
-const OnboardingScreensFlow: React.FC = () => {
+const OnboardingNavigator: React.FC = () => {
   const [currentScreen, setCurrentScreen] = useState(0);
-  const navigation = useNavigation();
   const pagerRef = useRef<PagerView>(null);
+  const dispatch = useAppDispatch();
 
   const handleNext = () => {
     if (currentScreen < 2) {
@@ -42,9 +37,9 @@ const OnboardingScreensFlow: React.FC = () => {
     setCurrentScreen(selectedPage);
   };
 
-  const handleGetStarted = () => {
-    console.log('✅ User completed onboarding, navigating to login');
-    navigation.navigate('Login' as never);
+  const handleGetStarted = async () => {
+    console.log('✅ User completed onboarding, marking as complete');
+    await dispatch(completeOnboarding());
   };
 
   return (
@@ -77,21 +72,6 @@ const OnboardingScreensFlow: React.FC = () => {
         </PagerView>
       </View>
     </OnboardingProvider>
-  );
-};
-
-const OnboardingNavigator: React.FC = () => {
-  return (
-    <Stack.Navigator
-      initialRouteName="OnboardingFlow"
-      screenOptions={{
-        headerShown: false,
-      }}
-    >
-      <Stack.Screen name="OnboardingFlow" component={OnboardingScreensFlow} />
-      <Stack.Screen name="Login" component={LoginScreen} />
-      <Stack.Screen name="Register" component={RegisterScreen} />
-    </Stack.Navigator>
   );
 };
 

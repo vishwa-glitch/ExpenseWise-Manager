@@ -4,12 +4,12 @@ import { createStackNavigator } from '@react-navigation/stack';
 import * as SecureStore from 'expo-secure-store';
 import { useTypedSelector } from '../hooks/useTypedSelector';
 import { useAppDispatch } from '../hooks/useAppDispatch';
-import { checkAuthStatus, completeCurrencySelection } from '../store/slices/authSlice';
-import { fetchUserProfile, loadUserCurrency, setDisplayCurrency } from '../store/slices/userSlice';
+import { checkAuthStatus } from '../store/slices/authSlice';
+import { fetchUserProfile, setDisplayCurrency } from '../store/slices/userSlice';
+import { checkOnboardingStatus } from '../store/slices/onboardingSlice';
 import { apiService } from '../services/api';
 import { initializeBudgetRenewal } from '../services/budgetRenewalService';
 import { LoadingSpinner } from '../components/common/LoadingSpinner';
-// import NetworkStatusIndicator from '../components/common/NetworkStatusIndicator';
 
 // Import navigators
 import AuthNavigator from './AuthNavigator';
@@ -21,12 +21,16 @@ const Stack = createStackNavigator();
 
 const AppNavigator: React.FC = () => {
   const dispatch = useAppDispatch();
-  const { isAuthenticated, isLoading, needsCurrencySelection } = useTypedSelector((state) => state.auth);
+  const { isAuthenticated, isLoading: authLoading, needsCurrencySelection } = useTypedSelector((state) => state.auth);
+  const { isOnboardingComplete, isLoading: onboardingLoading } = useTypedSelector((state) => state.onboarding);
 
   useEffect(() => {
     const initializeApp = async () => {
       console.log('🚀 Initializing app...');
       try {
+        // Check onboarding status first
+        await dispatch(checkOnboardingStatus());
+        // Then check auth status
         await dispatch(checkAuthStatus());
       } catch (error) {
         console.error('❌ Error during app initialization:', error);
@@ -39,7 +43,7 @@ const AppNavigator: React.FC = () => {
   // Separate effect for loading user data when authenticated
   useEffect(() => {
     const loadUserData = async () => {
-      if (isAuthenticated && !isLoading) {
+      if (isAuthenticated && !authLoading) {
         console.log('✅ User is authenticated, loading user data...');
         try {
           // Only load user data if we have a valid token and user doesn't need currency selection
@@ -77,34 +81,39 @@ const AppNavigator: React.FC = () => {
     };
     
     loadUserData();
-  }, [dispatch, isAuthenticated, isLoading, needsCurrencySelection]);
-
+  }, [dispatch, isAuthenticated, authLoading, needsCurrencySelection]);
 
   // Debug logging for navigation state
   useEffect(() => {
     console.log('🧭 Navigation state changed:', {
       isAuthenticated,
       needsCurrencySelection,
-      isLoading
+      authLoading,
+      onboardingLoading,
+      isOnboardingComplete
     });
-  }, [isAuthenticated, needsCurrencySelection, isLoading]);
+  }, [isAuthenticated, needsCurrencySelection, authLoading, onboardingLoading, isOnboardingComplete]);
 
-  if (isLoading) {
+  if (authLoading || onboardingLoading) {
     return <LoadingSpinner />;
   }
 
   console.log('🧭 Rendering AppNavigator with state:', {
     isAuthenticated,
     needsCurrencySelection,
-    isLoading
+    authLoading,
+    onboardingLoading,
+    isOnboardingComplete
   });
 
   return (
     <>
       <NavigationContainer>
         <Stack.Navigator screenOptions={{ headerShown: false }}>
-          {!isAuthenticated ? (
+          {!isOnboardingComplete ? (
             <Stack.Screen name="Onboarding" component={OnboardingNavigator} />
+          ) : !isAuthenticated ? (
+            <Stack.Screen name="Auth" component={AuthNavigator} />
           ) : needsCurrencySelection ? (
             <Stack.Screen 
               name="CurrencySelection" 
