@@ -25,7 +25,6 @@ import {
 } from "../../store/slices/authSlice";
 import { setDisplayCurrency } from "../../store/slices/userSlice";
 import { showOverlay } from "../../store/slices/onboardingSlice";
-import { notificationService } from "../../services/notificationService";
 
 interface CurrencySelectionScreenProps {
   navigation: any;
@@ -425,15 +424,6 @@ const CurrencySelectionScreen: React.FC<CurrencySelectionScreenProps> = ({
     console.log("🎯 Showing onboarding overlay for new user...");
     dispatch(showOverlay());
     console.log("✅ Onboarding overlay should now be visible");
-
-    // Initialize notifications for new users
-    console.log("🔔 Initializing notifications for new user...");
-    notificationService.initializeAfterLogin().catch((error) => {
-      console.error(
-        "❌ Failed to initialize notifications after registration:",
-        error
-      );
-    });
 
     console.log("✅ Proceeding to main app with currency:", selectedCurrency);
 

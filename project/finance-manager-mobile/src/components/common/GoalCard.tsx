@@ -487,7 +487,7 @@ const styles = StyleSheet.create({
   },
   remainingAmount: {
     ...typography.h3,
-    color: colors.warning,
+    color: colors.primary,
     fontWeight: 'bold',
     fontSize: 16,
   },

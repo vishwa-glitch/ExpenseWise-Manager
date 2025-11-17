@@ -16,6 +16,7 @@ import AuthNavigator from './AuthNavigator';
 import MainNavigator from './MainNavigator';
 import OnboardingNavigator from './OnboardingNavigator';
 import CurrencySelectionScreen from '../screens/auth/CurrencySelectionScreen';
+import NotificationRequestWrapper from '../components/NotificationRequestWrapper';
 
 const Stack = createStackNavigator();
 
@@ -107,7 +108,7 @@ const AppNavigator: React.FC = () => {
   });
 
   return (
-    <>
+    <NotificationRequestWrapper>
       <NavigationContainer>
         <Stack.Navigator screenOptions={{ headerShown: false }}>
           {!isOnboardingComplete ? (
@@ -124,7 +125,7 @@ const AppNavigator: React.FC = () => {
           )}
         </Stack.Navigator>
       </NavigationContainer>
-    </>
+    </NotificationRequestWrapper>
   );
 };
 

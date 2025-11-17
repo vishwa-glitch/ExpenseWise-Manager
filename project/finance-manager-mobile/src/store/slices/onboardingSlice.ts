@@ -9,6 +9,7 @@ interface OnboardingState {
   hasCreatedAccount: boolean;
   hasCreatedTransaction: boolean;
   hasCreatedBudget: boolean;
+  hasCompletedNotificationRequest: boolean;
   isLoading: boolean;
   error: string | null;
 }
@@ -21,6 +22,7 @@ const initialState: OnboardingState = {
   hasCreatedAccount: false,
   hasCreatedTransaction: false,
   hasCreatedBudget: false,
+  hasCompletedNotificationRequest: false,
   isLoading: false,
   error: null,
 };
@@ -34,6 +36,7 @@ export const checkOnboardingStatus = createAsyncThunk(
       const hasCreatedAccount = await SecureStore.getItemAsync('onboarding_account_created');
       const hasCreatedTransaction = await SecureStore.getItemAsync('onboarding_transaction_created');
       const hasCreatedBudget = await SecureStore.getItemAsync('onboarding_budget_created');
+      const hasCompletedNotificationRequest = await SecureStore.getItemAsync('notification_request_completed');
       
       // Simple check: if onboarding_complete is explicitly set to 'true', then it's complete
       // Otherwise, show onboarding screens (for all users who haven't seen them)
@@ -44,6 +47,7 @@ export const checkOnboardingStatus = createAsyncThunk(
         hasCreatedAccount: hasCreatedAccount === 'true',
         hasCreatedTransaction: hasCreatedTransaction === 'true',
         hasCreatedBudget: hasCreatedBudget === 'true',
+        hasCompletedNotificationRequest: hasCompletedNotificationRequest === 'true',
       };
     } catch (error) {
       console.error('Error checking onboarding status:', error);
@@ -53,6 +57,7 @@ export const checkOnboardingStatus = createAsyncThunk(
         hasCreatedAccount: false,
         hasCreatedTransaction: false,
         hasCreatedBudget: false,
+        hasCompletedNotificationRequest: false,
       };
     }
   }
@@ -63,10 +68,12 @@ export const completeOnboarding = createAsyncThunk(
   'onboarding/complete',
   async () => {
     try {
+      console.log('🎯 completeOnboarding thunk: Saving to SecureStore...');
       await SecureStore.setItemAsync('onboarding_complete', 'true');
+      console.log('🎯 completeOnboarding thunk: Saved successfully');
       return true;
     } catch (error) {
-      console.error('Error completing onboarding:', error);
+      console.error('❌ Error completing onboarding:', error);
       throw error;
     }
   }
@@ -114,6 +121,20 @@ export const markBudgetCreated = createAsyncThunk(
   }
 );
 
+// Async thunk to mark notification request as complete
+export const markNotificationRequestComplete = createAsyncThunk(
+  'onboarding/markNotificationRequestComplete',
+  async () => {
+    try {
+      await SecureStore.setItemAsync('notification_request_completed', 'true');
+      return true;
+    } catch (error) {
+      console.error('Error marking notification request complete:', error);
+      throw error;
+    }
+  }
+);
+
 // Async thunk to reset onboarding completely
 export const resetOnboardingAsync = createAsyncThunk(
   'onboarding/resetAsync',
@@ -124,6 +145,7 @@ export const resetOnboardingAsync = createAsyncThunk(
       await SecureStore.deleteItemAsync('onboarding_account_created');
       await SecureStore.deleteItemAsync('onboarding_transaction_created');
       await SecureStore.deleteItemAsync('onboarding_budget_created');
+      await SecureStore.deleteItemAsync('notification_request_completed');
       return true;
     } catch (error) {
       console.error('Error resetting onboarding:', error);
@@ -172,6 +194,7 @@ const onboardingSlice = createSlice({
       state.hasCreatedAccount = false;
       state.hasCreatedTransaction = false;
       state.hasCreatedBudget = false;
+      state.hasCompletedNotificationRequest = false;
     },
     // Action to mark onboarding screens complete but prepare overlay for new users
     completeOnboardingScreens: (state) => {
@@ -187,6 +210,7 @@ const onboardingSlice = createSlice({
       state.hasCreatedAccount = false;
       state.hasCreatedTransaction = false;
       state.hasCreatedBudget = false;
+      state.hasCompletedNotificationRequest = false;
     },
     clearError: (state) => {
       state.error = null;
@@ -205,6 +229,7 @@ const onboardingSlice = createSlice({
         state.hasCreatedAccount = action.payload.hasCreatedAccount;
         state.hasCreatedTransaction = action.payload.hasCreatedTransaction;
         state.hasCreatedBudget = action.payload.hasCreatedBudget;
+        state.hasCompletedNotificationRequest = action.payload.hasCompletedNotificationRequest;
         // Set overlay visibility based on onboarding completion status
         state.isOverlayVisible = !action.payload.isOnboardingComplete;
       })
@@ -214,10 +239,15 @@ const onboardingSlice = createSlice({
       })
       // Complete onboarding
       .addCase(completeOnboarding.fulfilled, (state) => {
+        console.log('🎯 completeOnboarding.fulfilled: Setting isOverlayVisible = false');
         state.isOnboardingComplete = true;
         state.isOverlayVisible = false;
         // Reset current step to prevent any lingering state issues
         state.currentStep = 0;
+        console.log('🎯 completeOnboarding.fulfilled: State updated', {
+          isOnboardingComplete: state.isOnboardingComplete,
+          isOverlayVisible: state.isOverlayVisible,
+        });
       })
       // Mark account created
       .addCase(markAccountCreated.fulfilled, (state) => {
@@ -231,6 +261,10 @@ const onboardingSlice = createSlice({
       .addCase(markBudgetCreated.fulfilled, (state) => {
         state.hasCreatedBudget = true;
       })
+      // Mark notification request complete
+      .addCase(markNotificationRequestComplete.fulfilled, (state) => {
+        state.hasCompletedNotificationRequest = true;
+      })
       // Reset onboarding
       .addCase(resetOnboardingAsync.fulfilled, (state) => {
         state.isOnboardingComplete = false;
@@ -240,6 +274,7 @@ const onboardingSlice = createSlice({
         state.hasCreatedAccount = false;
         state.hasCreatedTransaction = false;
         state.hasCreatedBudget = false;
+        state.hasCompletedNotificationRequest = false;
       });
   },
 });

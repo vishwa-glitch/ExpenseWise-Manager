@@ -169,22 +169,24 @@ const AddManualGoalScreen: React.FC<AddManualGoalScreenProps> = ({ navigation, r
     setIsLoading(true);
 
     try {
-             const goalData = {
-         title: formData.title.trim(),
-         target_amount: parseFloat(formData.target_amount),
-         current_amount: formData.current_amount.trim() ? parseFloat(formData.current_amount) : 0,
-         target_date: formData.target_date,
-         category: formData.category,
-         description: formData.description.trim() || undefined,
-         priority: formData.priority, // Keep as string: 'high', 'medium', 'low'
-         currency: formData.currency,
-         status: formData.status,
-       };
+      const goalData = {
+        title: formData.title.trim(),
+        target_amount: parseFloat(formData.target_amount),
+        initial_contribution: formData.current_amount.trim() ? parseFloat(formData.current_amount) : 0,
+        target_date: formData.target_date,
+        category: formData.category,
+        description: formData.description.trim() || undefined,
+        priority: formData.priority, // Keep as string: 'high', 'medium', 'low'
+        currency: formData.currency,
+        status: formData.status,
+      };
 
       if (isEditing) {
         await dispatch(updateGoal({ id: goalId, data: goalData })).unwrap();
       } else {
-        await dispatch(createGoal(goalData)).unwrap();
+        // Create the goal
+        const result = await dispatch(createGoal(goalData)).unwrap();
+        console.log('Goal created:', result);
       }
 
       navigation.goBack();

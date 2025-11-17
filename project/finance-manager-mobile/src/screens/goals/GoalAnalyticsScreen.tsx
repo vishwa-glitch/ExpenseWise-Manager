@@ -7,17 +7,11 @@ import {
   ScrollView,
   TouchableOpacity,
   RefreshControl,
-  Dimensions,
 } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
 import { useAppDispatch } from '../../hooks/useAppDispatch';
 import { useTypedSelector } from '../../hooks/useTypedSelector';
 import { fetchGoals } from '../../store/slices/goalsSlice';
 import { LoadingSpinner } from '../../components/common/LoadingSpinner';
-import { GoalProgressCard } from '../../components/goals/GoalProgressCard';
-import { GoalAnalyticsSummary } from '../../components/goals/GoalAnalyticsSummary';
-import { GoalInsights } from '../../components/goals/GoalInsights';
-import { GoalContributionTimeline } from '../../components/goals/GoalContributionTimeline';
 import { Goal } from '../../types/goals';
 
 import { colors, typography, spacing } from '../../constants/colors';
@@ -27,19 +21,13 @@ interface GoalAnalyticsScreenProps {
   navigation: any;
 }
 
-type AnalyticsTab = 'overview' | 'insights' | 'timeline' | 'goals';
-
-const { width: screenWidth } = Dimensions.get('window');
-
 const GoalAnalyticsScreen: React.FC<GoalAnalyticsScreenProps> = ({ navigation }) => {
   const dispatch = useAppDispatch();
   const [refreshing, setRefreshing] = useState(false);
-  const [activeTab, setActiveTab] = useState<AnalyticsTab>('overview');
 
   const { goals, isLoading } = useTypedSelector((state) => state.goals);
   const { isAuthenticated } = useTypedSelector((state) => state.auth);
   const { displayCurrency } = useTypedSelector((state) => state.user);
-  const { profile } = useTypedSelector((state) => state.user);
 
   useEffect(() => {
     if (isAuthenticated) {
@@ -63,73 +51,62 @@ const GoalAnalyticsScreen: React.FC<GoalAnalyticsScreenProps> = ({ navigation })
     setRefreshing(false);
   };
 
-  const handleGoalPress = (goalId: string) => {
-    navigation.navigate('GoalDetail', { goalId });
-  };
+  const activeGoals = goals.filter(goal => goal.status === 'active');
+  const completedGoals = goals.filter(goal => goal.status === 'completed');
+  
+  const totalTarget = activeGoals.reduce((sum, goal) => sum + (goal.target_amount || 0), 0);
+  const totalSaved = activeGoals.reduce((sum, goal) => sum + (goal.current_amount || 0), 0);
+  const totalRemaining = totalTarget - totalSaved;
+  const avgProgress = activeGoals.length > 0 
+    ? activeGoals.reduce((sum, goal) => sum + (goal.progress_percentage || 0), 0) / activeGoals.length 
+    : 0;
 
-  const tabs = [
-    { id: 'overview', label: 'Overview', icon: '📊' },
-    { id: 'insights', label: 'Insights', icon: '💡' },
-    { id: 'timeline', label: 'Timeline', icon: '📈' },
-    { id: 'goals', label: 'Goals', icon: '🎯' },
-  ] as const;
+  // Calculate valuable insights
+  const totalMonthlySavingsNeeded = activeGoals.reduce((sum, goal) => 
+    sum + (goal.monthly_savings_needed || 0), 0
+  );
 
-  const renderTabContent = () => {
-    switch (activeTab) {
-      case 'overview':
-        return (
-          <GoalAnalyticsSummary 
-            goals={goals as Goal[]} 
-            displayCurrency={displayCurrency} 
-          />
-        );
-      case 'insights':
-        return (
-          <GoalInsights 
-            goals={goals as Goal[]} 
-            displayCurrency={displayCurrency}
-            onGoalPress={handleGoalPress}
-          />
-        );
-      case 'timeline':
-        return (
-          <GoalContributionTimeline 
-            goals={goals as Goal[]} 
-            displayCurrency={displayCurrency}
-          />
-        );
-      case 'goals':
-        return (
-          <ScrollView showsVerticalScrollIndicator={false}>
-            {goals.filter(goal => goal.status === 'active').map((goal) => (
-              <GoalProgressCard
-                key={goal.id}
-                goal={goal as Goal}
-                onPress={() => handleGoalPress(goal.id)}
-                showDetails={true}
-              />
-            ))}
-            {goals.filter(goal => goal.status === 'active').length === 0 && (
-              <View style={styles.emptyGoals}>
-                <Text style={styles.emptyGoalsIcon}>🎯</Text>
-                <Text style={styles.emptyGoalsTitle}>No Active Goals</Text>
-                <Text style={styles.emptyGoalsText}>
-                  Create your first goal to start tracking your financial progress.
-                </Text>
-                <TouchableOpacity 
-                  style={styles.createGoalButton}
-                  onPress={() => navigation.navigate('CreateGoal')}
-                >
-                  <Text style={styles.createGoalButtonText}>Create Goal</Text>
-                </TouchableOpacity>
-              </View>
-            )}
-          </ScrollView>
-        );
-      default:
-        return null;
-    }
-  };
+  // Find goals at risk (behind schedule)
+  const goalsAtRisk = activeGoals.filter(goal => {
+    const progress = goal.progress_percentage || 0;
+    const daysRemaining = goal.days_remaining || 0;
+    const targetDate = goal.target_date ? new Date(goal.target_date) : null;
+    if (!targetDate) return false;
+    
+    const totalDays = Math.ceil((targetDate.getTime() - new Date(goal.created_at || Date.now()).getTime()) / (1000 * 60 * 60 * 24));
+    const daysPassed = totalDays - daysRemaining;
+    const expectedProgress = totalDays > 0 ? (daysPassed / totalDays) * 100 : 0;
+    
+    return progress < expectedProgress - 10; // More than 10% behind
+  });
+
+  // Find goals on track or ahead
+  const goalsOnTrack = activeGoals.filter(goal => {
+    const progress = goal.progress_percentage || 0;
+    const daysRemaining = goal.days_remaining || 0;
+    const targetDate = goal.target_date ? new Date(goal.target_date) : null;
+    if (!targetDate) return false;
+    
+    const totalDays = Math.ceil((targetDate.getTime() - new Date(goal.created_at || Date.now()).getTime()) / (1000 * 60 * 60 * 24));
+    const daysPassed = totalDays - daysRemaining;
+    const expectedProgress = totalDays > 0 ? (daysPassed / totalDays) * 100 : 0;
+    
+    return progress >= expectedProgress - 10;
+  });
+
+  // Find next goal to complete
+  const nextToComplete = activeGoals
+    .filter(goal => (goal.progress_percentage || 0) > 0)
+    .sort((a, b) => (b.progress_percentage || 0) - (a.progress_percentage || 0))[0];
+
+  // Find most urgent goal (least days remaining)
+  const mostUrgent = activeGoals
+    .filter(goal => goal.days_remaining && goal.days_remaining > 0)
+    .sort((a, b) => (a.days_remaining || 999) - (b.days_remaining || 999))[0];
+
+  // Calculate completion rate
+  const totalGoals = goals.length;
+  const completionRate = totalGoals > 0 ? (completedGoals.length / totalGoals) * 100 : 0;
 
   if (!isAuthenticated || isLoading) {
     return <LoadingSpinner />;
@@ -137,67 +114,18 @@ const GoalAnalyticsScreen: React.FC<GoalAnalyticsScreenProps> = ({ navigation })
 
   return (
     <SafeAreaView style={styles.container}>
-      {/* Header */}
-      <LinearGradient
-        colors={['#2E7D57', '#1E5631']}
-        style={styles.header}
-      >
+      {/* Simple Header */}
+      <View style={styles.header}>
         <TouchableOpacity
           style={styles.backButton}
           onPress={() => navigation.goBack()}
         >
           <Text style={styles.backIcon}>←</Text>
         </TouchableOpacity>
-        <View style={styles.headerContent}>
-          <Text style={styles.headerTitle}>Goal Analytics</Text>
-          <Text style={styles.headerSubtitle}>
-            {goals.length} {goals.length === 1 ? 'goal' : 'goals'} • {goals.filter(g => g.status === 'active').length} active
-          </Text>
-        </View>
-        <View style={styles.headerStats}>
-          <Text style={styles.headerStatsValue}>
-            {goals.length > 0 
-              ? (goals.reduce((sum, goal) => sum + (goal.progress_percentage || 0), 0) / goals.length).toFixed(0)
-              : 0}%
-          </Text>
-          <Text style={styles.headerStatsLabel}>Avg Progress</Text>
-        </View>
-      </LinearGradient>
-
-      {/* Tab Navigation */}
-      <View style={styles.tabContainer}>
-        <ScrollView 
-          horizontal 
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.tabScrollView}
-        >
-          {tabs.map((tab) => (
-            <TouchableOpacity
-              key={tab.id}
-              style={[
-                styles.tab,
-                activeTab === tab.id && styles.activeTab
-              ]}
-              onPress={() => setActiveTab(tab.id)}
-            >
-              <Text style={[
-                styles.tabIcon,
-                activeTab === tab.id && styles.activeTabIcon
-              ]}>
-                {tab.icon}
-              </Text>
-              <Text style={[
-                styles.tabLabel,
-                activeTab === tab.id && styles.activeTabLabel
-              ]}>
-                {tab.label}
-              </Text>
-            </TouchableOpacity>
-          ))}
-        </ScrollView>
+        <Text style={styles.headerTitle}>Goal Overview</Text>
+        <View style={styles.placeholder} />
       </View>
 
-      {/* Content */}
       <ScrollView 
         style={styles.content}
         refreshControl={
@@ -207,25 +135,134 @@ const GoalAnalyticsScreen: React.FC<GoalAnalyticsScreenProps> = ({ navigation })
       >
         {goals.length === 0 ? (
           <View style={styles.emptyState}>
-            <LinearGradient
-              colors={['#4A90E2', '#2E5BBA']}
-              style={styles.emptyStateGradient}
-            >
-              <Text style={styles.emptyIcon}>🎯</Text>
-              <Text style={styles.emptyTitle}>Start Your Financial Journey</Text>
-              <Text style={styles.emptyMessage}>
-                Create your first financial goal to unlock powerful analytics and insights that will help you achieve your dreams.
-              </Text>
-              <TouchableOpacity 
-                style={styles.createGoalButton}
-                onPress={() => navigation.navigate('CreateGoal')}
-              >
-                <Text style={styles.createGoalButtonText}>Create Your First Goal</Text>
-              </TouchableOpacity>
-            </LinearGradient>
+            <Text style={styles.emptyIcon}>🎯</Text>
+            <Text style={styles.emptyTitle}>No Goals Yet</Text>
+            <Text style={styles.emptyMessage}>
+              Create your first goal to see your progress here.
+            </Text>
           </View>
         ) : (
-          renderTabContent()
+          <View style={styles.statsContainer}>
+            {/* Key Metrics */}
+            <View style={styles.metricsSection}>
+              <Text style={styles.sectionTitle}>📊 Key Metrics</Text>
+              
+              <View style={styles.metricCard}>
+                <View style={styles.metricHeader}>
+                  <Text style={styles.metricIcon}>💰</Text>
+                  <Text style={styles.metricTitle}>Monthly Savings Target</Text>
+                </View>
+                <Text style={styles.metricValue}>
+                  {formatCurrency(totalMonthlySavingsNeeded, displayCurrency, { maximumFractionDigits: 0 })}/month
+                </Text>
+                <Text style={styles.metricSubtext}>
+                  To reach all {activeGoals.length} active goals on time
+                </Text>
+              </View>
+
+              <View style={styles.metricCard}>
+                <View style={styles.metricHeader}>
+                  <Text style={styles.metricIcon}>🎯</Text>
+                  <Text style={styles.metricTitle}>Total Remaining</Text>
+                </View>
+                <Text style={styles.metricValue}>
+                  {formatCurrency(totalRemaining, displayCurrency, { maximumFractionDigits: 0 })}
+                </Text>
+                <View style={styles.progressBarSmall}>
+                  <View
+                    style={[
+                      styles.progressFillSmall,
+                      { width: `${totalTarget > 0 ? (totalSaved / totalTarget) * 100 : 0}%` }
+                    ]}
+                  />
+                </View>
+                <Text style={styles.metricSubtext}>
+                  {totalTarget > 0 ? ((totalSaved / totalTarget) * 100).toFixed(1) : 0}% of total target achieved
+                </Text>
+              </View>
+
+              <View style={styles.metricCard}>
+                <View style={styles.metricHeader}>
+                  <Text style={styles.metricIcon}>🏆</Text>
+                  <Text style={styles.metricTitle}>Success Rate</Text>
+                </View>
+                <Text style={styles.metricValue}>{completionRate.toFixed(0)}%</Text>
+                <Text style={styles.metricSubtext}>
+                  {completedGoals.length} of {totalGoals} goals completed
+                </Text>
+              </View>
+            </View>
+
+            {/* Performance Insights */}
+            <View style={styles.insightsSection}>
+              <Text style={styles.sectionTitle}>💡 Performance Insights</Text>
+              
+              <View style={styles.insightRow}>
+                <View style={[styles.insightCard, styles.successCard]}>
+                  <Text style={styles.insightNumber}>{goalsOnTrack.length}</Text>
+                  <Text style={styles.insightLabel}>On Track</Text>
+                </View>
+                <View style={[styles.insightCard, styles.warningCard]}>
+                  <Text style={styles.insightNumber}>{goalsAtRisk.length}</Text>
+                  <Text style={styles.insightLabel}>At Risk</Text>
+                </View>
+              </View>
+
+              {nextToComplete && (
+                <TouchableOpacity
+                  style={styles.highlightCard}
+                  onPress={() => navigation.navigate('GoalDetail', { goalId: nextToComplete.id })}
+                >
+                  <Text style={styles.highlightIcon}>🎉</Text>
+                  <View style={styles.highlightContent}>
+                    <Text style={styles.highlightTitle}>Next to Complete</Text>
+                    <Text style={styles.highlightGoal}>{nextToComplete.title}</Text>
+                    <Text style={styles.highlightProgress}>
+                      {(nextToComplete.progress_percentage || 0).toFixed(0)}% complete
+                    </Text>
+                  </View>
+                </TouchableOpacity>
+              )}
+
+              {mostUrgent && (
+                <TouchableOpacity
+                  style={[styles.highlightCard, styles.urgentCard]}
+                  onPress={() => navigation.navigate('GoalDetail', { goalId: mostUrgent.id })}
+                >
+                  <Text style={styles.highlightIcon}>⚡</Text>
+                  <View style={styles.highlightContent}>
+                    <Text style={styles.highlightTitle}>Most Urgent</Text>
+                    <Text style={styles.highlightGoal}>{mostUrgent.title}</Text>
+                    <Text style={styles.highlightProgress}>
+                      {mostUrgent.days_remaining} days remaining
+                    </Text>
+                  </View>
+                </TouchableOpacity>
+              )}
+            </View>
+
+            {/* Goals at Risk */}
+            {goalsAtRisk.length > 0 && (
+              <View style={styles.riskSection}>
+                <Text style={styles.sectionTitle}>⚠️ Goals Needing Attention</Text>
+                {goalsAtRisk.map((goal) => (
+                  <TouchableOpacity
+                    key={goal.id}
+                    style={styles.riskCard}
+                    onPress={() => navigation.navigate('GoalDetail', { goalId: goal.id })}
+                  >
+                    <View style={styles.riskHeader}>
+                      <Text style={styles.riskTitle}>{goal.title}</Text>
+                      <Text style={styles.riskBadge}>Behind Schedule</Text>
+                    </View>
+                    <Text style={styles.riskText}>
+                      Save {formatCurrency(goal.monthly_savings_needed, displayCurrency, { maximumFractionDigits: 0 })}/month to get back on track
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            )}
+          </View>
         )}
       </ScrollView>
     </SafeAreaView>
@@ -240,101 +277,37 @@ const styles = StyleSheet.create({
   header: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'space-between',
     paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.xl,
-    paddingTop: spacing.lg,
+    paddingVertical: spacing.md,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
+    backgroundColor: colors.card,
   },
   backButton: {
     padding: spacing.sm,
-    marginRight: spacing.md,
   },
   backIcon: {
     fontSize: 24,
-    color: colors.background,
-    fontWeight: 'bold',
-  },
-  headerContent: {
-    flex: 1,
+    color: colors.text,
   },
   headerTitle: {
-    ...typography.h2,
-    color: colors.background,
-    fontWeight: 'bold',
-    marginBottom: spacing.xs,
-  },
-  headerSubtitle: {
-    ...typography.caption,
-    color: colors.background + 'CC',
-    fontWeight: '500',
-  },
-  headerStats: {
-    alignItems: 'flex-end',
-  },
-  headerStatsValue: {
-    ...typography.h2,
-    color: colors.background,
+    ...typography.h3,
+    color: colors.text,
     fontWeight: 'bold',
   },
-  headerStatsLabel: {
-    ...typography.caption,
-    color: colors.background + 'CC',
-    fontSize: 10,
-  },
-  tabContainer: {
-    backgroundColor: colors.card,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
-  },
-  tabScrollView: {
-    paddingHorizontal: spacing.lg,
-  },
-  tab: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: spacing.md,
-    paddingHorizontal: spacing.lg,
-    marginRight: spacing.md,
-    borderRadius: 20,
-    backgroundColor: colors.surface,
-  },
-  activeTab: {
-    backgroundColor: colors.primary,
-  },
-  tabIcon: {
-    fontSize: 16,
-    marginRight: spacing.xs,
-  },
-  activeTabIcon: {
-    color: colors.background,
-  },
-  tabLabel: {
-    ...typography.caption,
-    color: colors.textSecondary,
-    fontWeight: '600',
-  },
-  activeTabLabel: {
-    color: colors.background,
+  placeholder: {
+    width: 40,
   },
   content: {
     flex: 1,
-    paddingTop: spacing.md,
   },
   emptyState: {
-    margin: spacing.lg,
-    borderRadius: 16,
-    overflow: 'hidden',
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 4,
-    },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 6,
-  },
-  emptyStateGradient: {
-    padding: spacing.xl,
+    flex: 1,
+    justifyContent: 'center',
     alignItems: 'center',
+    padding: spacing.xl,
+    marginTop: spacing.xxl,
   },
   emptyIcon: {
     fontSize: 64,
@@ -342,70 +315,195 @@ const styles = StyleSheet.create({
   },
   emptyTitle: {
     ...typography.h2,
-    color: colors.background,
+    color: colors.text,
     fontWeight: 'bold',
-    marginBottom: spacing.md,
+    marginBottom: spacing.sm,
     textAlign: 'center',
   },
   emptyMessage: {
     ...typography.body,
-    color: colors.background + 'DD',
+    color: colors.textSecondary,
     textAlign: 'center',
     lineHeight: 22,
+  },
+  statsContainer: {
+    padding: spacing.lg,
+  },
+  sectionTitle: {
+    ...typography.h3,
+    color: colors.text,
+    fontWeight: 'bold',
+    marginBottom: spacing.md,
+  },
+  metricsSection: {
     marginBottom: spacing.xl,
   },
-  emptyGoals: {
+  metricCard: {
     backgroundColor: colors.card,
-    margin: spacing.lg,
-    borderRadius: 16,
-    padding: spacing.xl,
+    borderRadius: 12,
+    padding: spacing.lg,
+    marginBottom: spacing.md,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  metricHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: spacing.sm,
+  },
+  metricIcon: {
+    fontSize: 20,
+    marginRight: spacing.sm,
+  },
+  metricTitle: {
+    ...typography.body,
+    color: colors.textSecondary,
+    fontWeight: '600',
+  },
+  metricValue: {
+    ...typography.h2,
+    color: colors.text,
+    fontWeight: 'bold',
+    marginBottom: spacing.xs,
+  },
+  metricSubtext: {
+    ...typography.small,
+    color: colors.textSecondary,
+  },
+  progressBarSmall: {
+    height: 6,
+    backgroundColor: colors.surface,
+    borderRadius: 3,
+    overflow: 'hidden',
+    marginVertical: spacing.sm,
+  },
+  progressFillSmall: {
+    height: '100%',
+    backgroundColor: colors.primary,
+    borderRadius: 3,
+  },
+  insightsSection: {
+    marginBottom: spacing.xl,
+  },
+  insightRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: spacing.md,
+  },
+  insightCard: {
+    flex: 1,
+    backgroundColor: colors.card,
+    borderRadius: 12,
+    padding: spacing.lg,
+    marginHorizontal: spacing.xs,
     alignItems: 'center',
     shadowColor: '#000',
     shadowOffset: {
       width: 0,
       height: 2,
     },
-    shadowOpacity: 0.1,
+    shadowOpacity: 0.05,
     shadowRadius: 4,
-    elevation: 3,
+    elevation: 2,
   },
-  emptyGoalsIcon: {
-    fontSize: 48,
-    marginBottom: spacing.md,
+  successCard: {
+    borderLeftWidth: 4,
+    borderLeftColor: colors.success,
   },
-  emptyGoalsTitle: {
-    ...typography.h3,
+  warningCard: {
+    borderLeftWidth: 4,
+    borderLeftColor: colors.warning,
+  },
+  insightNumber: {
+    ...typography.h1,
     color: colors.text,
     fontWeight: 'bold',
-    marginBottom: spacing.sm,
-    textAlign: 'center',
+    marginBottom: spacing.xs,
   },
-  emptyGoalsText: {
-    ...typography.body,
+  insightLabel: {
+    ...typography.caption,
     color: colors.textSecondary,
-    textAlign: 'center',
-    lineHeight: 20,
-    marginBottom: spacing.lg,
+    fontWeight: '600',
   },
-  createGoalButton: {
-    backgroundColor: colors.primary,
-    paddingHorizontal: spacing.xl,
-    paddingVertical: spacing.md,
+  highlightCard: {
+    backgroundColor: colors.primary + '15',
     borderRadius: 12,
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
+    padding: spacing.lg,
+    marginBottom: spacing.md,
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderLeftWidth: 4,
+    borderLeftColor: colors.primary,
   },
-  createGoalButtonText: {
-    ...typography.h4,
-    color: colors.background,
+  urgentCard: {
+    backgroundColor: colors.warning + '15',
+    borderLeftColor: colors.warning,
+  },
+  highlightIcon: {
+    fontSize: 32,
+    marginRight: spacing.md,
+  },
+  highlightContent: {
+    flex: 1,
+  },
+  highlightTitle: {
+    ...typography.caption,
+    color: colors.textSecondary,
+    fontWeight: '600',
+    marginBottom: spacing.xs,
+  },
+  highlightGoal: {
+    ...typography.body,
+    color: colors.text,
     fontWeight: 'bold',
-    textAlign: 'center',
+    marginBottom: spacing.xs,
+  },
+  highlightProgress: {
+    ...typography.small,
+    color: colors.textSecondary,
+  },
+  riskSection: {
+    marginBottom: spacing.xl,
+  },
+  riskCard: {
+    backgroundColor: colors.error + '10',
+    borderRadius: 12,
+    padding: spacing.lg,
+    marginBottom: spacing.md,
+    borderLeftWidth: 4,
+    borderLeftColor: colors.error,
+  },
+  riskHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: spacing.sm,
+  },
+  riskTitle: {
+    ...typography.body,
+    color: colors.text,
+    fontWeight: 'bold',
+    flex: 1,
+  },
+  riskBadge: {
+    ...typography.caption,
+    color: colors.error,
+    fontWeight: 'bold',
+    backgroundColor: colors.error + '20',
+    paddingHorizontal: spacing.sm,
+    paddingVertical: spacing.xs,
+    borderRadius: 6,
+    fontSize: 10,
+  },
+  riskText: {
+    ...typography.small,
+    color: colors.textSecondary,
   },
 });
 

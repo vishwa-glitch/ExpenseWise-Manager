@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState } from 'react';
 import {
   View,
   Text,
@@ -8,12 +8,8 @@ import {
   Platform,
   Alert,
   TouchableOpacity,
-  ScrollView,
   Keyboard,
   TouchableWithoutFeedback,
-  KeyboardEvent,
-  Image,
-  Dimensions,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useAppDispatch } from '../../hooks/useAppDispatch';
@@ -31,27 +27,17 @@ interface RegisterScreenProps {
 const RegisterScreen: React.FC<RegisterScreenProps> = ({ navigation }) => {
   const dispatch = useAppDispatch();
   const { isLoading } = useTypedSelector((state) => state.auth);
-  const scrollViewRef = useRef<ScrollView>(null);
-  
-  // Refs for measuring input positions
-  const nameRowRef = useRef<View>(null);
-  const emailRef = useRef<View>(null);
-  const passwordRef = useRef<View>(null);
 
   const [formData, setFormData] = useState({
     email: '',
     password: '',
-    confirmPassword: '',
-    firstName: '',
-    lastName: '',
+    name: '',
   });
 
   const [errors, setErrors] = useState({
     email: '',
     password: '',
-    confirmPassword: '',
-    firstName: '',
-    lastName: '',
+    name: '',
   });
 
   const [showPasswordRequirements, setShowPasswordRequirements] = useState(false);
@@ -78,21 +64,16 @@ const RegisterScreen: React.FC<RegisterScreenProps> = ({ navigation }) => {
     const newErrors = {
       email: '',
       password: '',
-      confirmPassword: '',
-      firstName: '',
-      lastName: '',
+      name: '',
     };
 
     let hasError = false;
 
-    // First Name validation
-    if (!formData.firstName.trim()) {
-      newErrors.firstName = 'First name is required';
+    // Name validation
+    if (!formData.name.trim()) {
+      newErrors.name = 'Name is required';
       hasError = true;
     }
-
-    // Last Name validation (optional)
-    // No validation needed as last name is optional
 
     // Email validation
     if (!formData.email.trim()) {
@@ -115,15 +96,6 @@ const RegisterScreen: React.FC<RegisterScreenProps> = ({ navigation }) => {
       }
     }
 
-    // Confirm Password validation
-    if (!formData.confirmPassword.trim()) {
-      newErrors.confirmPassword = 'Please confirm your password';
-      hasError = true;
-    } else if (formData.password !== formData.confirmPassword) {
-      newErrors.confirmPassword = 'Passwords do not match';
-      hasError = true;
-    }
-
     setErrors(newErrors);
     return !hasError;
   };
@@ -134,8 +106,7 @@ const RegisterScreen: React.FC<RegisterScreenProps> = ({ navigation }) => {
     console.log('🎯 Starting registration process...');
     console.log('📋 Form data:', {
       email: formData.email.trim(),
-      first_name: formData.firstName.trim(),
-      last_name: formData.lastName.trim() || undefined,
+      first_name: formData.name.trim(),
       password_length: formData.password.length
     });
 
@@ -143,8 +114,8 @@ const RegisterScreen: React.FC<RegisterScreenProps> = ({ navigation }) => {
       await dispatch(register({
         email: formData.email.trim(),
         password: formData.password,
-        first_name: formData.firstName.trim(),
-        last_name: formData.lastName.trim() || undefined, // Make last name optional
+        first_name: formData.name.trim(),
+        last_name: undefined,
       })).unwrap();
     } catch (err: any) {
       console.error('Registration error:', err);
@@ -232,99 +203,41 @@ const RegisterScreen: React.FC<RegisterScreenProps> = ({ navigation }) => {
     Keyboard.dismiss();
   };
 
-  const handleInputFocus = (inputType: 'name' | 'email' | 'password') => {
-    setTimeout(() => {
-      let targetRef;
-      
-      switch (inputType) {
-        case 'name':
-          targetRef = nameRowRef;
-          break;
-        case 'email':
-          targetRef = emailRef;
-          break;
-        case 'password':
-          targetRef = passwordRef;
-          break;
-      }
-
-      if (targetRef?.current && scrollViewRef.current) {
-        targetRef.current.measureLayout(
-          scrollViewRef.current as any,
-          (x, y) => {
-            // Scroll to position with some offset for better visibility
-            scrollViewRef.current?.scrollTo({
-              y: y - 100, // Offset to show some content above
-              animated: true,
-            });
-          },
-          () => {
-            // Fallback if measure fails
-            console.log('Failed to measure layout');
-          }
-        );
-      }
-    }, 300);
-  };
-
 
   return (
     <View style={styles.container}>
       <LinearGradient
-        colors={['#4CAF50', '#45a049', '#388E3C']}
+        colors={['#45a049', '#388E3C']}
         style={styles.gradientBackground}
         start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
+        end={{ x: 0, y: 1 }}
       />
       <SafeAreaView style={styles.safeArea}>
         <KeyboardAvoidingView
           behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
           style={styles.keyboardAvoid}
-          keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
         >
           <TouchableWithoutFeedback onPress={dismissKeyboard}>
-            <ScrollView
-              ref={scrollViewRef}
-              style={styles.scrollView}
-              contentContainerStyle={styles.scrollContent}
-              showsVerticalScrollIndicator={false}
-              keyboardShouldPersistTaps="handled"
-            >
-              <View style={styles.content}>
-                <View style={styles.header}>
-                  <View style={styles.logoContainer}>
-                    <Text style={styles.logo}>💰</Text>
-                  </View>
-                  <Text style={styles.title}>Create Account</Text>
-                  <Text style={styles.subtitle}>Start managing your finances today</Text>
+            <View style={styles.content}>
+              <View style={styles.header}>
+                <View style={styles.logoContainer}>
+                  <Text style={styles.logo}>💰</Text>
                 </View>
+                <Text style={styles.title}>Create Account</Text>
+                <Text style={styles.subtitle}>Start managing your finances today</Text>
+              </View>
 
               <View style={styles.formCard}>
                 <View style={styles.form}>
-                  <View style={styles.nameRow} ref={nameRowRef}>
-                    <CustomTextInput
-                      label="First Name"
-                      value={formData.firstName}
-                      onChangeText={(value) => updateFormData('firstName', value)}
-                      placeholder="First name"
-                      error={errors.firstName}
-                      style={styles.nameInput}
-                      leftIcon={<Text style={styles.inputIcon}>👤</Text>}
-                      onFocus={() => handleInputFocus('name')}
-                    />
-                    <CustomTextInput
-                      label="Last Name"
-                      value={formData.lastName}
-                      onChangeText={(value) => updateFormData('lastName', value)}
-                      placeholder="Last name"
-                      error={errors.lastName}
-                      style={styles.nameInput}
-                      leftIcon={<Text style={styles.inputIcon}>👤</Text>}
-                      onFocus={() => handleInputFocus('name')}
-                    />
-                  </View>
+                  <CustomTextInput
+                    label="Name"
+                    value={formData.name}
+                    onChangeText={(value) => updateFormData('name', value)}
+                    placeholder="Enter your name"
+                    error={errors.name}
+                    leftIcon={<Text style={styles.inputIcon}>👤</Text>}
+                  />
 
-                <View ref={emailRef}>
                   <CustomTextInput
                     label="Email Address"
                     value={formData.email}
@@ -333,35 +246,18 @@ const RegisterScreen: React.FC<RegisterScreenProps> = ({ navigation }) => {
                     keyboardType="email-address"
                     error={errors.email}
                     leftIcon={<Text style={styles.inputIcon}>✉️</Text>}
-                    onFocus={() => handleInputFocus('email')}
                   />
-                </View>
 
-                <View ref={passwordRef}>
                   <CustomTextInput
                     label="Password"
                     value={formData.password}
                     onChangeText={(value) => updateFormData('password', value)}
                     placeholder="Create a password"
-                    secureTextEntry
                     error={errors.password}
                     leftIcon={<Text style={styles.inputIcon}>🔐</Text>}
-                    onFocus={() => handleInputFocus('password')}
                   />
 
                   {renderPasswordRequirements()}
-
-                  <CustomTextInput
-                    label="Confirm Password"
-                    value={formData.confirmPassword}
-                    onChangeText={(value) => updateFormData('confirmPassword', value)}
-                    placeholder="Confirm your password"
-                    secureTextEntry
-                    error={errors.confirmPassword}
-                    leftIcon={<Text style={styles.inputIcon}>🔐</Text>}
-                    onFocus={() => handleInputFocus('password')}
-                  />
-                </View>
 
                   <CustomButton
                     title="Create Account"
@@ -369,16 +265,6 @@ const RegisterScreen: React.FC<RegisterScreenProps> = ({ navigation }) => {
                     loading={isLoading}
                     style={styles.registerButton}
                   />
-
-                  {/* Terms and Privacy Notice */}
-                  <View style={styles.termsContainer}>
-                    <Text style={styles.termsText}>
-                      By creating an account, you agree to our{' '}
-                      <Text style={styles.termsLink}>Terms of Service</Text>
-                      {' '}and{' '}
-                      <Text style={styles.termsLink}>Privacy Policy</Text>
-                    </Text>
-                  </View>
                 </View>
               </View>
 
@@ -392,10 +278,9 @@ const RegisterScreen: React.FC<RegisterScreenProps> = ({ navigation }) => {
                 </TouchableOpacity>
               </View>
             </View>
-          </ScrollView>
-        </TouchableWithoutFeedback>
-      </KeyboardAvoidingView>
-    </SafeAreaView>
+          </TouchableWithoutFeedback>
+        </KeyboardAvoidingView>
+      </SafeAreaView>
     </View>
   );
 };
@@ -417,16 +302,10 @@ const styles = StyleSheet.create({
   },
   keyboardAvoid: {
     flex: 1,
-  },
-  scrollView: {
-    flex: 1,
-  },
-  scrollContent: {
-    flexGrow: 1,
-    paddingBottom: spacing.xl * 2,
-    paddingTop: spacing.xl,
+    justifyContent: 'center',
   },
   content: {
+    flex: 1,
     padding: spacing.lg,
     justifyContent: 'center',
   },
@@ -435,61 +314,64 @@ const styles = StyleSheet.create({
     marginBottom: spacing.xl,
   },
   logoContainer: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    backgroundColor: 'rgba(255, 255, 255, 0.15)',
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: spacing.md,
+    marginBottom: spacing.lg,
     shadowColor: '#000',
     shadowOffset: {
       width: 0,
-      height: 4,
+      height: 3,
     },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 8,
+    shadowOpacity: 0.2,
+    shadowRadius: 6,
+    elevation: 6,
   },
   logo: {
-    fontSize: 48,
+    fontSize: 40,
   },
   title: {
     ...typography.h1,
     color: '#FFFFFF',
-    marginBottom: spacing.xs,
+    marginBottom: spacing.md,
+    marginTop: spacing.xs,
     textAlign: 'center',
-    fontSize: 32,
+    fontSize: 34,
     fontWeight: 'bold',
-    textShadowColor: 'rgba(0, 0, 0, 0.2)',
+    letterSpacing: 0.5,
+    textShadowColor: 'rgba(0, 0, 0, 0.25)',
     textShadowOffset: { width: 0, height: 2 },
     textShadowRadius: 4,
   },
   subtitle: {
     ...typography.body,
-    color: 'rgba(255, 255, 255, 0.9)',
+    color: 'rgba(255, 255, 255, 0.75)',
     textAlign: 'center',
-    fontSize: 16,
+    fontSize: 14,
     textShadowColor: 'rgba(0, 0, 0, 0.1)',
     textShadowOffset: { width: 0, height: 1 },
     textShadowRadius: 2,
   },
   formCard: {
     backgroundColor: '#FFFFFF',
-    borderRadius: 24,
-    padding: spacing.lg,
-    marginBottom: spacing.lg,
+    borderRadius: 20,
+    padding: spacing.md * 1.5,
+    marginBottom: spacing.md,
+    marginHorizontal: spacing.xs,
     shadowColor: '#000',
     shadowOffset: {
       width: 0,
-      height: 8,
+      height: 12,
     },
-    shadowOpacity: 0.25,
-    shadowRadius: 16,
-    elevation: 12,
+    shadowOpacity: 0.35,
+    shadowRadius: 20,
+    elevation: 16,
   },
   form: {
-    marginBottom: spacing.sm,
+    marginBottom: 0,
   },
   nameRow: {
     flexDirection: 'row',
@@ -501,7 +383,8 @@ const styles = StyleSheet.create({
     marginHorizontal: spacing.xs,
   },
   inputIcon: {
-    fontSize: 18,
+    fontSize: 16,
+    marginRight: spacing.xs,
   },
   passwordRequirements: {
     backgroundColor: colors.surface,
@@ -536,52 +419,36 @@ const styles = StyleSheet.create({
     lineHeight: 14,
   },
   registerButton: {
-    marginTop: spacing.md,
-    marginBottom: spacing.sm,
-  },
-  termsContainer: {
-    paddingHorizontal: spacing.sm,
-    alignItems: 'center',
-    marginTop: spacing.sm,
-  },
-  termsText: {
-    ...typography.small,
-    color: colors.textSecondary,
-    textAlign: 'center',
-    lineHeight: 16,
-    fontSize: 10,
-  },
-  termsLink: {
-    color: colors.primary,
-    fontWeight: '600',
+    marginTop: spacing.lg,
+    backgroundColor: '#2d7a2e',
   },
   footer: {
     alignItems: 'center',
-    marginTop: spacing.md,
+    marginTop: spacing.sm,
   },
   footerText: {
     ...typography.body,
-    color: 'rgba(255, 255, 255, 0.9)',
-    marginBottom: spacing.sm,
-    fontSize: 15,
+    color: 'rgba(255, 255, 255, 0.85)',
+    marginBottom: spacing.xs,
+    fontSize: 14,
     textShadowColor: 'rgba(0, 0, 0, 0.1)',
     textShadowOffset: { width: 0, height: 1 },
     textShadowRadius: 2,
   },
   loginButton: {
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
-    paddingHorizontal: spacing.xl,
-    paddingVertical: spacing.md,
-    borderRadius: 12,
-    borderWidth: 2,
-    borderColor: 'rgba(255, 255, 255, 0.4)',
-    minWidth: 180,
+    backgroundColor: 'rgba(255, 255, 255, 0.25)',
+    paddingHorizontal: spacing.lg * 1.5,
+    paddingVertical: spacing.sm * 1.2,
+    borderRadius: 10,
+    borderWidth: 1.5,
+    borderColor: 'rgba(255, 255, 255, 0.6)',
+    minWidth: 160,
     alignItems: 'center',
   },
   loginButtonText: {
     ...typography.body,
     color: '#FFFFFF',
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: '600',
   },
 });

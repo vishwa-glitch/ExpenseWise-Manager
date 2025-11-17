@@ -6,12 +6,9 @@ import {
   SafeAreaView,
   ScrollView,
   TouchableOpacity,
-  Alert,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { colors, typography, spacing } from '../../constants/colors';
-import { useAppDispatch } from '../../hooks/useAppDispatch';
-import { resetOnboardingAsync } from '../../store/slices/onboardingSlice';
 
 interface FAQItem {
   question: string;
@@ -21,7 +18,6 @@ interface FAQItem {
 
 const HelpSupportScreen: React.FC = () => {
   const [expandedFAQ, setExpandedFAQ] = useState<number | null>(null);
-  const dispatch = useAppDispatch();
   const navigation = useNavigation();
 
   const faqs: FAQItem[] = [
@@ -66,12 +62,6 @@ const HelpSupportScreen: React.FC = () => {
 
   const helpOptions = [
     {
-      title: "Restart Onboarding",
-      description: "Go through the tutorial again",
-      icon: "🔄",
-      action: () => restartOnboarding()
-    },
-    {
       title: "Delete Account",
       description: "Permanently delete your account and data",
       icon: "🗑️",
@@ -84,39 +74,6 @@ const HelpSupportScreen: React.FC = () => {
   };
 
 
-
-  const restartOnboarding = () => {
-    Alert.alert(
-      'Restart Onboarding',
-      'Are you sure you want to restart the onboarding process? This will reset your onboarding progress.',
-      [
-        {
-          text: 'Cancel',
-          style: 'cancel',
-        },
-        {
-          text: 'Restart',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              await dispatch(resetOnboardingAsync()).unwrap();
-              Alert.alert(
-                'Onboarding Restarted',
-                'The onboarding process has been restarted. You can now go through the tutorial again.',
-                [{ text: 'OK' }]
-              );
-            } catch (error) {
-              Alert.alert(
-                'Error',
-                'Failed to restart onboarding. Please try again.',
-                [{ text: 'OK' }]
-              );
-            }
-          },
-        },
-      ]
-    );
-  };
 
   const navigateToAccountDeletion = () => {
     navigation.navigate('AccountDeletion' as never);

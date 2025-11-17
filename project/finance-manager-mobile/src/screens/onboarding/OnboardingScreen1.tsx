@@ -8,6 +8,7 @@ import {
   Dimensions,
 } from 'react-native';
 import LottieView from 'lottie-react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { colors, typography, spacing } from '../../constants/colors';
 import { useOnboardingContext } from '../../contexts/OnboardingContext';
 import ProgressIndicator from '../../components/onboarding/ProgressIndicator';
@@ -55,8 +56,12 @@ const OnboardingScreen1: React.FC<OnboardingScreen1Props> = ({ onNext }) => {
             <ProgressIndicator currentStep={currentScreen} totalSteps={totalScreens} />
 
             {/* Arrow button */}
-            <TouchableOpacity style={styles.arrowButton} onPress={onNext}>
-              <Text style={styles.arrow}>→</Text>
+            <TouchableOpacity 
+              style={styles.arrowButton} 
+              onPress={onNext}
+              activeOpacity={0.8}
+            >
+              <Ionicons name="arrow-forward" size={28} color={colors.white} />
             </TouchableOpacity>
           </View>
         </View>
@@ -115,25 +120,20 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   arrowButton: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    backgroundColor: colors.white,
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    backgroundColor: colors.primary,
     justifyContent: 'center',
     alignItems: 'center',
-    shadowColor: colors.shadow,
+    shadowColor: colors.primary,
     shadowOffset: {
       width: 0,
-      height: 2,
+      height: 4,
     },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 4,
-  },
-  arrow: {
-    fontSize: 24,
-    color: colors.primary,
-    fontWeight: 'bold',
+    shadowOpacity: 0.3,
+    shadowRadius: 12,
+    elevation: 8,
   },
 });
 

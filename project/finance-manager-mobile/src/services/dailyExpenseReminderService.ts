@@ -58,7 +58,7 @@ class DailyExpenseReminderService {
           reminder.body,
           hour,
           minute,
-          1 // Every day (no specific weekday)
+          undefined // Every day (no specific weekday)
         );
 
         console.log(`✅ Daily reminder scheduled for ${reminder.time}`);
@@ -238,7 +238,7 @@ class DailyExpenseReminderService {
           reminder.body,
           hour,
           minute,
-          1 // Every day
+          undefined // Every day
         );
 
         console.log(`✅ Reminder rescheduled for ${reminder.time}`);

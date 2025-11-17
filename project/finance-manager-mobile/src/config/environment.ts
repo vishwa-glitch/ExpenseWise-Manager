@@ -1,4 +1,5 @@
 // Environment configuration for the app
+import Constants from 'expo-constants';
 import { getDevApiUrl } from './dev-config';
 
 export interface EnvironmentConfig {
@@ -10,7 +11,22 @@ export interface EnvironmentConfig {
   ENABLE_ANALYTICS: boolean;
 }
 
-// Environment configurations
+// Get environment variables from expo-constants (loaded from .env via app.config.js)
+const getEnvFromConstants = (): Partial<EnvironmentConfig> => {
+  const extra = Constants.expoConfig?.extra;
+  if (!extra) return {};
+  
+  return {
+    API_BASE_URL: extra.API_BASE_URL,
+    API_PREFIX: extra.API_PREFIX,
+    API_TIMEOUT: extra.API_TIMEOUT ? parseInt(extra.API_TIMEOUT, 10) : undefined,
+    ENVIRONMENT: extra.ENVIRONMENT,
+    ENABLE_LOGGING: extra.ENABLE_LOGGING,
+    ENABLE_ANALYTICS: extra.ENABLE_ANALYTICS,
+  };
+};
+
+// Environment configurations (fallback values)
 const environments: Record<string, EnvironmentConfig> = {
   development: {
     API_BASE_URL: getDevApiUrl(),
@@ -21,7 +37,7 @@ const environments: Record<string, EnvironmentConfig> = {
     ENABLE_ANALYTICS: false,
   },
   staging: {
-    API_BASE_URL: "https://your-staging-app.region.elasticbeanstalk.com", // Replace with staging URL
+    API_BASE_URL: "https://your-staging-app.region.elasticbeanstalk.com",
     API_PREFIX: "/api",
     API_TIMEOUT: 15000,
     ENVIRONMENT: 'staging',
@@ -29,8 +45,8 @@ const environments: Record<string, EnvironmentConfig> = {
     ENABLE_ANALYTICS: true,
   },
   production: {
-    API_BASE_URL: "https://xp45ezql61.execute-api.us-east-1.amazonaws.com/fintech", // Your actual API Gateway URL
-    API_PREFIX: "/api", // API Gateway includes /api prefix
+    API_BASE_URL: "https://xp45ezql61.execute-api.us-east-1.amazonaws.com/fintech",
+    API_PREFIX: "/api",
     API_TIMEOUT: 15000,
     ENVIRONMENT: 'production',
     ENABLE_LOGGING: false,
@@ -40,22 +56,34 @@ const environments: Record<string, EnvironmentConfig> = {
 
 // Get current environment
 const getCurrentEnvironment = (): string => {
-  // Check if we're in development mode
+  const envFromConstants = getEnvFromConstants();
+  
+  // Use environment from .env if available
+  if (envFromConstants.ENVIRONMENT) {
+    return envFromConstants.ENVIRONMENT;
+  }
+  
+  // Fallback: Check if we're in development mode
   if (__DEV__) {
     return 'development';
   }
-  
-  // You can also check for specific environment variables
-  // import Constants from 'expo-constants';
-  // const env = Constants.expoConfig?.extra?.environment;
-  // if (env && environments[env]) return env;
   
   // Default to production for release builds
   return 'production';
 };
 
-// Export the current environment configuration
-export const ENV = environments[getCurrentEnvironment()];
+// Merge environment config with values from .env (via expo-constants)
+const currentEnv = getCurrentEnvironment();
+const baseConfig = environments[currentEnv];
+const envOverrides = getEnvFromConstants();
+
+// Export the current environment configuration (with .env overrides)
+export const ENV: EnvironmentConfig = {
+  ...baseConfig,
+  ...Object.fromEntries(
+    Object.entries(envOverrides).filter(([_, value]) => value !== undefined)
+  ),
+} as EnvironmentConfig;
 
 // Helper function to get environment-specific configuration
 export const getEnvironmentConfig = (): EnvironmentConfig => {

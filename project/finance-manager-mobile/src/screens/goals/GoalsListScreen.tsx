@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import {
   View,
   Text,
@@ -11,6 +11,7 @@ import {
   Modal,
   ScrollView,
 } from 'react-native';
+import { useFocusEffect } from '@react-navigation/native';
 import { useAppDispatch } from '../../hooks/useAppDispatch';
 import { useTypedSelector } from '../../hooks/useTypedSelector';
 import { fetchGoals, deleteGoal, contributeToGoal } from '../../store/slices/goalsSlice';
@@ -63,6 +64,15 @@ const GoalsListScreen: React.FC<GoalsListScreenProps> = ({ navigation }) => {
     }
   }, [isAuthenticated]);
 
+  // Refresh goals when screen comes into focus (e.g., after creating a new goal)
+  useFocusEffect(
+    useCallback(() => {
+      if (isAuthenticated) {
+        loadData();
+      }
+    }, [isAuthenticated])
+  );
+
   const loadData = async () => {
     if (!isAuthenticated) {
       console.log(' Skipping goals data load - user not authenticated');
@@ -98,6 +108,18 @@ const GoalsListScreen: React.FC<GoalsListScreenProps> = ({ navigation }) => {
 
   const getCompletedGoals = () => {
     return goals.filter((goal: any) => goal.status === 'completed');
+  };
+
+  const getSortedGoals = () => {
+    const priorityOrder = { high: 3, medium: 2, low: 1 };
+    return [...goals].sort((a: any, b: any) => {
+      // Sort by priority first (high to low)
+      const priorityDiff = (priorityOrder[b.priority] || 0) - (priorityOrder[a.priority] || 0);
+      if (priorityDiff !== 0) return priorityDiff;
+      
+      // Then by creation date (newest first)
+      return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+    });
   };
 
   const canCreateGoal = () => {
@@ -369,7 +391,7 @@ const GoalsListScreen: React.FC<GoalsListScreenProps> = ({ navigation }) => {
   return (
     <SafeAreaView style={styles.container}>
       <FlatList
-        data={goals}
+        data={getSortedGoals()}
         renderItem={renderGoalItem}
         keyExtractor={(item) => item.id}
         ListHeaderComponent={renderHeader}

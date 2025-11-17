@@ -165,7 +165,9 @@ export const useOnboardingOverlay = () => {
   };
 
   const handleComplete = () => {
+    console.log('🎯 Onboarding overlay handleComplete called');
     dispatch(completeOnboarding());
+    console.log('🎯 completeOnboarding dispatched - overlay should hide and notification screen should show');
     // Navigate to dashboard and reset More tab navigation to prevent stuck state
     setTimeout(() => {
       // First navigate to dashboard
