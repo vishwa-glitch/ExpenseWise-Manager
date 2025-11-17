@@ -31,7 +31,7 @@ extensions.configure(com.facebook.react.ReactSettingsExtension) { ex ->
 }
 expoAutolinking.useExpoModules()
 
-rootProject.name = 'Budget Planner & Expense Tracker'
+rootProject.name = 'Expense Tracker & Budget'
 
 expoAutolinking.useExpoVersionCatalog()
 

@@ -2,9 +2,9 @@ require('dotenv').config();
 
 module.exports = {
   expo: {
-    name: "Budget Planner & Expense Tracker",
+    name: "Expense Tracker & Budget",
     slug: "fintech",
-    version: "1.0.9",
+    version: "1.1.0",
     sdkVersion: "53.0.0",
     jsEngine: "hermes",
     icon: "./assets/icon.png",
@@ -21,7 +21,7 @@ module.exports = {
             targetSdkVersion: 35,
             buildToolsVersion: "35.0.0",
             minSdkVersion: 24,
-            versionCode: 11,
+            versionCode: 12,
             newArchEnabled: false
           }
         }

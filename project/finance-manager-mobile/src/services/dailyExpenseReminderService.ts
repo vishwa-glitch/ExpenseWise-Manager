@@ -31,22 +31,29 @@ class DailyExpenseReminderService {
    */
   private async setupDailyReminder() {
     try {
+      // Cancel any existing reminders first to prevent duplicates
+      await notificationService.cancelAllNotifications();
+      console.log("🗑️ Cancelled existing notifications");
+
       // Schedule multiple daily reminders
       const reminders = [
         {
           time: "10:00",
           title: "Morning Expense Check",
           body: "Good morning! Don't forget to log any expenses from yesterday or this morning 💰",
+          type: "morning",
         },
         {
           time: "17:00",
           title: "Afternoon Expense Check",
           body: "Afternoon reminder: Log your expenses to stay on top of your budget! 💰",
+          type: "afternoon",
         },
         {
           time: "21:00",
           title: "Evening Expense Check",
           body: "Evening reminder: Log today's expenses before you wrap up for the day 💰",
+          type: "evening",
         },
       ];
 
@@ -58,13 +65,22 @@ class DailyExpenseReminderService {
           reminder.body,
           hour,
           minute,
-          undefined // Every day (no specific weekday)
+          undefined, // Every day (no specific weekday)
+          {
+            type: "reminder",
+            reminderType: reminder.type,
+            id: `daily-reminder-${reminder.type}`,
+          }
         );
 
         console.log(`✅ Daily reminder scheduled for ${reminder.time}`);
       }
 
       console.log("✅ All daily reminders scheduled successfully");
+      
+      // Log scheduled notifications for debugging
+      const scheduled = await notificationService.getScheduledNotifications();
+      console.log(`📅 Total scheduled notifications: ${scheduled.length}`);
     } catch (error) {
       console.error("❌ Error scheduling daily reminders:", error);
     }
@@ -208,8 +224,9 @@ class DailyExpenseReminderService {
    */
   private async rescheduleReminder(time: string) {
     try {
-      // Cancel existing reminders
+      // Cancel existing reminders first
       await notificationService.cancelAllNotifications();
+      console.log("🗑️ Cancelled existing notifications before rescheduling");
 
       // Schedule multiple daily reminders
       const reminders = [
@@ -217,16 +234,19 @@ class DailyExpenseReminderService {
           time: "10:00",
           title: "Morning Expense Check",
           body: "Good morning! Don't forget to log any expenses from yesterday or this morning 💰",
+          type: "morning",
         },
         {
           time: "17:00",
           title: "Afternoon Expense Check",
           body: "Afternoon reminder: Log your expenses to stay on top of your budget! 💰",
+          type: "afternoon",
         },
         {
           time: "21:00",
           title: "Evening Expense Check",
           body: "Evening reminder: Log today's expenses before you wrap up for the day 💰",
+          type: "evening",
         },
       ];
 
@@ -238,13 +258,22 @@ class DailyExpenseReminderService {
           reminder.body,
           hour,
           minute,
-          undefined // Every day
+          undefined, // Every day
+          {
+            type: "reminder",
+            reminderType: reminder.type,
+            id: `daily-reminder-${reminder.type}`,
+          }
         );
 
         console.log(`✅ Reminder rescheduled for ${reminder.time}`);
       }
 
       console.log("✅ All daily reminders rescheduled successfully");
+      
+      // Log scheduled notifications for debugging
+      const scheduled = await notificationService.getScheduledNotifications();
+      console.log(`📅 Total scheduled notifications: ${scheduled.length}`);
     } catch (error) {
       console.error("❌ Error rescheduling reminders:", error);
     }

@@ -262,26 +262,52 @@ class NotificationService {
     weekday?: number, // 1-7 (Monday-Sunday)
     data?: any
   ) {
-    const trigger: any = {
-      hour,
-      minute,
-      repeats: true,
-    };
+    try {
+      const now = new Date();
+      const scheduledTime = new Date();
+      scheduledTime.setHours(hour, minute, 0, 0);
+      
+      // If the scheduled time has already passed today, schedule for tomorrow
+      // to prevent immediate triggering
+      if (scheduledTime <= now) {
+        scheduledTime.setDate(scheduledTime.getDate() + 1);
+      }
 
-    if (weekday) {
-      trigger.weekday = weekday;
+      // Use CalendarTriggerInput which supports both daily and weekly repeating
+      const trigger: any = {
+        hour,
+        minute,
+        repeats: true,
+      };
+
+      // Only add weekday if specified (for weekly reminders)
+      if (weekday !== undefined) {
+        trigger.weekday = weekday;
+      }
+
+      // Schedule directly without going through scheduleLocalNotification
+      // to avoid the queueing logic for daily reminders
+      const notificationId = await Notifications.scheduleNotificationAsync({
+        content: {
+          title,
+          body,
+          data: data || {},
+          sound: true,
+          priority: Notifications.AndroidNotificationPriority.DEFAULT,
+        },
+        trigger,
+      });
+
+      console.log(
+        `🔔 Scheduled recurring notification for ${hour}:${minute.toString().padStart(2, '0')} (next trigger: ${scheduledTime.toLocaleString()}):`,
+        notificationId
+      );
+      
+      return notificationId;
+    } catch (error) {
+      console.error('❌ Error scheduling recurring notification:', error);
+      throw error;
     }
-
-    return this.scheduleLocalNotification(
-      {
-        id: `recurring-${Date.now()}`,
-        title,
-        body,
-        data,
-        type: 'reminder',
-      },
-      trigger
-    );
   }
 
   // Cancel a specific notification
