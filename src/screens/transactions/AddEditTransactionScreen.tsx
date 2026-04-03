@@ -69,6 +69,10 @@ const AddEditTransactionScreen: React.FC<AddEditTransactionScreenProps> = ({ nav
 
   useEffect(() => {
     if (isEditing && transaction && transaction.account_id) {
+      const transactionTags = Array.isArray(transaction.tags)
+        ? transaction.tags.filter((tag): tag is string => typeof tag === 'string' && tag.trim().length > 0)
+        : [];
+
       setFormData({
         account_id: transaction.account_id || '',
         category_id: transaction.category_id || '',
@@ -77,7 +81,7 @@ const AddEditTransactionScreen: React.FC<AddEditTransactionScreenProps> = ({ nav
         description: transaction.description || '',
         transaction_date: transaction.transaction_date || new Date().toISOString().split('T')[0],
         merchant: transaction.merchant || '',
-        tags: transaction.tags?.join(', ') || '',
+        tags: transactionTags.join(', '),
       });
     }
   }, [isEditing, transaction]);

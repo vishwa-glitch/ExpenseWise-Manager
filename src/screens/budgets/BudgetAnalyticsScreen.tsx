@@ -52,13 +52,6 @@ const BudgetAnalyticsScreen: React.FC<BudgetAnalyticsScreenProps> = ({ navigatio
     setRefreshing(false);
   };
 
-  const handleBudgetPress = (budgetId: string) => {
-    // Navigate to budget detail
-    navigation.navigate('BudgetDetail', { budgetId });
-  };
-
-
-
   return (
     <SafeAreaView style={styles.container}>
       <ScrollView
@@ -90,7 +83,6 @@ const BudgetAnalyticsScreen: React.FC<BudgetAnalyticsScreenProps> = ({ navigatio
         {budgetAnalytics?.analytics && (
           <SimplifiedBudgetAnalytics 
             analytics={budgetAnalytics.analytics}
-            onBudgetPress={handleBudgetPress}
           />
         )}
 

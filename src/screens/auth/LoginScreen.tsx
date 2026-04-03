@@ -194,6 +194,7 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ navigation, route }) => {
                         onChangeText={setPassword}
                         placeholder="Enter your password"
                         error={passwordError}
+                        secureTextEntry={true}
                         leftIcon={<Text style={styles.inputIcon}>🔐</Text>}
                         onFocus={() => handleInputFocus("password")}
                       />

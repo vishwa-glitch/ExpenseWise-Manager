@@ -4,6 +4,7 @@ import { apiService } from '../../services/api';
 interface GoalsState {
   goals: any[];
   selectedGoal: any | null;
+  goalDetailsById: Record<string, any>;
   aiSession: any | null;
   goalProgress: any | null;
   goalPredictions: any | null;
@@ -14,6 +15,7 @@ interface GoalsState {
 const initialState: GoalsState = {
   goals: [],
   selectedGoal: null,
+  goalDetailsById: {},
   aiSession: null,
   goalProgress: null,
   goalPredictions: null,
@@ -26,12 +28,55 @@ export const fetchGoals = createAsyncThunk(
   async (_, { rejectWithValue }) => {
     try {
       const response = await apiService.getGoals();
-      return response;
+      const baseGoals = response.goals || [];
+
+      const detailResults = await Promise.allSettled(
+        baseGoals.map((goal: any) => {
+          if (!goal?.id) {
+            return Promise.resolve(null);
+          }
+
+          return apiService.getGoal(String(goal.id));
+        })
+      );
+
+      const goalDetailsById: Record<string, any> = {};
+
+      const hydratedGoals = baseGoals.map((goal: any, index: number) => {
+        const detailResult = detailResults[index];
+
+        if (!goal?.id || detailResult?.status !== 'fulfilled' || !detailResult.value?.goal) {
+          return goal;
+        }
+
+        const detailGoal = detailResult.value.goal;
+        const milestones = Array.isArray(detailResult.value.milestones)
+          ? detailResult.value.milestones
+          : null;
+
+        const mergedGoal = {
+          ...goal,
+          ...detailGoal,
+          total_milestones: milestones ? milestones.length : goal.total_milestones,
+          completed_milestones: milestones
+            ? milestones.filter((milestone: any) => milestone?.is_achieved).length
+            : goal.completed_milestones,
+        };
+
+        goalDetailsById[String(goal.id)] = mergedGoal;
+        return mergedGoal;
+      });
+
+      return {
+        ...response,
+        goals: hydratedGoals,
+        goalDetailsById,
+      };
     } catch (error: any) {
       // Handle 404 errors gracefully for goals
       if (error.response?.status === 404) {
         console.log('🎯 Goals endpoint not available (404) - using empty goals list');
-        return { goals: [] };
+        return { goals: [], goalDetailsById: {} };
       }
       return rejectWithValue(error.message);
     }
@@ -228,7 +273,15 @@ const goalsSlice = createSlice({
       })
       .addCase(fetchGoals.fulfilled, (state, action) => {
         state.isLoading = false;
-        state.goals = action.payload.goals || [];
+        state.goalDetailsById = {
+          ...state.goalDetailsById,
+          ...(action.payload.goalDetailsById || {}),
+        };
+        const incomingGoals = action.payload.goals || [];
+        state.goals = incomingGoals.map((goal: any) => {
+          const detailedGoal = goal?.id ? state.goalDetailsById[String(goal.id)] : null;
+          return detailedGoal ? { ...goal, ...detailedGoal } : goal;
+        });
       })
       .addCase(fetchGoals.rejected, (state, action) => {
         state.isLoading = false;
@@ -238,7 +291,20 @@ const goalsSlice = createSlice({
       })
       // Fetch single goal
       .addCase(fetchGoal.fulfilled, (state, action) => {
-        state.selectedGoal = action.payload.goal;
+        const detailedGoal = action.payload.goal;
+        state.selectedGoal = detailedGoal;
+
+        if (detailedGoal?.id) {
+          state.goalDetailsById[String(detailedGoal.id)] = detailedGoal;
+
+          const index = state.goals.findIndex(g => g.id === detailedGoal.id);
+          if (index !== -1) {
+            state.goals[index] = {
+              ...state.goals[index],
+              ...detailedGoal,
+            };
+          }
+        }
       })
       // Fetch goal progress
       .addCase(fetchGoalProgress.fulfilled, (state, action) => {
@@ -258,6 +324,9 @@ const goalsSlice = createSlice({
         const newGoal = action.payload.goal || action.payload;
         if (newGoal) {
           state.goals.push(newGoal);
+          if (newGoal.id) {
+            state.goalDetailsById[String(newGoal.id)] = newGoal;
+          }
         }
         state.error = null;
       })
@@ -274,6 +343,9 @@ const goalsSlice = createSlice({
         state.isLoading = false;
         const updatedGoal = action.payload.goal || action.payload;
         if (updatedGoal) {
+          if (updatedGoal.id) {
+            state.goalDetailsById[String(updatedGoal.id)] = updatedGoal;
+          }
           const index = state.goals.findIndex(g => g.id === updatedGoal.id);
           if (index !== -1) {
             state.goals[index] = updatedGoal;
@@ -298,6 +370,7 @@ const goalsSlice = createSlice({
       .addCase(deleteGoal.fulfilled, (state, action) => {
         state.isLoading = false;
         state.goals = state.goals.filter(g => g.id !== action.payload);
+        delete state.goalDetailsById[String(action.payload)];
         if (state.selectedGoal && state.selectedGoal.id === action.payload) {
           state.selectedGoal = null;
         }
@@ -308,14 +381,8 @@ const goalsSlice = createSlice({
         state.error = action.payload as string || 'Failed to delete goal';
       })
       // Contribute to goal
-      .addCase(contributeToGoal.fulfilled, (state, action) => {
-        const updatedGoal = action.payload.goal || action.payload;
-        if (updatedGoal) {
-          const index = state.goals.findIndex(g => g.id === updatedGoal.id);
-          if (index !== -1) {
-            state.goals[index] = updatedGoal;
-          }
-        }
+      .addCase(contributeToGoal.fulfilled, (state) => {
+        state.error = null;
       })
       // AI Session
       .addCase(startAIGoalSession.fulfilled, (state, action) => {

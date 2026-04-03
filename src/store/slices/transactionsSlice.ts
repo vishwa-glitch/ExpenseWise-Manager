@@ -88,6 +88,207 @@ const initialState: TransactionsState = {
   error: null,
 };
 
+const getSafeNumber = (value: any, fallback = 0) => {
+  const parsedValue = typeof value === "number" ? value : Number(value);
+  return Number.isFinite(parsedValue) ? parsedValue : fallback;
+};
+
+const normalizeTransactionTags = (tags: unknown): string[] => {
+  if (Array.isArray(tags)) {
+    return tags.filter((tag): tag is string => typeof tag === "string" && tag.trim().length > 0);
+  }
+
+  if (typeof tags === "string") {
+    return tags
+      .split(",")
+      .map((tag) => tag.trim())
+      .filter((tag) => tag.length > 0);
+  }
+
+  return [];
+};
+
+const normalizeTransaction = (transaction: any): Transaction => ({
+  ...transaction,
+  tags: normalizeTransactionTags(transaction?.tags),
+});
+
+const normalizeTransactions = (transactions: any[] = []): Transaction[] =>
+  transactions.map((transaction) => normalizeTransaction(transaction));
+
+const createEmptyCalendarDayData = () => ({
+  income: 0,
+  expenses: 0,
+  transaction_count: 0,
+  transactions: [] as any[],
+});
+
+const buildCalendarDayDataFromTransactions = (transactions: any[] = []) => {
+  return transactions.reduce(
+    (dayData, transaction) => {
+      const amount = getSafeNumber(transaction?.amount);
+      const type = transaction?.type?.toLowerCase();
+
+      if (type === "income") {
+        dayData.income += amount;
+      } else if (type === "expense") {
+        dayData.expenses += amount;
+      }
+
+      dayData.transaction_count += 1;
+      dayData.transactions.push(normalizeTransaction(transaction));
+
+      return dayData;
+    },
+    createEmptyCalendarDayData()
+  );
+};
+
+const normalizeCalendarDayData = (rawDayData: any) => {
+  if (Array.isArray(rawDayData)) {
+    return buildCalendarDayDataFromTransactions(rawDayData);
+  }
+
+  if (!rawDayData || typeof rawDayData !== "object") {
+    return createEmptyCalendarDayData();
+  }
+
+  const transactions = Array.isArray(rawDayData.transactions)
+    ? rawDayData.transactions
+    : [];
+
+  if (
+    transactions.length > 0 &&
+    rawDayData.income === undefined &&
+    rawDayData.expenses === undefined &&
+    rawDayData.transaction_count === undefined
+  ) {
+    return {
+      ...rawDayData,
+      ...buildCalendarDayDataFromTransactions(transactions),
+    };
+  }
+
+  return {
+    ...rawDayData,
+    income: getSafeNumber(rawDayData.income ?? rawDayData.total_income),
+    expenses: getSafeNumber(rawDayData.expenses ?? rawDayData.total_expenses),
+    transaction_count:
+      rawDayData.transaction_count !== undefined
+        ? getSafeNumber(rawDayData.transaction_count)
+        : transactions.length,
+    transactions,
+  };
+};
+
+const getDayKeyFromCalendarEntry = (key: string) => {
+  if (!key) {
+    return null;
+  }
+
+  if (/^\d+$/.test(key)) {
+    return String(parseInt(key, 10));
+  }
+
+  const lastSegment = key.split("-").pop();
+  if (!lastSegment) {
+    return null;
+  }
+
+  const dayNumber = parseInt(lastSegment, 10);
+  return Number.isNaN(dayNumber) ? null : String(dayNumber);
+};
+
+const mergeCalendarDayData = (currentDayData: any, nextDayData: any) => ({
+  ...currentDayData,
+  ...nextDayData,
+  income: getSafeNumber(currentDayData?.income) + getSafeNumber(nextDayData?.income),
+  expenses:
+    getSafeNumber(currentDayData?.expenses) + getSafeNumber(nextDayData?.expenses),
+  transaction_count:
+    getSafeNumber(currentDayData?.transaction_count) +
+    getSafeNumber(nextDayData?.transaction_count),
+  transactions: [
+    ...(Array.isArray(currentDayData?.transactions) ? currentDayData.transactions : []),
+    ...(Array.isArray(nextDayData?.transactions) ? nextDayData.transactions : []),
+  ],
+});
+
+const normalizeCalendarEntries = (calendarSource: any) => {
+  if (!calendarSource || typeof calendarSource !== "object") {
+    return {};
+  }
+
+  return Object.entries(calendarSource).reduce<Record<string, any>>(
+    (normalizedCalendar, [rawKey, rawDayData]) => {
+      const dayKey = getDayKeyFromCalendarEntry(rawKey);
+
+      if (!dayKey) {
+        return normalizedCalendar;
+      }
+
+      const normalizedDayData = normalizeCalendarDayData(rawDayData);
+      const existingDayData = normalizedCalendar[dayKey];
+
+      normalizedCalendar[dayKey] = existingDayData
+        ? mergeCalendarDayData(existingDayData, normalizedDayData)
+        : normalizedDayData;
+
+      return normalizedCalendar;
+    },
+    {}
+  );
+};
+
+const normalizeCalendarResponse = (response: any) => {
+  if (!response || typeof response !== "object") {
+    return response;
+  }
+
+  const rawCalendar = response.calendar_data || response.calendar;
+  if (!rawCalendar || typeof rawCalendar !== "object") {
+    return response;
+  }
+
+  const calendar_data = normalizeCalendarEntries(rawCalendar);
+  const computedSummary = Object.values(calendar_data).reduce(
+    (summary: any, dayData: any) => {
+      summary.total_income += getSafeNumber(dayData?.income);
+      summary.total_expenses += getSafeNumber(dayData?.expenses);
+      summary.transaction_count += getSafeNumber(dayData?.transaction_count);
+      return summary;
+    },
+    {
+      total_income: 0,
+      total_expenses: 0,
+      transaction_count: 0,
+    }
+  );
+
+  const summary = response.summary || {};
+
+  return {
+    ...response,
+    calendar_data,
+    summary: {
+      ...summary,
+      total_income: getSafeNumber(summary.total_income, computedSummary.total_income),
+      total_expenses: getSafeNumber(
+        summary.total_expenses,
+        computedSummary.total_expenses
+      ),
+      net_amount: getSafeNumber(
+        summary.net_amount,
+        computedSummary.total_income - computedSummary.total_expenses
+      ),
+      transaction_count: getSafeNumber(
+        summary.transaction_count,
+        computedSummary.transaction_count
+      ),
+    },
+  };
+};
+
 export const fetchTransactions = createAsyncThunk(
   "transactions/fetchTransactions",
   async (params: any = {}) => {
@@ -144,7 +345,9 @@ export const fetchTransactionCalendar = createAsyncThunk(
     // If year and month are provided, use the calendar endpoint
     if (year && month) {
       console.log('📅 Fetching calendar data for:', { year, month });
-      const response = await apiService.getTransactionCalendar(year, month);
+      const response = normalizeCalendarResponse(
+        await apiService.getTransactionCalendar(year, month)
+      );
       console.log('📅 Calendar API response:', {
         hasData: !!response,
         dataKeys: response ? Object.keys(response) : null,
@@ -183,7 +386,7 @@ export const fetchTransactionCalendar = createAsyncThunk(
           totalTransactions: response.pagination?.total || 0,
         });
 
-        const transactions = response.transactions || response.data || [];
+        const transactions = normalizeTransactions(response.transactions || response.data || []);
         allTransactions = [...allTransactions, ...transactions];
 
         // Check if there are more pages
@@ -464,7 +667,7 @@ const transactionsSlice = createSlice({
       })
       .addCase(fetchTransactions.fulfilled, (state, action) => {
         state.isLoading = false;
-        state.transactions = action.payload.transactions || [];
+        state.transactions = normalizeTransactions(action.payload.transactions || []);
         state.pagination = action.payload.pagination;
       })
       .addCase(fetchTransactions.rejected, (state, action) => {
@@ -492,7 +695,7 @@ const transactionsSlice = createSlice({
       .addCase(fetchTransactionsByAccount.fulfilled, (state, action) => {
         state.isLoading = false;
         
-        const newTransactions = action.payload.transactions || [];
+        const newTransactions = normalizeTransactions(action.payload.transactions || []);
         const pagination = action.payload.pagination;
         
         // If this is page 1, replace all transactions
@@ -519,7 +722,7 @@ const transactionsSlice = createSlice({
       // Create transaction
       .addCase(createTransaction.fulfilled, (state, action) => {
         if (action.payload.transaction) {
-          state.transactions.unshift(action.payload.transaction);
+          state.transactions.unshift(normalizeTransaction(action.payload.transaction));
         }
       })
       // Update transaction
@@ -528,7 +731,7 @@ const transactionsSlice = createSlice({
           (t) => t.id === action.payload.transaction?.id
         );
         if (index !== -1 && action.payload.transaction) {
-          state.transactions[index] = action.payload.transaction;
+          state.transactions[index] = normalizeTransaction(action.payload.transaction);
         }
       })
       // Delete transaction

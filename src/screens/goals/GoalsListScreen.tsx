@@ -14,7 +14,7 @@ import {
 import { useFocusEffect } from '@react-navigation/native';
 import { useAppDispatch } from '../../hooks/useAppDispatch';
 import { useTypedSelector } from '../../hooks/useTypedSelector';
-import { fetchGoals, deleteGoal, contributeToGoal } from '../../store/slices/goalsSlice';
+import { fetchGoals, fetchGoal, deleteGoal, contributeToGoal } from '../../store/slices/goalsSlice';
 import { fetchUserProfile } from '../../store/slices/userSlice';
 import { fetchAccounts } from '../../store/slices/accountsSlice';
 
@@ -194,20 +194,26 @@ const GoalsListScreen: React.FC<GoalsListScreenProps> = ({ navigation }) => {
 
     setIsContributing(true);
     try {
+      const goalId = selectedGoalId;
+
       await dispatch(contributeToGoal({
-        id: selectedGoalId,
+        id: goalId,
         amount,
         accountId: selectedAccountId,
       })).unwrap();
+
+      if (goalId) {
+        await Promise.all([
+          dispatch(fetchGoal(goalId)).unwrap(),
+          dispatch(fetchAccounts()).unwrap(),
+        ]);
+      }
 
       Alert.alert('Success', 'Contribution added successfully!');
       setShowContributeModal(false);
       setContributionAmount('');
       setSelectedAccountId('');
       setSelectedGoalId(null);
-      
-      // Refresh the list
-      await loadData();
     } catch (error: any) {
       Alert.alert('Error', error.message || 'Failed to add contribution.');
     } finally {

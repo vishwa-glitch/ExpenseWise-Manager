@@ -150,11 +150,11 @@ const HelpSupportScreen: React.FC = () => {
             </View>
             <View style={styles.appInfoRow}>
               <Text style={styles.appInfoLabel}>Build</Text>
-              <Text style={styles.appInfoValue}>2024.1.1</Text>
+              <Text style={styles.appInfoValue}>2026</Text>
             </View>
             <View style={styles.appInfoRow}>
               <Text style={styles.appInfoLabel}>Last Updated</Text>
-              <Text style={styles.appInfoValue}>January 2024</Text>
+              <Text style={styles.appInfoValue}>February 2026</Text>
             </View>
           </View>
         </View>

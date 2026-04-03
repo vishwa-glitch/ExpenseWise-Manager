@@ -302,13 +302,11 @@ const analyticsSlice = createSlice({
       .addCase(fetchDashboardInsights.fulfilled, (state, action) => {
         state.isLoading = false;
         // Handle both new API structure (data property) and legacy structure (direct payload)
-        state.dashboardInsights = action.payload.data || action.payload;
+        state.dashboardInsights = action.payload?.data || action.payload || null;
       })
       .addCase(fetchDashboardInsights.rejected, (state, action) => {
         state.isLoading = false;
         state.error = action.payload as string || 'Failed to fetch dashboard insights';
-        // Set to null instead of mock data
-        state.dashboardInsights = null;
       })
       // Fetch weekly report
       .addCase(fetchWeeklyReport.fulfilled, (state, action) => {

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -36,18 +36,40 @@ export const CategoryBreakdownSection: React.FC<CategoryBreakdownSectionProps> =
   onRefresh,
 }) => {
   const dispatch = useAppDispatch();
-  const [refreshing, setRefreshing] = useState(false);
 
   const { categoryBreakdown } = useTypedSelector((state) => state.analytics);
   const { displayCurrency } = useTypedSelector((state) => state.user);
+
+  const formatDateForApi = (date: Date) => {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  };
+
+  const getCurrentMonthDateRange = () => {
+    const now = new Date();
+
+    return {
+      startDate: formatDateForApi(new Date(now.getFullYear(), now.getMonth(), 1)),
+      endDate: formatDateForApi(now),
+    };
+  };
+
+  const loadCategoryBreakdown = useCallback(async () => {
+    try {
+      const { startDate, endDate } = getCurrentMonthDateRange();
+      await dispatch(fetchCategoryBreakdown({ startDate, endDate })).unwrap();
+    } catch (error) {
+      console.error('Failed to load category breakdown:', error);
+    }
+  }, [dispatch]);
 
   // Fetch category breakdown data when component mounts
   useEffect(() => {
     const loadCategoryBreakdown = async () => {
       try {
-        // Get current date range for the last 30 days
-        const endDate = new Date().toISOString().split('T')[0];
-        const startDate = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+        const { startDate, endDate } = getCurrentMonthDateRange();
         
         await dispatch(fetchCategoryBreakdown({ startDate, endDate })).unwrap();
       } catch (error) {
@@ -60,9 +82,10 @@ export const CategoryBreakdownSection: React.FC<CategoryBreakdownSectionProps> =
   }, [dispatch]);
 
   const handleRefresh = async () => {
-    setRefreshing(true);
-    onRefresh();
-    setRefreshing(false);
+    await Promise.all([
+      onRefresh(),
+      loadCategoryBreakdown(),
+    ]);
   };
 
   const getCategoryBreakdownData = (): CategoryData[] => {
@@ -257,7 +280,7 @@ export const CategoryBreakdownSection: React.FC<CategoryBreakdownSectionProps> =
     <View style={styles.section}>
       <SectionHeader 
         title="Category Breakdown"
-        subtitle="This month's spending"
+        subtitle="This month's spending so far"
         rightComponent={
           <TouchableOpacity 
             onPress={handleRefresh} 

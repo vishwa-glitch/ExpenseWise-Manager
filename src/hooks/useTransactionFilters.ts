@@ -1,4 +1,5 @@
 import { useState, useCallback, useMemo } from 'react';
+import { useTypedSelector } from './useTypedSelector';
 
 interface FilterState {
   timePeriod: string;
@@ -10,6 +11,20 @@ interface FilterState {
   };
 }
 
+interface CategorySummary {
+  id: string;
+  name: string;
+}
+
+interface TransactionFilterQueryParams {
+  dateRange?: {
+    startDate: string;
+    endDate: string;
+  };
+  categoryId?: string;
+  transactionType?: 'all' | 'income' | 'expense' | 'transfer';
+}
+
 interface UseTransactionFiltersReturn {
   filterState: FilterState;
   setTimePeriod: (period: string) => void;
@@ -17,7 +32,7 @@ interface UseTransactionFiltersReturn {
   setTransactionType: (type: string) => void;
   setCustomDateRange: (startDate: string, endDate: string) => void;
   clearAllFilters: () => void;
-  getQueryParams: () => Record<string, any>;
+  getQueryParams: () => TransactionFilterQueryParams;
   hasActiveFilters: boolean;
   getFilterDescription: () => string;
 }
@@ -34,6 +49,7 @@ const initialFilterState: FilterState = {
 
 export const useTransactionFilters = (): UseTransactionFiltersReturn => {
   const [filterState, setFilterState] = useState<FilterState>(initialFilterState);
+  const { categories: availableCategories } = useTypedSelector((state) => state.categories);
 
   const setTimePeriod = useCallback((period: string) => {
     setFilterState(prev => ({
@@ -48,31 +64,20 @@ export const useTransactionFilters = (): UseTransactionFiltersReturn => {
 
   const toggleCategory = useCallback((categoryId: string) => {
     setFilterState(prev => {
-      let newCategories: string[];
-      
       if (categoryId === 'all-categories') {
-        // If selecting "All Categories", clear other selections
-        newCategories = ['all-categories'];
-      } else {
-        // Remove "All Categories" if selecting specific category
-        const filteredCategories = prev.categories.filter(id => id !== 'all-categories');
-        
-        if (prev.categories.includes(categoryId)) {
-          // Remove the category
-          newCategories = filteredCategories.filter(id => id !== categoryId);
-          // If no categories left, default to "All Categories"
-          if (newCategories.length === 0) {
-            newCategories = ['all-categories'];
-          }
-        } else {
-          // Add the category
-          newCategories = [...filteredCategories, categoryId];
-        }
+        return {
+          ...prev,
+          categories: ['all-categories'],
+        };
       }
-      
+
+      const isSameCategorySelected = prev.categories.includes(categoryId);
+
       return {
         ...prev,
-        categories: newCategories,
+        // Use single-select category filtering so the chosen category maps
+        // directly to the backend's category_id filter.
+        categories: isSameCategorySelected ? ['all-categories'] : [categoryId],
       };
     });
   }, []);
@@ -163,8 +168,8 @@ export const useTransactionFilters = (): UseTransactionFiltersReturn => {
     }
   }, [filterState.customDateRange]);
 
-  const getQueryParams = useCallback(() => {
-    const params: Record<string, any> = {};
+  const getQueryParams = useCallback((): TransactionFilterQueryParams => {
+    const params: TransactionFilterQueryParams = {};
     
     // Date range
     if (filterState.timePeriod !== 'all') {
@@ -189,25 +194,7 @@ export const useTransactionFilters = (): UseTransactionFiltersReturn => {
     
     // Categories
     if (!filterState.categories.includes('all-categories') && filterState.categories.length > 0) {
-      // Map UI category IDs to backend category names/IDs
-      const categoryMapping: Record<string, string> = {
-        'food-dining': 'Food & Dining',
-        'transportation': 'Transportation',
-        'shopping': 'Shopping',
-        'entertainment': 'Entertainment',
-        'utilities': 'Utilities',
-        'healthcare': 'Healthcare',
-        'education': 'Education',
-        'other': 'Other',
-      };
-      
-      const mappedCategories = filterState.categories
-        .map(id => categoryMapping[id] || id)
-        .filter(Boolean);
-      
-      if (mappedCategories.length > 0) {
-        params.categories = mappedCategories;
-      }
+      params.categoryId = filterState.categories[0];
     }
     
     // Transaction type
@@ -280,22 +267,13 @@ export const useTransactionFilters = (): UseTransactionFiltersReturn => {
     
     // Categories
     if (!filterState.categories.includes('all-categories')) {
-      const categoryLabels: Record<string, string> = {
-        'food-dining': 'Food & Dining',
-        'transportation': 'Transport',
-        'shopping': 'Shopping',
-        'entertainment': 'Entertainment',
-        'utilities': 'Bills & Utilities',
-        'healthcare': 'Healthcare',
-        'education': 'Education',
-        'other': 'Other',
-      };
-      
-      if (filterState.categories.length === 1) {
-        descriptions.push(categoryLabels[filterState.categories[0]] || filterState.categories[0]);
-      } else {
-        descriptions.push(`${filterState.categories.length} categories`);
-      }
+      const selectedCategoryId = filterState.categories[0];
+      const selectedCategory = availableCategories.find(
+        (category: CategorySummary | null | undefined): category is CategorySummary =>
+          Boolean(category?.id === selectedCategoryId)
+      );
+
+      descriptions.push(selectedCategory?.name || '1 category selected');
     }
     
     // Transaction type
@@ -311,7 +289,7 @@ export const useTransactionFilters = (): UseTransactionFiltersReturn => {
     return descriptions.length > 0 
       ? `Filtered by: ${descriptions.join(', ')}` 
       : 'No filters applied';
-  }, [filterState]);
+  }, [filterState, availableCategories]);
 
   return {
     filterState,

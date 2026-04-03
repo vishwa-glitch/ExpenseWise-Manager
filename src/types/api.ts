@@ -140,7 +140,7 @@ export interface BudgetAnalyticsResponse {
     percentage_used: number;
     avg_alert_threshold: number;
   }>;
-  budget_health: {
+  budget_health?: {
     utilization_rate: number;
     budgets_under_budget: number;
     budgets_on_track: number;
@@ -150,6 +150,13 @@ export interface BudgetAnalyticsResponse {
     daily_spending_rate: number;
     daily_budget_allowance: number;
     overall_status: 'on_track' | 'monitor_closely' | 'review_required';
+  };
+  efficiency_metrics?: {
+    overall_efficiency: number;
+    budgets_on_track: number;
+    budgets_at_risk: number;
+    budgets_over_limit: number;
+    avg_variance_percentage: number;
   };
   period: string;
   analysis_date: string;

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
   View,
   Text,
@@ -10,6 +10,15 @@ import {
 } from 'react-native';
 import { colors, typography, spacing } from '../../constants/colors';
 import { CustomButton } from '../common/CustomButton';
+import { useAppDispatch } from '../../hooks/useAppDispatch';
+import { useTypedSelector } from '../../hooks/useTypedSelector';
+import { fetchCategories } from '../../store/slices/categoriesSlice';
+
+interface CategoryFilterOption {
+  id: string;
+  name: string;
+  icon?: string | null;
+}
 
 // Filter Data Definitions
 const timePeriodFilters = [
@@ -22,24 +31,44 @@ const timePeriodFilters = [
   { id: 'custom', label: 'Custom Range' }
 ];
 
-const categoryFilters = [
-  { id: 'all-categories', label: 'All Categories', icon: '📊' },
-  { id: 'food-dining', label: 'Food & Dining', icon: '🍽️' },
-  { id: 'transportation', label: 'Transport', icon: '🚗' },
-  { id: 'shopping', label: 'Shopping', icon: '🛒' },
-  { id: 'entertainment', label: 'Entertainment', icon: '🎬' },
-  { id: 'utilities', label: 'Bills & Utilities', icon: '💡' },
-  { id: 'healthcare', label: 'Healthcare', icon: '🏥' },
-  { id: 'education', label: 'Education', icon: '📚' },
-  { id: 'other', label: 'Other', icon: '📌' }
-];
-
 const typeFilters = [
   { id: 'all-types', label: 'All Types' },
   { id: 'income', label: 'Income', color: '#4CAF50' },
   { id: 'expense', label: 'Expenses', color: '#F44336' },
   { id: 'transfer', label: 'Transfers', color: '#2196F3' }
 ];
+
+const getCategoryIcon = (category: CategoryFilterOption) => {
+  const iconMap: Record<string, string> = {
+    utensils: '🍽️',
+    car: '🚗',
+    'shopping-bag': '🛍️',
+    film: '🎬',
+    zap: '⚡',
+    heart: '🏥',
+    book: '📚',
+    plane: '✈️',
+    briefcase: '💼',
+    'trending-up': '📈',
+    home: '🏠',
+    phone: '📱',
+    gift: '🎁',
+    coffee: '☕',
+    music: '🎵',
+    camera: '📷',
+    gamepad: '🎮',
+    dumbbell: '🏋️',
+    palette: '🎨',
+    tool: '🔧',
+    tag: '🏷️',
+  };
+
+  if (category?.icon && iconMap[category.icon]) {
+    return iconMap[category.icon];
+  }
+
+  return '🏷️';
+};
 
 interface TransactionFiltersProps {
   activeTimePeriod: string;
@@ -62,9 +91,32 @@ const TransactionFilters: React.FC<TransactionFiltersProps> = ({
   onCustomDateRange,
   onClearFilters,
 }) => {
+  const dispatch = useAppDispatch();
   const [showCustomDateModal, setShowCustomDateModal] = useState(false);
   const [customStartDate, setCustomStartDate] = useState('');
   const [customEndDate, setCustomEndDate] = useState('');
+  const { categories, isLoading, error } = useTypedSelector((state) => state.categories);
+
+  useEffect(() => {
+    if (categories.length === 0 && !isLoading && !error) {
+      dispatch(fetchCategories());
+    }
+  }, [categories.length, dispatch, error, isLoading]);
+
+  const categoryFilters = useMemo(() => {
+    const dynamicCategories = categories
+      .filter((category: CategoryFilterOption | null | undefined): category is CategoryFilterOption => Boolean(category?.id && category?.name))
+      .map((category) => ({
+        id: category.id,
+        label: category.name,
+        icon: getCategoryIcon(category),
+      }));
+
+    return [
+      { id: 'all-categories', label: 'All Categories', icon: '📊' },
+      ...dynamicCategories,
+    ];
+  }, [categories]);
 
   const handleTimePeriodPress = (periodId: string) => {
     if (periodId === 'custom') {
@@ -180,6 +232,9 @@ const TransactionFilters: React.FC<TransactionFiltersProps> = ({
           </TouchableOpacity>
         ))}
       </ScrollView>
+      {isLoading && categories.length === 0 ? (
+        <Text style={styles.loadingHelper}>Loading categories...</Text>
+      ) : null}
     </View>
   );
 
@@ -275,6 +330,12 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     marginBottom: 6,
     marginLeft: spacing.md,
+  },
+  loadingHelper: {
+    ...typography.caption,
+    color: colors.textSecondary,
+    marginLeft: spacing.md,
+    marginTop: spacing.xs,
   },
   filterRow: {
     marginBottom: 4,

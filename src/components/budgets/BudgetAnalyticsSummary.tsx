@@ -26,8 +26,32 @@ const BudgetAnalyticsSummary: React.FC<BudgetAnalyticsSummaryProps> = ({
   analytics,
   onPress,
 }) => {
-  const { summary, budget_health, category_performance } = analytics;
+  const { summary, category_performance } = analytics;
   const { displayCurrency } = useTypedSelector((state) => state.user);
+  const budget_health = analytics.budget_health || (
+    analytics.efficiency_metrics
+      ? {
+          utilization_rate: analytics.efficiency_metrics.overall_efficiency ?? 0,
+          budgets_under_budget: 0,
+          budgets_on_track: analytics.efficiency_metrics.budgets_on_track ?? 0,
+          budgets_approaching_limit: analytics.efficiency_metrics.budgets_at_risk ?? 0,
+          budgets_over_budget: analytics.efficiency_metrics.budgets_over_limit ?? 0,
+          avg_days_remaining: 0,
+          daily_spending_rate: 0,
+          daily_budget_allowance: 0,
+          overall_status:
+            (analytics.efficiency_metrics.budgets_over_limit ?? 0) > 0
+              ? 'review_required'
+              : (analytics.efficiency_metrics.budgets_at_risk ?? 0) > 0
+                ? 'monitor_closely'
+                : 'on_track',
+        }
+      : null
+  );
+
+  if (!summary || !budget_health) {
+    return null;
+  }
 
   const getOverallStatusColor = (status: string) => {
     switch (status) {

@@ -3,24 +3,24 @@ import {
   View,
   Text,
   StyleSheet,
-  TouchableOpacity,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { colors, typography, spacing } from '../../constants/colors';
 import { useTypedSelector } from '../../hooks/useTypedSelector';
+import { BudgetAnalyticsResponse } from '../../types/api';
 import { 
   getOverallStatusMessage,
   formatUtilizationRate 
 } from '../../utils/budgetStatus';
 
+type BudgetCategoryPerformance = BudgetAnalyticsResponse['category_performance'][number];
+
 interface SimplifiedBudgetAnalyticsProps {
-  analytics: any;
-  onBudgetPress?: (budgetId: string) => void;
+  analytics: BudgetAnalyticsResponse;
 }
 
 const SimplifiedBudgetAnalytics: React.FC<SimplifiedBudgetAnalyticsProps> = ({
   analytics,
-  onBudgetPress,
 }) => {
   // Add null checks for analytics data
   if (!analytics) {
@@ -81,24 +81,28 @@ const SimplifiedBudgetAnalytics: React.FC<SimplifiedBudgetAnalyticsProps> = ({
     }
   };
 
-  const getTopCategories = () => {
+  const getTopCategories = (): BudgetCategoryPerformance[] => {
     if (!category_performance || !Array.isArray(category_performance)) {
       return [];
     }
     
     return category_performance
-      .filter((category: any) => category && typeof category.total_spent_amount === 'number' && !isNaN(category.total_spent_amount))
-      .sort((a: any, b: any) => (b.total_spent_amount || 0) - (a.total_spent_amount || 0))
+      .filter((category): category is BudgetCategoryPerformance =>
+        Boolean(category) &&
+        typeof category.total_spent_amount === 'number' &&
+        !isNaN(category.total_spent_amount)
+      )
+      .sort((a, b) => (b.total_spent_amount || 0) - (a.total_spent_amount || 0))
       .slice(0, 3);
   };
 
-  const getOverBudgetCategories = () => {
+  const getOverBudgetCategories = (): BudgetCategoryPerformance[] => {
     if (!category_performance || !Array.isArray(category_performance)) {
       return [];
     }
     
     return category_performance
-      .filter((cat: any) => cat && cat.status === 'over_budget')
+      .filter((cat): cat is BudgetCategoryPerformance => Boolean(cat) && cat.status === 'over_budget')
       .slice(0, 2);
   };
 
@@ -150,7 +154,7 @@ const SimplifiedBudgetAnalytics: React.FC<SimplifiedBudgetAnalyticsProps> = ({
       {topCategories.length > 0 && (
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Top Spending Categories</Text>
-          {topCategories.map((category: any) => (
+          {topCategories.map((category) => (
             <View key={category.category_id} style={styles.categoryItem}>
               <View style={styles.categoryInfo}>
                 <View style={[styles.categoryColor, { backgroundColor: category.category_color }]} />
@@ -176,18 +180,17 @@ const SimplifiedBudgetAnalytics: React.FC<SimplifiedBudgetAnalyticsProps> = ({
             <Ionicons name="warning" size={20} color={colors.error} />
             <Text style={styles.alertTitle}>Over Budget Categories</Text>
           </View>
-          {overBudgetCategories.map((category: any) => (
-            <TouchableOpacity
+          {overBudgetCategories.map((category) => (
+            <View
               key={category.category_id}
               style={styles.alertItem}
-              onPress={() => onBudgetPress?.(category.category_id)}
-              activeOpacity={0.7}
             >
               <Text style={styles.alertCategory}>{category.category_name}</Text>
               <Text style={styles.alertAmount}>
                 {formatCurrency(category.total_spent_amount)} / {formatCurrency(category.total_budget_amount)}
               </Text>
-            </TouchableOpacity>
+              <Text style={styles.alertHint}>Review this category in your budgets list</Text>
+            </View>
           ))}
         </View>
       )}
@@ -342,6 +345,11 @@ const styles = StyleSheet.create({
   alertAmount: {
     ...typography.caption,
     color: colors.error,
+  },
+  alertHint: {
+    ...typography.caption,
+    color: colors.textSecondary,
+    marginTop: spacing.xs,
   },
   quickSummary: {
     flexDirection: 'row',

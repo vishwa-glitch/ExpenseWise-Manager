@@ -254,6 +254,7 @@ const RegisterScreen: React.FC<RegisterScreenProps> = ({ navigation }) => {
                     onChangeText={(value) => updateFormData('password', value)}
                     placeholder="Create a password"
                     error={errors.password}
+                    secureTextEntry={true}
                     leftIcon={<Text style={styles.inputIcon}>🔐</Text>}
                   />
 

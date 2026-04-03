@@ -130,14 +130,22 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
 
     try {
       console.log('📊 Loading dashboard data for authenticated user');
-      await Promise.all([
-        dispatch(fetchAccounts()),
-        dispatch(fetchTransactions({ limit: 10 })),
+      const results = await Promise.allSettled([
+        dispatch(fetchAccounts()).unwrap(),
+        dispatch(fetchTransactions({ limit: 10 })).unwrap(),
         // dispatch(fetchGoals()), // removed for now
-        dispatch(fetchRecommendations()),
-        dispatch(fetchBudgets()),
-        dispatch(fetchDashboardInsights()),
+        dispatch(fetchRecommendations()).unwrap(),
+        dispatch(fetchBudgets()).unwrap(),
+        dispatch(fetchDashboardInsights()).unwrap(),
       ]);
+
+      const failedRequests = results.filter(
+        (result): result is PromiseRejectedResult => result.status === 'rejected'
+      );
+
+      if (failedRequests.length > 0) {
+        console.error('Dashboard data load completed with partial failures:', failedRequests);
+      }
     } catch (error) {
       console.error('Error loading dashboard data:', error);
     }
@@ -172,6 +180,39 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
     } catch (error) {
       return 0;
     }
+  };
+
+  const getSafeNumber = (value: any, fallback: number = 0) => {
+    const parsedValue = typeof value === 'number' ? value : Number(value);
+    return Number.isFinite(parsedValue) ? parsedValue : fallback;
+  };
+
+  const getDashboardOverview = () => {
+    const overview = dashboardInsights?.overview || dashboardInsights?.data?.overview || {};
+    const monthlyIncome = getSafeNumber(overview.monthly_income);
+    const monthlyExpenses = getSafeNumber(overview.monthly_expenses);
+    const rawMonthlySavings = getSafeNumber(
+      overview.monthly_savings,
+      monthlyIncome - monthlyExpenses
+    );
+    const rawSavingsRate = getSafeNumber(
+      overview.savings_rate,
+      monthlyIncome > 0 ? (rawMonthlySavings / monthlyIncome) * 100 : 0
+    );
+    const monthlySavings = Math.max(0, rawMonthlySavings);
+    const savingsRate = Math.max(0, Math.min(100, rawSavingsRate));
+    const overspentAmount = rawMonthlySavings < 0 ? Math.abs(rawMonthlySavings) : 0;
+
+    return {
+      monthlyIncome,
+      monthlyExpenses,
+      rawMonthlySavings,
+      monthlySavings,
+      savingsRate,
+      overspentAmount,
+      activeGoals: getSafeNumber(overview.active_goals),
+      activeBudgets: getSafeNumber(overview.active_budgets),
+    };
   };
 
 
@@ -223,7 +264,7 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
       const daysLeft = daysInMonth - now.getDate();
 
       return {
-        title: budgetWithHighestUsage.name || 'Budget',
+        title: budgetWithHighestUsage.category_name || budgetWithHighestUsage.name || 'Budget',
         percentageUsed: Math.round(budgetWithHighestUsage.percentageUsed),
         currentAmount: budgetWithHighestUsage.spent_amount || 0,
         totalAmount: budgetWithHighestUsage.amount || 0,
@@ -405,6 +446,40 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
   }
 
   const totalBalance = calculateTotalBalance();
+  const dashboardOverview = getDashboardOverview();
+  const summaryCards = [
+    {
+      key: 'income',
+      label: 'Income',
+      value: formatCurrency(dashboardOverview.monthlyIncome, displayCurrency),
+      accentColor: colors.income,
+      helperText: 'This month',
+    },
+    {
+      key: 'expenses',
+      label: 'Expenses',
+      value: formatCurrency(dashboardOverview.monthlyExpenses, displayCurrency),
+      accentColor: colors.expense,
+      helperText: 'This month',
+    },
+    {
+      key: 'savings',
+      label: 'Savings',
+      value: formatCurrency(dashboardOverview.monthlySavings, displayCurrency),
+      accentColor: dashboardOverview.overspentAmount > 0 ? colors.warning : colors.primary,
+      helperText:
+        dashboardOverview.overspentAmount > 0
+          ? `Overspent by ${formatCurrency(dashboardOverview.overspentAmount, displayCurrency)}`
+          : 'Saved this month',
+    },
+    {
+      key: 'rate',
+      label: 'Savings Rate',
+      value: `${Math.round(dashboardOverview.savingsRate)}%`,
+      accentColor: colors.neutral,
+      helperText: dashboardOverview.overspentAmount > 0 ? 'No income kept' : 'Income kept',
+    },
+  ];
 
   // Calculate expanded height based on number of accounts - Fixed: ensure accounts is array
   const expandedHeight = animation.interpolate({
@@ -519,6 +594,43 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
               textStyle={styles.addAccountButtonText}
             />
           </View>
+        </View>
+
+        <View style={styles.section}>
+          <SectionHeader
+            title="This Month"
+            subtitle={analyticsLoading ? 'Refreshing income and spending summary...' : 'Income, expenses, and savings at a glance'}
+            showDivider={true}
+          />
+          <View style={styles.overviewGrid}>
+            {summaryCards.map((card) => (
+              <View
+                key={card.key}
+                style={[
+                  styles.overviewCard,
+                  {
+                    borderLeftColor: card.accentColor,
+                    backgroundColor: `${card.accentColor}12`,
+                  },
+                ]}
+              >
+                <Text style={styles.overviewLabel}>{card.label}</Text>
+                <Text
+                  style={[styles.overviewValue, { color: card.accentColor }]}
+                  numberOfLines={1}
+                  adjustsFontSizeToFit
+                >
+                  {card.value}
+                </Text>
+                <Text style={styles.overviewHelperText}>{card.helperText}</Text>
+              </View>
+            ))}
+          </View>
+          {(dashboardOverview.activeBudgets > 0 || dashboardOverview.activeGoals > 0) ? (
+            <Text style={styles.overviewContextText}>
+              {dashboardOverview.activeBudgets} active budget{dashboardOverview.activeBudgets === 1 ? '' : 's'} and {dashboardOverview.activeGoals} active goal{dashboardOverview.activeGoals === 1 ? '' : 's'}.
+            </Text>
+          ) : null}
         </View>
 
         {/* Recent Activity */}
@@ -826,6 +938,41 @@ const styles = StyleSheet.create({
     color: colors.primary,
     fontWeight: 'bold',
     fontSize: 14,
+  },
+  overviewGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'space-between',
+    paddingHorizontal: spacing.md,
+  },
+  overviewCard: {
+    width: '48%',
+    borderRadius: 14,
+    padding: spacing.md,
+    marginBottom: spacing.sm,
+    borderLeftWidth: 4,
+    backgroundColor: colors.surface,
+  },
+  overviewLabel: {
+    ...typography.caption,
+    color: colors.textSecondary,
+    fontWeight: '600',
+    marginBottom: spacing.xs,
+  },
+  overviewValue: {
+    ...typography.h3,
+    fontWeight: '700',
+    marginBottom: spacing.xs,
+  },
+  overviewHelperText: {
+    ...typography.small,
+    color: colors.textSecondary,
+  },
+  overviewContextText: {
+    ...typography.caption,
+    color: colors.textSecondary,
+    paddingHorizontal: spacing.md,
+    marginTop: spacing.xs,
   },
   section: {
     marginBottom: spacing.lg,

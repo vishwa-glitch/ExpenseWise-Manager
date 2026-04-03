@@ -327,6 +327,8 @@ const CreateEditBudgetScreen: React.FC<CreateEditBudgetScreenProps> = ({ navigat
     return budgets.filter(budget => budget.category_id === categoryId);
   };
 
+  const selectedCategory = categories.find((category) => category.id === formData.category_id);
+
   const showExistingBudgetsAlert = (categoryId: string) => {
     const existingBudgets = getExistingBudgetsForCategory(categoryId);
     if (existingBudgets.length === 0) return;
@@ -471,11 +473,11 @@ const CreateEditBudgetScreen: React.FC<CreateEditBudgetScreenProps> = ({ navigat
       <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent}>
         <View style={styles.form}>
           <CustomTextInput
-            label="Budget Name *"
-            value={formData.name}
-            onChangeText={(value) => updateFormData('name', value)}
-            placeholder="e.g., Monthly Groceries, Entertainment Budget"
-            error={errors.name}
+            label="Budget Summary"
+            value={selectedCategory ? `${selectedCategory.name} • ${formData.period}` : ''}
+            onChangeText={() => {}}
+            placeholder="Select a category to preview this budget"
+            disabled={true}
             leftIcon={<Text style={styles.inputIcon}>📝</Text>}
           />
 
@@ -580,7 +582,7 @@ const CreateEditBudgetScreen: React.FC<CreateEditBudgetScreenProps> = ({ navigat
                      <View style={styles.infoBox}>
              <Text style={styles.infoIcon}>💡</Text>
              <Text style={styles.infoText}>
-               This budget will track expenses for the selected category. You can create multiple budgets for different categories to manage your spending effectively.
+               This budget will track expenses for {selectedCategory?.name || 'the selected category'} during the selected period. Create separate budgets for different categories to manage spending clearly.
              </Text>
            </View>
         </View>

@@ -6,7 +6,7 @@ import { Platform } from 'react-native';
 // Replace with your computer's local IP address.
 // On Windows, run `ipconfig` in your terminal.
 // This allows your Expo Go app on your phone to connect to the local backend.
-const LOCAL_DEV_IP = '192.168.1.2'; // <-- IMPORTANT: REPLACE WITH YOUR IP
+const LOCAL_DEV_IP = '192.168.1.6'; // <-- IMPORTANT: REPLACE WITH YOUR IP
 
 // The port your local backend is running on.
 const LOCAL_DEV_PORT = 3000;
@@ -17,6 +17,10 @@ const LOCAL_DEV_PORT = 3000;
  * 'localhost' will not work as the phone is a separate device on the network.
  */
 const getApiHost = () => {
+  // For web, localhost is preferred
+  if (Platform.OS === 'web') {
+    return `http://localhost:${LOCAL_DEV_PORT}`;
+  }
   // For both Android and iOS physical devices, we use the local IP.
   return `http://${LOCAL_DEV_IP}:${LOCAL_DEV_PORT}`;
 };

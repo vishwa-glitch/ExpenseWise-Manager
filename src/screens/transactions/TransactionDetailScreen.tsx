@@ -29,6 +29,9 @@ const TransactionDetailScreen: React.FC<TransactionDetailScreenProps> = ({ navig
 
   const { transactions } = useTypedSelector((state) => state.transactions);
   const { displayCurrency } = useTypedSelector((state) => state.user);
+  const transactionTags = Array.isArray(transaction?.tags)
+    ? transaction.tags.filter((tag): tag is string => typeof tag === 'string' && tag.trim().length > 0)
+    : [];
 
   useEffect(() => {
     // If transaction not passed via route, find it in the store
@@ -59,8 +62,8 @@ const TransactionDetailScreen: React.FC<TransactionDetailScreenProps> = ({ navig
   // Determine the actual category based on tags and category_name
   const getActualCategory = () => {
     // Check if this is a goal contribution based on tags
-    if (transaction?.tags && Array.isArray(transaction.tags)) {
-      const hasGoalTag = transaction.tags.some((tag: any) => {
+    if (transactionTags.length > 0) {
+      const hasGoalTag = transactionTags.some((tag: string) => {
         if (typeof tag !== 'string') return false;
         return tag.toLowerCase().includes('goal') ||
           tag.toLowerCase().includes('contribution');
@@ -226,11 +229,11 @@ const TransactionDetailScreen: React.FC<TransactionDetailScreenProps> = ({ navig
             </View>
           )}
 
-          {transaction.tags && transaction.tags.length > 0 && (
+          {transactionTags.length > 0 && (
             <View style={styles.detailItem}>
               <Text style={styles.detailLabel}>Tags</Text>
               <View style={styles.tagsContainer}>
-                {transaction.tags.map((tag: string, index: number) => (
+                {transactionTags.map((tag: string, index: number) => (
                   <View key={index} style={styles.tag}>
                     <Text style={styles.tagText}>{tag}</Text>
                   </View>

@@ -2,6 +2,53 @@ import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import { apiService } from '../../services/api';
 import { BudgetAnalyticsResponse, BudgetVarianceReportResponse } from '../../types/api';
 
+const getSafeNumber = (value: any, fallback = 0) => {
+  const parsedValue = typeof value === 'number' ? value : Number(value);
+  return Number.isFinite(parsedValue) ? parsedValue : fallback;
+};
+
+const normalizeBudgetAnalytics = (analytics: BudgetAnalyticsResponse | null): BudgetAnalyticsResponse | null => {
+  if (!analytics) {
+    return null;
+  }
+
+  if (analytics.budget_health) {
+    return analytics;
+  }
+
+  const efficiencyMetrics = analytics.efficiency_metrics;
+
+  if (!efficiencyMetrics) {
+    return analytics;
+  }
+
+  const budgetsOnTrack = getSafeNumber(efficiencyMetrics.budgets_on_track);
+  const budgetsAtRisk = getSafeNumber(efficiencyMetrics.budgets_at_risk);
+  const budgetsOverLimit = getSafeNumber(efficiencyMetrics.budgets_over_limit);
+
+  const overallStatus =
+    budgetsOverLimit > 0
+      ? 'review_required'
+      : budgetsAtRisk > 0
+        ? 'monitor_closely'
+        : 'on_track';
+
+  return {
+    ...analytics,
+    budget_health: {
+      utilization_rate: getSafeNumber(efficiencyMetrics.overall_efficiency),
+      budgets_under_budget: 0,
+      budgets_on_track: budgetsOnTrack,
+      budgets_approaching_limit: budgetsAtRisk,
+      budgets_over_budget: budgetsOverLimit,
+      avg_days_remaining: 0,
+      daily_spending_rate: 0,
+      daily_budget_allowance: 0,
+      overall_status: overallStatus,
+    },
+  };
+};
+
 interface BudgetAnalyticsState {
   analytics: BudgetAnalyticsResponse | null;
   varianceReport: BudgetVarianceReportResponse | null;
@@ -88,7 +135,7 @@ const budgetAnalyticsSlice = createSlice({
       })
       .addCase(fetchBudgetAnalytics.fulfilled, (state, action) => {
         state.analyticsLoading = false;
-        state.analytics = action.payload;
+        state.analytics = normalizeBudgetAnalytics(action.payload);
         state.lastFetched.analytics = new Date().toISOString();
       })
       .addCase(fetchBudgetAnalytics.rejected, (state, action) => {

@@ -32,6 +32,9 @@ export const TransactionItem: React.FC<TransactionItemProps> = ({
 }) => {
   const { displayCurrency } = useTypedSelector((state) => state.user);
   const { categories } = useTypedSelector((state) => state.categories);
+  const transactionTags = Array.isArray(transaction?.tags)
+    ? transaction.tags.filter((tag): tag is string => typeof tag === 'string' && tag.trim().length > 0)
+    : [];
 
   const formatAmount = (amount: number, type: string) => {
     // Use account_currency as primary, fallback to currency, then to 'USD'
@@ -62,8 +65,8 @@ export const TransactionItem: React.FC<TransactionItemProps> = ({
   // Determine the actual category based on tags and category_name
   const getActualCategory = () => {
     // Check if this is a goal contribution based on tags
-    if (transaction?.tags && Array.isArray(transaction.tags)) {
-      const hasGoalTag = transaction.tags.some((tag: any) => {
+    if (transactionTags.length > 0) {
+      const hasGoalTag = transactionTags.some((tag: string) => {
         if (typeof tag !== 'string') return false;
         return tag.toLowerCase().includes('goal') ||
           tag.toLowerCase().includes('contribution');
@@ -190,9 +193,9 @@ export const TransactionItem: React.FC<TransactionItemProps> = ({
           {transaction.merchant && (
             <Text style={styles.merchant}>{transaction.merchant}</Text>
           )}
-          {transaction.tags && transaction.tags.length > 0 && (
+          {transactionTags.length > 0 && (
             <View style={styles.tagsContainer}>
-              {transaction.tags.map((tag, index) => (
+              {transactionTags.map((tag, index) => (
                 <View key={index} style={styles.tag}>
                   <Text style={styles.tagText}>{tag}</Text>
                 </View>

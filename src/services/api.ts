@@ -7,6 +7,7 @@ interface TransactionQueryParams {
   page?: number;
   limit?: number;
   searchQuery?: string;
+  categoryId?: string;
   dateRange?: {
     startDate: string;
     endDate: string;
@@ -613,6 +614,10 @@ class ApiService {
       queryParams.append('end_date', params.dateRange.endDate);
     }
     
+    if (params.categoryId) {
+      queryParams.append('category_id', params.categoryId);
+    }
+
     if (params.categories?.length) {
       queryParams.append('categories', params.categories.join(','));
     }
@@ -1006,26 +1011,16 @@ class ApiService {
   }
 
   async getDashboardInsightsByPeriod(period: 'weekly' | 'monthly' | '6months' | 'yearly') {
-    try {
-      const response = await this.api.get(`${API_ENDPOINTS.INSIGHTS.DASHBOARD}?period=${period}`);
-      return response.data;
-    } catch (error: any) {
-      console.log(`📊 Dashboard insights API not available for ${period}, returning null`);
-      return null;
-    }
+    const response = await this.api.get(`${API_ENDPOINTS.INSIGHTS.DASHBOARD}?period=${period}`);
+    return response.data;
   }
 
 
 
   // Insights methods
   async getDashboardInsights() {
-    try {
-      const response = await this.api.get(API_ENDPOINTS.INSIGHTS.DASHBOARD);
-      return response.data;
-    } catch (error: any) {
-      console.log('📊 Dashboard insights API not available, returning null');
-      return null;
-    }
+    const response = await this.api.get(API_ENDPOINTS.INSIGHTS.DASHBOARD);
+    return response.data;
   }
 
   async getWeeklyReport() {
@@ -1494,3 +1489,4 @@ class ApiService {
 }
 
 export const apiService = new ApiService();
+

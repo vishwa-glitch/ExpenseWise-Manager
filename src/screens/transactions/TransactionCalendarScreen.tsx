@@ -136,7 +136,9 @@ const TransactionCalendarScreen: React.FC<TransactionCalendarScreenProps> = ({ n
     }, [isAuthenticated, isDateRangeActive, selectedStartDate, selectedEndDate, currentDate, dispatch])
   );
 
-  const loadCalendarData = async (forceDateRange?: { startDate: string; endDate: string }) => {
+  const loadCalendarData = async (
+    options?: { startDate?: string; endDate?: string; resetToMonth?: boolean }
+  ) => {
     if (!isAuthenticated) {
       console.log('🚫 Skipping calendar data load - user not authenticated');
       return;
@@ -145,18 +147,23 @@ const TransactionCalendarScreen: React.FC<TransactionCalendarScreenProps> = ({ n
     setIsLoading(true);
     try {
       // Use forced date range or check current state
-      const shouldUseDateRange = forceDateRange || (isDateRangeActive && selectedStartDate && selectedEndDate);
+      const shouldUseDateRange =
+        (!!options?.startDate && !!options?.endDate) ||
+        (!options?.resetToMonth &&
+          isDateRangeActive &&
+          selectedStartDate &&
+          selectedEndDate);
       
       if (shouldUseDateRange) {
-        const startDate = forceDateRange?.startDate || selectedStartDate;
-        const endDate = forceDateRange?.endDate || selectedEndDate;
+        const startDate = options?.startDate || selectedStartDate;
+        const endDate = options?.endDate || selectedEndDate;
         
         // Load data for date range
         console.log('📅 Calendar: Loading date range data', {
           startDate,
           endDate,
           isDateRangeActive,
-          forcedRange: !!forceDateRange
+          forcedRange: !!options?.startDate && !!options?.endDate
         });
         await dispatch(fetchTransactionCalendar({
           startDate,
@@ -207,7 +214,10 @@ const TransactionCalendarScreen: React.FC<TransactionCalendarScreenProps> = ({ n
 
     setIsDateRangeActive(true);
     setShowDateFilter(false);
-    await loadCalendarData();
+    await loadCalendarData({
+      startDate: selectedStartDate,
+      endDate: selectedEndDate,
+    });
   };
 
   const clearDateFilter = async () => {
@@ -218,7 +228,7 @@ const TransactionCalendarScreen: React.FC<TransactionCalendarScreenProps> = ({ n
     setShowDateFilter(false);
     
     // Force reload calendar data for current month
-    await loadCalendarData();
+    await loadCalendarData({ resetToMonth: true });
   };
 
   const getDaysInMonth = () => {

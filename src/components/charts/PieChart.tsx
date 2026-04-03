@@ -98,8 +98,9 @@ export const PieChart: React.FC<PieChartProps> = ({
               chartConfig={chartConfig}
               accessor="population"
               backgroundColor="transparent"
-              paddingLeft="15"
-              center={[10, 0]}
+              paddingLeft="0"
+              center={[70, 0]}
+              hasLegend={false}
               absolute={false}
             />
 
