@@ -151,6 +151,38 @@ const NotificationCenterScreen: React.FC = () => {
     }
   };
 
+  const formatScheduledTrigger = (trigger: any) => {
+    if (!trigger) {
+      return 'Trigger unavailable';
+    }
+
+    if (trigger.type === 'date' && trigger.date) {
+      return format(new Date(trigger.date), 'MMM dd, yyyy HH:mm');
+    }
+
+    if (typeof trigger.hour === 'number' && typeof trigger.minute === 'number') {
+      const hour = trigger.hour;
+      const minute = trigger.minute;
+      const period = hour >= 12 ? 'PM' : 'AM';
+      const displayHour = hour % 12 || 12;
+      const formattedTime = `${displayHour}:${minute
+        .toString()
+        .padStart(2, '0')} ${period}`;
+
+      if (trigger.weekday) {
+        return `Weekly at ${formattedTime}`;
+      }
+
+      if (trigger.repeats) {
+        return `Every day at ${formattedTime}`;
+      }
+
+      return formattedTime;
+    }
+
+    return 'Scheduled trigger configured';
+  };
+
   const renderNotificationItem = ({ item }: { item: NotificationItem }) => (
     <TouchableOpacity
       style={[
@@ -183,7 +215,7 @@ const NotificationCenterScreen: React.FC = () => {
         <Text style={styles.scheduledTitle}>{item.content.title}</Text>
         <Text style={styles.scheduledBody}>{item.content.body}</Text>
         <Text style={styles.scheduledTime}>
-          Scheduled for: {format(new Date(item.trigger.date), 'MMM dd, yyyy HH:mm')}
+          Scheduled for: {formatScheduledTrigger(item.trigger)}
         </Text>
       </View>
     </View>

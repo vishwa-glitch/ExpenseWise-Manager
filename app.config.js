@@ -14,6 +14,14 @@ module.exports = {
     plugins: [
       "expo-secure-store",
       [
+        "expo-notifications",
+        {
+          icon: "./assets/icon.png",
+          color: "#2E7D57",
+          sounds: []
+        }
+      ],
+      [
         "expo-build-properties",
         {
           android: {

@@ -77,6 +77,9 @@ class NotificationService {
       // Initialize notification memory service
       const { notificationMemoryService } = await import('./notificationMemoryService');
       await notificationMemoryService.initialize();
+      const { dailyExpenseReminderService } = await import('./dailyExpenseReminderService');
+      await dailyExpenseReminderService.initialize();
+      console.log('⏰ Daily expense reminder service initialized');
       console.log('💭 Notification memory service initialized with notifications');
     } catch (error) {
       console.error('❌ Failed to start monitoring services:', error);

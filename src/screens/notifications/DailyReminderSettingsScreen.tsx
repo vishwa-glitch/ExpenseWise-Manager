@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   View,
   Text,
@@ -8,15 +8,37 @@ import {
   TouchableOpacity,
   Alert,
   ActivityIndicator,
+  Modal,
 } from 'react-native';
 import { colors, typography, spacing } from '../../constants/colors';
 import { dailyExpenseReminderService } from '../../services/dailyExpenseReminderService';
 
+const parseTime = (time: string) => {
+  const [hourString = '21', minuteString = '00'] = time.split(':');
+  return {
+    hour: Number(hourString),
+    minute: Number(minuteString),
+  };
+};
+
+const formatTimeValue = (hour: number, minute: number) =>
+  `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`;
+
+const formatTimeLabel = (time: string) => {
+  const { hour, minute } = parseTime(time);
+  const period = hour >= 12 ? 'PM' : 'AM';
+  const displayHours = hour % 12 || 12;
+  return `${displayHours}:${minute.toString().padStart(2, '0')} ${period}`;
+};
+
 const DailyReminderSettingsScreen: React.FC = () => {
-  const [isEnabled, setIsEnabled] = useState(true);
-  const [reminderTime, setReminderTime] = useState('09:00');
+  const [isEnabled, setIsEnabled] = useState(false);
+  const [reminderTime, setReminderTime] = useState('21:00');
   const [loading, setLoading] = useState(false);
   const [hasLoggedToday, setHasLoggedToday] = useState(false);
+  const [showTimePicker, setShowTimePicker] = useState(false);
+  const [pickerHour, setPickerHour] = useState(21);
+  const [pickerMinute, setPickerMinute] = useState(0);
 
   useEffect(() => {
     loadSettings();
@@ -27,8 +49,11 @@ const DailyReminderSettingsScreen: React.FC = () => {
     try {
       setLoading(true);
       const settings = await dailyExpenseReminderService.getSettings();
+      const parsedTime = parseTime(settings.time);
       setIsEnabled(settings.enabled);
       setReminderTime(settings.time);
+      setPickerHour(parsedTime.hour);
+      setPickerMinute(parsedTime.minute);
     } catch (error) {
       console.error('Error loading settings:', error);
     } finally {
@@ -48,20 +73,27 @@ const DailyReminderSettingsScreen: React.FC = () => {
   const toggleReminder = async (value: boolean) => {
     try {
       setLoading(true);
-      
+
       if (value) {
-        const success = await dailyExpenseReminderService.enableDailyReminders(reminderTime);
+        const success =
+          await dailyExpenseReminderService.enableDailyReminders(reminderTime);
         if (success) {
           setIsEnabled(true);
-          Alert.alert('Success', 'Daily expense reminders enabled! You\'ll receive a reminder at ' + reminderTime);
+          Alert.alert(
+            'Success',
+            `Daily expense reminder enabled for ${formatTimeLabel(reminderTime)}.`
+          );
         } else {
-          Alert.alert('Error', 'Failed to enable reminders. Please try again.');
+          Alert.alert(
+            'Error',
+            'Failed to enable reminders. Make sure notification permission is granted.'
+          );
         }
       } else {
         const success = await dailyExpenseReminderService.disableDailyReminders();
         if (success) {
           setIsEnabled(false);
-          Alert.alert('Success', 'Daily expense reminders disabled.');
+          Alert.alert('Success', 'Daily expense reminder disabled.');
         } else {
           Alert.alert('Error', 'Failed to disable reminders. Please try again.');
         }
@@ -73,46 +105,50 @@ const DailyReminderSettingsScreen: React.FC = () => {
     }
   };
 
-  const changeReminderTime = () => {
-    Alert.prompt(
-      'Set Reminder Time',
-      'Enter time in 24-hour format (e.g., 09:00 for 9 AM)',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Save',
-          onPress: async (time) => {
-            if (time && /^([01]?[0-9]|2[0-3]):[0-5][0-9]$/.test(time)) {
-              try {
-                setLoading(true);
-                const success = await dailyExpenseReminderService.updateReminderTime(time);
-                if (success) {
-                  setReminderTime(time);
-                  Alert.alert('Success', `Reminder time updated to ${time}`);
-                } else {
-                  Alert.alert('Error', 'Failed to update reminder time.');
-                }
-              } catch (error) {
-                Alert.alert('Error', 'Failed to update reminder time.');
-              } finally {
-                setLoading(false);
-              }
-            } else {
-              Alert.alert('Invalid Time', 'Please enter a valid time in 24-hour format (e.g., 09:00)');
-            }
-          }
-        }
-      ],
-      'plain-text',
-      reminderTime
-    );
+  const openTimePicker = () => {
+    const parsedTime = parseTime(reminderTime);
+    setPickerHour(parsedTime.hour);
+    setPickerMinute(parsedTime.minute);
+    setShowTimePicker(true);
+  };
+
+  const adjustHour = (delta: number) => {
+    setPickerHour((current) => (current + delta + 24) % 24);
+  };
+
+  const adjustMinute = (delta: number) => {
+    setPickerMinute((current) => (current + delta + 60) % 60);
+  };
+
+  const saveReminderTime = async () => {
+    const nextTime = formatTimeValue(pickerHour, pickerMinute);
+
+    try {
+      setLoading(true);
+      const success = await dailyExpenseReminderService.updateReminderTime(nextTime);
+
+      if (success) {
+        setReminderTime(nextTime);
+        setShowTimePicker(false);
+        Alert.alert(
+          'Success',
+          `Reminder time updated to ${formatTimeLabel(nextTime)}.`
+        );
+      } else {
+        Alert.alert('Error', 'Failed to update reminder time.');
+      }
+    } catch (error) {
+      Alert.alert('Error', 'Failed to update reminder time.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   const testReminder = async () => {
     try {
       setLoading(true);
       await dailyExpenseReminderService.sendManualReminder();
-      Alert.alert('Success', 'Test reminder sent! Check your notifications.');
+      Alert.alert('Success', 'Test reminder sent. Check your notification tray.');
     } catch (error) {
       Alert.alert('Error', 'Failed to send test reminder.');
     } finally {
@@ -136,17 +172,16 @@ const DailyReminderSettingsScreen: React.FC = () => {
       <View style={styles.header}>
         <Text style={styles.headerTitle}>Daily Expense Reminder</Text>
         <Text style={styles.headerSubtitle}>
-          Get a gentle reminder to log your daily expenses
+          Schedule one local reminder to log your daily expenses
         </Text>
       </View>
 
       <View style={styles.content}>
-        {/* Enable/Disable Toggle */}
         <View style={styles.settingItem}>
           <View style={styles.settingInfo}>
-            <Text style={styles.settingTitle}>Daily Reminders</Text>
+            <Text style={styles.settingTitle}>Daily Reminder</Text>
             <Text style={styles.settingDescription}>
-              Receive a daily reminder to log your expenses
+              Turn your recurring on-device reminder on or off.
             </Text>
           </View>
           <Switch
@@ -157,56 +192,123 @@ const DailyReminderSettingsScreen: React.FC = () => {
           />
         </View>
 
-        {/* Reminder Time */}
         <TouchableOpacity
           style={[styles.settingItem, !isEnabled && styles.disabledItem]}
-          onPress={changeReminderTime}
+          onPress={openTimePicker}
           disabled={!isEnabled}
         >
           <View style={styles.settingInfo}>
             <Text style={styles.settingTitle}>Reminder Time</Text>
             <Text style={styles.settingDescription}>
-              Currently set to {reminderTime}
+              Currently set to {formatTimeLabel(reminderTime)}
             </Text>
           </View>
           <Text style={styles.chevron}>›</Text>
         </TouchableOpacity>
 
-        {/* Today's Status */}
         <View style={styles.statusCard}>
           <Text style={styles.statusTitle}>Today's Status</Text>
           <View style={styles.statusContent}>
-            <Text style={styles.statusIcon}>
-              {hasLoggedToday ? '✅' : '⏰'}
-            </Text>
+            <Text style={styles.statusIcon}>{hasLoggedToday ? '✓' : '⏰'}</Text>
             <Text style={styles.statusText}>
-              {hasLoggedToday 
-                ? 'Great job! You\'ve logged expenses today.'
-                : 'No expenses logged yet today.'
-              }
+              {hasLoggedToday
+                ? "You've already logged expenses today."
+                : 'No expenses logged yet today.'}
             </Text>
           </View>
         </View>
 
-        {/* Test Button */}
-        <TouchableOpacity
-          style={styles.testButton}
-          onPress={testReminder}
-        >
+        <TouchableOpacity style={styles.testButton} onPress={testReminder}>
           <Text style={styles.testButtonText}>Send Test Reminder</Text>
         </TouchableOpacity>
 
-        {/* Info Section */}
         <View style={styles.infoSection}>
           <Text style={styles.infoTitle}>How it works</Text>
           <Text style={styles.infoText}>
-            • You'll receive one gentle reminder per day at your chosen time{'\n'}
-            • The reminder will encourage you to log your daily expenses{'\n'}
-            • You can change the reminder time anytime{'\n'}
-            • Reminders are sent even when the app is closed
+            • The reminder is scheduled locally on your device.{'\n'}
+            • It fires every day at the time shown above.{'\n'}
+            • Changing the time reschedules the existing reminder.{'\n'}
+            • The app does not need a backend to show this reminder.
           </Text>
         </View>
       </View>
+
+      <Modal
+        transparent
+        animationType="fade"
+        visible={showTimePicker}
+        onRequestClose={() => setShowTimePicker(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalCard}>
+            <Text style={styles.modalTitle}>Choose Reminder Time</Text>
+            <Text style={styles.modalSubtitle}>
+              The app will schedule one recurring local notification at this time.
+            </Text>
+
+            <View style={styles.timePickerRow}>
+              <View style={styles.timeColumn}>
+                <TouchableOpacity
+                  style={styles.adjustButton}
+                  onPress={() => adjustHour(1)}
+                >
+                  <Text style={styles.adjustButtonText}>+</Text>
+                </TouchableOpacity>
+                <Text style={styles.timeValue}>
+                  {pickerHour.toString().padStart(2, '0')}
+                </Text>
+                <TouchableOpacity
+                  style={styles.adjustButton}
+                  onPress={() => adjustHour(-1)}
+                >
+                  <Text style={styles.adjustButtonText}>-</Text>
+                </TouchableOpacity>
+                <Text style={styles.timeLabel}>Hour</Text>
+              </View>
+
+              <Text style={styles.timeSeparator}>:</Text>
+
+              <View style={styles.timeColumn}>
+                <TouchableOpacity
+                  style={styles.adjustButton}
+                  onPress={() => adjustMinute(1)}
+                >
+                  <Text style={styles.adjustButtonText}>+</Text>
+                </TouchableOpacity>
+                <Text style={styles.timeValue}>
+                  {pickerMinute.toString().padStart(2, '0')}
+                </Text>
+                <TouchableOpacity
+                  style={styles.adjustButton}
+                  onPress={() => adjustMinute(-1)}
+                >
+                  <Text style={styles.adjustButtonText}>-</Text>
+                </TouchableOpacity>
+                <Text style={styles.timeLabel}>Minute</Text>
+              </View>
+            </View>
+
+            <Text style={styles.previewText}>
+              Scheduled for {formatTimeLabel(formatTimeValue(pickerHour, pickerMinute))}
+            </Text>
+
+            <View style={styles.modalActions}>
+              <TouchableOpacity
+                style={[styles.modalButton, styles.cancelButton]}
+                onPress={() => setShowTimePicker(false)}
+              >
+                <Text style={styles.cancelButtonText}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.modalButton, styles.saveButton]}
+                onPress={saveReminderTime}
+              >
+                <Text style={styles.saveButtonText}>Save Time</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 };
@@ -341,6 +443,96 @@ const styles = StyleSheet.create({
     ...typography.body,
     color: colors.textSecondary,
     lineHeight: 20,
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.45)',
+    justifyContent: 'center',
+    paddingHorizontal: spacing.lg,
+  },
+  modalCard: {
+    backgroundColor: colors.white,
+    borderRadius: 16,
+    padding: spacing.lg,
+  },
+  modalTitle: {
+    ...typography.h3,
+    color: colors.text,
+    marginBottom: spacing.xs,
+  },
+  modalSubtitle: {
+    ...typography.body,
+    color: colors.textSecondary,
+    marginBottom: spacing.lg,
+  },
+  timePickerRow: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: spacing.md,
+  },
+  timeColumn: {
+    alignItems: 'center',
+  },
+  adjustButton: {
+    width: 48,
+    height: 40,
+    borderRadius: 10,
+    backgroundColor: colors.background,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: spacing.sm,
+  },
+  adjustButtonText: {
+    color: colors.text,
+    fontSize: 22,
+    fontWeight: '700',
+  },
+  timeValue: {
+    ...typography.h1,
+    color: colors.primary,
+    marginBottom: spacing.sm,
+    minWidth: 60,
+    textAlign: 'center',
+  },
+  timeLabel: {
+    ...typography.caption,
+    color: colors.textSecondary,
+  },
+  timeSeparator: {
+    ...typography.h1,
+    color: colors.textSecondary,
+    marginHorizontal: spacing.md,
+  },
+  previewText: {
+    ...typography.body,
+    color: colors.text,
+    textAlign: 'center',
+    marginBottom: spacing.lg,
+  },
+  modalActions: {
+    flexDirection: 'row',
+    gap: spacing.sm,
+  },
+  modalButton: {
+    flex: 1,
+    borderRadius: 10,
+    paddingVertical: spacing.md,
+    alignItems: 'center',
+  },
+  cancelButton: {
+    backgroundColor: colors.background,
+  },
+  cancelButtonText: {
+    color: colors.text,
+    fontWeight: '600',
+  },
+  saveButton: {
+    backgroundColor: colors.primary,
+  },
+  saveButtonText: {
+    color: colors.white,
+    fontWeight: '600',
   },
 });
 

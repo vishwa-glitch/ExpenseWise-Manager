@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import {
   View,
   Text,
@@ -13,48 +13,88 @@ import {
   Platform,
   AppState,
 } from 'react-native';
+import { useFocusEffect } from '@react-navigation/native';
+import * as Notifications from 'expo-notifications';
 import { colors, typography, spacing } from '../../constants/colors';
 import { dailyExpenseReminderService } from '../../services/dailyExpenseReminderService';
-import * as Notifications from 'expo-notifications';
 
 interface NotificationSettingsScreenProps {
   navigation: any;
 }
 
-const NotificationSettingsScreen: React.FC<NotificationSettingsScreenProps> = ({ navigation }) => {
-  const [isDailyReminderEnabled, setIsDailyReminderEnabled] = useState(true);
+const formatTimeLabel = (time: string) => {
+  const [hoursString, minutesString] = time.split(':');
+  const hours = Number(hoursString);
+  const minutes = Number(minutesString);
+  const period = hours >= 12 ? 'PM' : 'AM';
+  const displayHours = hours % 12 || 12;
+  return `${displayHours}:${minutes.toString().padStart(2, '0')} ${period}`;
+};
+
+const NotificationSettingsScreen: React.FC<NotificationSettingsScreenProps> = ({
+  navigation,
+}) => {
+  const [isDailyReminderEnabled, setIsDailyReminderEnabled] = useState(false);
+  const [reminderTime, setReminderTime] = useState('21:00');
   const [permissionStatus, setPermissionStatus] = useState<string>('unknown');
   const [loading, setLoading] = useState(false);
+
+  const checkNotificationPermissions = useCallback(async () => {
+    try {
+      const { status } = await Notifications.getPermissionsAsync();
+      setPermissionStatus(status);
+    } catch (error) {
+      console.error('Error checking notification permissions:', error);
+    }
+  }, []);
+
+  const loadDailyReminderSettings = useCallback(async () => {
+    try {
+      const settings = await dailyExpenseReminderService.getSettings();
+      setIsDailyReminderEnabled(settings.enabled);
+      setReminderTime(settings.time);
+    } catch (error) {
+      console.error('Error loading daily reminder settings:', error);
+    }
+  }, []);
 
   useEffect(() => {
     checkNotificationPermissions();
     loadDailyReminderSettings();
-  }, []);
+  }, [checkNotificationPermissions, loadDailyReminderSettings]);
 
-  // Check permissions when app comes back to foreground
-  useEffect(() => {
-    const checkPermissionsOnFocus = () => {
+  useFocusEffect(
+    useCallback(() => {
       checkNotificationPermissions();
-    };
+      loadDailyReminderSettings();
+    }, [checkNotificationPermissions, loadDailyReminderSettings])
+  );
 
-    // Add event listener for when app comes back to foreground
+  useEffect(() => {
     const subscription = AppState.addEventListener('change', (nextAppState) => {
       if (nextAppState === 'active') {
-        checkPermissionsOnFocus();
+        checkNotificationPermissions();
       }
     });
 
     return () => {
       subscription?.remove();
     };
-  }, []);
+  }, [checkNotificationPermissions]);
 
-  const checkNotificationPermissions = async () => {
+  const openAppSettings = async () => {
     try {
-      const { status } = await Notifications.getPermissionsAsync();
-      setPermissionStatus(status);
+      if (Platform.OS === 'ios') {
+        await Linking.openURL('app-settings:');
+      } else {
+        await Linking.openSettings();
+      }
     } catch (error) {
-      console.error('Error checking notification permissions:', error);
+      console.error('Error opening app settings:', error);
+      Alert.alert(
+        'Error',
+        'Unable to open app settings. Please enable notifications manually in your device settings.'
+      );
     }
   };
 
@@ -63,25 +103,34 @@ const NotificationSettingsScreen: React.FC<NotificationSettingsScreenProps> = ({
       setLoading(true);
       const { status } = await Notifications.requestPermissionsAsync();
       setPermissionStatus(status);
-      
+
       if (status === 'granted') {
-        Alert.alert('Success', 'Notification permissions granted!');
-        // Enable daily reminders by default when permissions are granted
-        await enableDailyReminders();
-      } else {
-        // If permission is denied, show alert with option to open settings
-        Alert.alert(
-          'Permission Required',
-          'Notification permissions are required for daily expense reminders. Please enable them in your device settings.',
-          [
-            { text: 'Cancel', style: 'cancel' },
-            { 
-              text: 'Open Settings', 
-              onPress: openAppSettings 
-            }
-          ]
-        );
+        const success =
+          await dailyExpenseReminderService.enableDailyReminders(reminderTime);
+
+        if (success) {
+          setIsDailyReminderEnabled(true);
+          Alert.alert(
+            'Success',
+            `Daily expense reminder enabled for ${formatTimeLabel(reminderTime)}.`
+          );
+        } else {
+          Alert.alert(
+            'Permission Granted',
+            'Notifications are enabled, but the reminder could not be scheduled. Please try again.'
+          );
+        }
+        return;
       }
+
+      Alert.alert(
+        'Permission Required',
+        'Notification permissions are required for daily reminders. Please enable them in your device settings.',
+        [
+          { text: 'Cancel', style: 'cancel' },
+          { text: 'Open Settings', onPress: openAppSettings },
+        ]
+      );
     } catch (error) {
       Alert.alert('Error', 'Failed to request notification permissions');
     } finally {
@@ -89,47 +138,34 @@ const NotificationSettingsScreen: React.FC<NotificationSettingsScreenProps> = ({
     }
   };
 
-  const openAppSettings = async () => {
-    try {
-      if (Platform.OS === 'ios') {
-        // For iOS, open the app's settings page
-        await Linking.openURL('app-settings:');
-      } else {
-        // For Android, open the app's info page
-        await Linking.openSettings();
-      }
-    } catch (error) {
-      console.error('Error opening app settings:', error);
-      Alert.alert('Error', 'Unable to open app settings. Please manually enable notifications in your device settings.');
-    }
-  };
-
-  const loadDailyReminderSettings = async () => {
-    try {
-      const settings = await dailyExpenseReminderService.getSettings();
-      setIsDailyReminderEnabled(settings.enabled);
-    } catch (error) {
-      console.error('Error loading daily reminder settings:', error);
-    }
-  };
-
   const toggleDailyReminder = async (value: boolean) => {
     try {
       setLoading(true);
-      
+
       if (value) {
-        const success = await dailyExpenseReminderService.enableDailyReminders();
+        const success =
+          await dailyExpenseReminderService.enableDailyReminders(reminderTime);
+
         if (success) {
           setIsDailyReminderEnabled(true);
-          Alert.alert('Success', 'Daily expense reminders enabled! You\'ll receive reminders at 10 AM, 5 PM, and 9 PM.');
+          Alert.alert(
+            'Success',
+            `Daily expense reminder enabled for ${formatTimeLabel(reminderTime)}.`
+          );
+        } else if (permissionStatus !== 'granted') {
+          Alert.alert(
+            'Permission Required',
+            'Please grant notification permission before enabling reminders.'
+          );
         } else {
           Alert.alert('Error', 'Failed to enable reminders. Please try again.');
         }
       } else {
         const success = await dailyExpenseReminderService.disableDailyReminders();
+
         if (success) {
           setIsDailyReminderEnabled(false);
-          Alert.alert('Success', 'Daily expense reminders disabled.');
+          Alert.alert('Success', 'Daily expense reminder disabled.');
         } else {
           Alert.alert('Error', 'Failed to disable reminders. Please try again.');
         }
@@ -141,48 +177,36 @@ const NotificationSettingsScreen: React.FC<NotificationSettingsScreenProps> = ({
     }
   };
 
-  const enableDailyReminders = async () => {
-    try {
-      const success = await dailyExpenseReminderService.enableDailyReminders();
-      if (success) {
-        setIsDailyReminderEnabled(true);
-      }
-    } catch (error) {
-      console.error('Error enabling daily reminders:', error);
-    }
-  };
-
-
-
   const renderPermissionSection = () => {
-    // Only show permission section if permissions are not granted
     if (permissionStatus === 'granted') {
       return null;
     }
+
+    const canPrompt = permissionStatus === 'undetermined';
 
     return (
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>Notification Permissions</Text>
         <View style={styles.permissionCard}>
           <View style={styles.permissionInfo}>
-            <Text style={styles.permissionTitle}>
-              ❌ Permissions Required
-            </Text>
+            <Text style={styles.permissionTitle}>Permissions Required</Text>
             <Text style={styles.permissionDescription}>
-              Enable notifications to receive daily expense reminders
+              Enable notifications to receive your daily expense reminder.
             </Text>
           </View>
-                     <TouchableOpacity
-             style={styles.permissionButton}
-             onPress={openAppSettings}
-             disabled={loading}
-           >
-                           {loading ? (
-                <ActivityIndicator size="small" color="#FFFFFF" />
-              ) : (
-                <Text style={styles.permissionButtonText}>Enable</Text>
-              )}
-           </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.permissionButton}
+            onPress={canPrompt ? requestPermissions : openAppSettings}
+            disabled={loading}
+          >
+            {loading ? (
+              <ActivityIndicator size="small" color="#FFFFFF" />
+            ) : (
+              <Text style={styles.permissionButtonText}>
+                {canPrompt ? 'Allow' : 'Settings'}
+              </Text>
+            )}
+          </TouchableOpacity>
         </View>
       </View>
     );
@@ -190,13 +214,13 @@ const NotificationSettingsScreen: React.FC<NotificationSettingsScreenProps> = ({
 
   const renderDailyReminderSection = () => (
     <View style={styles.section}>
-      <Text style={styles.sectionTitle}>Daily Expense Reminders</Text>
-      
+      <Text style={styles.sectionTitle}>Daily Expense Reminder</Text>
+
       <View style={styles.reminderCard}>
         <View style={styles.reminderInfo}>
-          <Text style={styles.reminderTitle}>Daily Reminders</Text>
+          <Text style={styles.reminderTitle}>Reminder Enabled</Text>
           <Text style={styles.reminderDescription}>
-            Receive gentle reminders at 10 AM, 5 PM, and 9 PM to log your daily expenses
+            Receive one daily reminder to log your expenses at your chosen time.
           </Text>
         </View>
         <Switch
@@ -208,23 +232,20 @@ const NotificationSettingsScreen: React.FC<NotificationSettingsScreenProps> = ({
         />
       </View>
 
-             {isDailyReminderEnabled && (
-         <View style={styles.reminderSchedule}>
-           <Text style={styles.scheduleTitle}>Reminder Schedule:</Text>
-           <View style={styles.scheduleItem}>
-             <Text style={styles.scheduleTime}>🌅 10:00 AM</Text>
-             <Text style={styles.scheduleText}>Morning reminder</Text>
-           </View>
-           <View style={styles.scheduleItem}>
-             <Text style={styles.scheduleTime}>🌆 5:00 PM</Text>
-             <Text style={styles.scheduleText}>Afternoon reminder</Text>
-           </View>
-           <View style={styles.scheduleItem}>
-             <Text style={styles.scheduleTime}>🌙 9:00 PM</Text>
-             <Text style={styles.scheduleText}>Evening reminder</Text>
-           </View>
-         </View>
-       )}
+      <View style={styles.reminderSchedule}>
+        <Text style={styles.scheduleTitle}>Scheduled Time</Text>
+        <Text style={styles.scheduleTime}>{formatTimeLabel(reminderTime)}</Text>
+        <Text style={styles.scheduleText}>
+          This is the local device time used when the reminder is scheduled.
+        </Text>
+
+        <TouchableOpacity
+          style={styles.manageButton}
+          onPress={() => navigation.navigate('DailyReminderSettings')}
+        >
+          <Text style={styles.manageButtonText}>Edit Reminder Time</Text>
+        </TouchableOpacity>
+      </View>
     </View>
   );
 
@@ -234,7 +255,7 @@ const NotificationSettingsScreen: React.FC<NotificationSettingsScreenProps> = ({
         <View style={styles.header}>
           <Text style={styles.headerTitle}>Notification Settings</Text>
           <Text style={styles.headerSubtitle}>
-            Manage your daily expense reminders
+            Manage your local expense reminder schedule
           </Text>
         </View>
 
@@ -303,7 +324,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.sm,
     borderRadius: 8,
-    minWidth: 80,
+    minWidth: 88,
     alignItems: 'center',
   },
   permissionButtonText: {
@@ -339,37 +360,29 @@ const styles = StyleSheet.create({
     padding: spacing.md,
     borderWidth: 1,
     borderColor: colors.border,
-    marginBottom: spacing.md,
   },
   scheduleTitle: {
     ...typography.subtitle,
     color: colors.text,
-    marginBottom: spacing.sm,
-  },
-  scheduleItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
     marginBottom: spacing.xs,
   },
   scheduleTime: {
-    ...typography.body,
-    color: colors.text,
-    fontWeight: '600',
-    width: 80,
+    ...typography.h3,
+    color: colors.primary,
+    marginBottom: spacing.xs,
   },
   scheduleText: {
     ...typography.body,
     color: colors.textSecondary,
-    flex: 1,
+    marginBottom: spacing.md,
   },
-  settingsButton: {
+  manageButton: {
     backgroundColor: colors.primary,
-    paddingHorizontal: spacing.md,
     paddingVertical: spacing.sm,
     borderRadius: 8,
     alignItems: 'center',
   },
-  settingsButtonText: {
+  manageButtonText: {
     color: colors.white,
     fontSize: 14,
     fontWeight: '600',
