@@ -15,8 +15,6 @@ ExpenseWise is a mobile-first personal finance companion built for everyday use 
 
 ## 📸 Screenshots
 
-## 📸 Screenshots
-
 <table>
   <tr>
     <td><img src="https://github.com/user-attachments/assets/9d051481-b744-418e-8339-1cbe49b46b57" width="220" /></td>
@@ -28,7 +26,7 @@ ExpenseWise is a mobile-first personal finance companion built for everyday use 
     <td><img src="https://github.com/user-attachments/assets/062ae1eb-57a3-45c3-9578-6ee52c13defb" width="220" /></td>
     <td><img src="https://github.com/user-attachments/assets/4cf9d978-c9fe-4381-a451-c3eacca37b50" width="220" /></td>
     <td><img src="https://github.com/user-attachments/assets/ebb02fdf-f134-4153-86b2-c13da266f378" width="220" /></td>
-    <td></td>
+    <td> <img  src="https://github.com/user-attachments/assets/43fbaa3b-e1b4-4151-8983-e0c4de206017" width="220" /></td>
   </tr>
 </table>
 
