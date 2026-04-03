@@ -4,6 +4,7 @@ import {
   Text,
   StyleSheet,
   SafeAreaView,
+  ScrollView,
   Switch,
   TouchableOpacity,
   Alert,
@@ -169,69 +170,75 @@ const DailyReminderSettingsScreen: React.FC = () => {
 
   return (
     <SafeAreaView style={styles.container}>
-      <View style={styles.header}>
-        <Text style={styles.headerTitle}>Daily Expense Reminder</Text>
-        <Text style={styles.headerSubtitle}>
-          Schedule one local reminder to log your daily expenses
-        </Text>
-      </View>
-
-      <View style={styles.content}>
-        <View style={styles.settingItem}>
-          <View style={styles.settingInfo}>
-            <Text style={styles.settingTitle}>Daily Reminder</Text>
-            <Text style={styles.settingDescription}>
-              Turn your recurring on-device reminder on or off.
-            </Text>
-          </View>
-          <Switch
-            value={isEnabled}
-            onValueChange={toggleReminder}
-            trackColor={{ false: colors.border, true: colors.primary }}
-            thumbColor={colors.white}
-          />
-        </View>
-
-        <TouchableOpacity
-          style={[styles.settingItem, !isEnabled && styles.disabledItem]}
-          onPress={openTimePicker}
-          disabled={!isEnabled}
-        >
-          <View style={styles.settingInfo}>
-            <Text style={styles.settingTitle}>Reminder Time</Text>
-            <Text style={styles.settingDescription}>
-              Currently set to {formatTimeLabel(reminderTime)}
-            </Text>
-          </View>
-          <Text style={styles.chevron}>›</Text>
-        </TouchableOpacity>
-
-        <View style={styles.statusCard}>
-          <Text style={styles.statusTitle}>Today's Status</Text>
-          <View style={styles.statusContent}>
-            <Text style={styles.statusIcon}>{hasLoggedToday ? '✓' : '⏰'}</Text>
-            <Text style={styles.statusText}>
-              {hasLoggedToday
-                ? "You've already logged expenses today."
-                : 'No expenses logged yet today.'}
-            </Text>
-          </View>
-        </View>
-
-        <TouchableOpacity style={styles.testButton} onPress={testReminder}>
-          <Text style={styles.testButtonText}>Send Test Reminder</Text>
-        </TouchableOpacity>
-
-        <View style={styles.infoSection}>
-          <Text style={styles.infoTitle}>How it works</Text>
-          <Text style={styles.infoText}>
-            • The reminder is scheduled locally on your device.{'\n'}
-            • It fires every day at the time shown above.{'\n'}
-            • Changing the time reschedules the existing reminder.{'\n'}
-            • The app does not need a backend to show this reminder.
+      <ScrollView
+        style={styles.scrollView}
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+      >
+        <View style={styles.header}>
+          <Text style={styles.headerTitle}>Daily Expense Reminder</Text>
+          <Text style={styles.headerSubtitle}>
+            Schedule one local reminder to log your daily expenses
           </Text>
         </View>
-      </View>
+
+        <View style={styles.content}>
+          <View style={styles.settingItem}>
+            <View style={styles.settingInfo}>
+              <Text style={styles.settingTitle}>Daily Reminder</Text>
+              <Text style={styles.settingDescription}>
+                Turn your recurring on-device reminder on or off.
+              </Text>
+            </View>
+            <Switch
+              value={isEnabled}
+              onValueChange={toggleReminder}
+              trackColor={{ false: colors.border, true: colors.primary }}
+              thumbColor={colors.white}
+            />
+          </View>
+
+          <TouchableOpacity
+            style={[styles.settingItem, !isEnabled && styles.disabledItem]}
+            onPress={openTimePicker}
+            disabled={!isEnabled}
+          >
+            <View style={styles.settingInfo}>
+              <Text style={styles.settingTitle}>Reminder Time</Text>
+              <Text style={styles.settingDescription}>
+                Currently set to {formatTimeLabel(reminderTime)}
+              </Text>
+            </View>
+            <Text style={styles.chevron}>›</Text>
+          </TouchableOpacity>
+
+          <View style={styles.statusCard}>
+            <Text style={styles.statusTitle}>Today's Status</Text>
+            <View style={styles.statusContent}>
+              <Text style={styles.statusIcon}>{hasLoggedToday ? '✓' : '⏰'}</Text>
+              <Text style={styles.statusText}>
+                {hasLoggedToday
+                  ? "You've already logged expenses today."
+                  : 'No expenses logged yet today.'}
+              </Text>
+            </View>
+          </View>
+
+          <TouchableOpacity style={styles.testButton} onPress={testReminder}>
+            <Text style={styles.testButtonText}>Send Test Reminder</Text>
+          </TouchableOpacity>
+
+          <View style={styles.infoSection}>
+            <Text style={styles.infoTitle}>How it works</Text>
+            <Text style={styles.infoText}>
+              • The reminder is scheduled locally on your device.{'\n'}
+              • It fires every day at the time shown above.{'\n'}
+              • Changing the time reschedules the existing reminder.{'\n'}
+              • The app does not need a backend to show this reminder.
+            </Text>
+          </View>
+        </View>
+      </ScrollView>
 
       <Modal
         transparent
@@ -317,6 +324,12 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.background,
+  },
+  scrollView: {
+    flex: 1,
+  },
+  scrollContent: {
+    paddingBottom: spacing.xl,
   },
   loadingContainer: {
     flex: 1,
