@@ -233,8 +233,7 @@ const DailyReminderSettingsScreen: React.FC = () => {
             <Text style={styles.infoText}>
               • The reminder is scheduled locally on your device.{'\n'}
               • It fires every day at the time shown above.{'\n'}
-              • Changing the time reschedules the existing reminder.{'\n'}
-              • The app does not need a backend to show this reminder.
+              • Changing the time reschedules the existing reminder.
             </Text>
           </View>
         </View>
