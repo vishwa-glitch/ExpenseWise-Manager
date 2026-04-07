@@ -224,8 +224,5 @@ Local development can override the API URL via `.env` or `src/config/dev-config.
 
 ---
 
-## 📦 APK Download
-[Download APK](#) — _replace with Google Drive link_
-
 ## 🏪 Play Store
-[View on Google Play](#) — _replace with Play Store link_
+[View on Google Play](https://play.google.com/store/apps/details?id=com.vishwa567.fintech)
